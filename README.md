@@ -99,13 +99,11 @@ SubMaker Addon (Express + Stremio SDK)
 - Context-aware (processes entire subtitle at once)
 - Handles files up to unlimited size with chunking
 - Customizable translation prompts
-- Supports all Gemini models (Flash, Pro, etc.)
+- Fetches all Gemini models
 
 **Intelligent Caching**
 - **Memory**: LRU cache for hot translations (~200ms)
 - **Disk**: Persistent cache survives restarts
-- **Deduplication**: Multiple users requesting same translation share cost
-- **Cost Savings**: 100% for cached, ~$0.50-$2 for new (typical movie)
 
 ---
 
