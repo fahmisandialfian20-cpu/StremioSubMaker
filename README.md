@@ -42,7 +42,7 @@ Auto-sync subtitles in development!
 
 ```bash
 # Clone and install
-git clone https://github.com/xtremexq/SubMaker.git
+git clone https://github.com/xtremexq/StremioSubMaker.git
 cd SubMaker
 npm install
 
