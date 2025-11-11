@@ -237,4 +237,15 @@ console.warn = function(...args) {
     }
 };
 
+/**
+ * Special method for startup banner - always visible regardless of log level
+ * This bypasses the log level filtering to ensure critical startup info is always shown
+ */
+console.startup = function(...args) {
+    // Always show startup messages using originalLog (bypasses filtering)
+    originalLog(...args);
+    // Also write to file log
+    writeFileLog('STARTUP', args);
+};
+
 module.exports = {};

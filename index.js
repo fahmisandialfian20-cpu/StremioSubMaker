@@ -1887,7 +1887,14 @@ app.use((error, req, res, next) => {
 
 // Start server and setup graceful shutdown
 const server = app.listen(PORT, () => {
-    console.log(`
+    // Get log level and file logging status
+    const logLevel = (process.env.LOG_LEVEL || 'warn').toUpperCase();
+    const logToFile = process.env.LOG_TO_FILE !== 'false' ? 'ENABLED' : 'DISABLED';
+    const logDir = process.env.LOG_DIR || 'logs/';
+    const storageType = (process.env.STORAGE_TYPE || 'filesystem').toUpperCase();
+
+    // Use console.startup to ensure banner always shows regardless of log level
+    console.startup(`
 ╔═══════════════════════════════════════════════════════════╗
 ║                                                           ║
 ║   🎬 SubMaker - Subtitle Translator Addon                ║
@@ -1896,9 +1903,16 @@ const server = app.listen(PORT, () => {
 ║                                                           ║
 ║   Configure addon: http://localhost:${PORT}/configure    ║
 ║                                                           ║
+╠═══════════════════════════════════════════════════════════╣
+║                                                           ║
+║   Version:        v${version.padEnd(35)}║
+║   Log Level:      ${logLevel.padEnd(35)}║
+║   File Logging:   ${logToFile.padEnd(35)}║
+║   Log Directory:  ${logDir.padEnd(35)}║
+║   Storage Type:   ${storageType.padEnd(35)}║
+║                                                           ║
 ╚═══════════════════════════════════════════════════════════╝
     `);
-    console.log(`[Startup] Version: v${version}`);
 
     // Setup graceful shutdown handlers now that server is running
     sessionManager.setupShutdownHandlers(server);
