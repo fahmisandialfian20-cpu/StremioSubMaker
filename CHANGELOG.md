@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## SubMaker 1.2.0
+
+**Translation Engine - Complete Rewrite:**
+- Completely rewrote subtitle translation workflow with structure-first approach to eliminate sync problems
+- NEW: Translation engine now preserves original SRT timing with 100% accuracy (timings never sent to AI, can't be modified)
+- NEW: Entry-level batch processing replaces complex token-based chunking (translates text only, preserves structure)
+- NEW: Entry-level caching system enables translation reuse across different subtitle files
+- Eliminated sync issues caused by chunking, context windows, and token-based splitting
+- Simplified progressive delivery with entry-by-entry streaming (no more complex tiered flush intervals)
+- Better translation quality with strict validation at every step
+- Faster and more reliable translation with cleaner architecture
+
 ## SubMaker 1.1.0
 
 **Infrastructure:**

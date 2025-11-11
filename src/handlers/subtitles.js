@@ -3,6 +3,7 @@ const SubDLService = require('../services/subdl');
 const SubSourceService = require('../services/subsource');
 const PodnapisService = require('../services/podnapisi');
 const GeminiService = require('../services/gemini');
+const TranslationEngine = require('../services/translationEngine');
 const { parseSRT, toSRT, parseStremioId } = require('../utils/subtitle');
 const { getLanguageName, getDisplayName } = require('../utils/languages');
 const { LRUCache } = require('lru-cache');
@@ -1632,163 +1633,71 @@ async function performTranslation(sourceFileId, targetLanguage, config, cacheKey
     // Get language names for better translation context
     const targetLangName = getLanguageName(targetLanguage) || targetLanguage;
 
-          // Initialize Gemini service with advanced settings
-      const gemini = new GeminiService(
-        config.geminiApiKey, 
-        config.geminiModel,
-        config.advancedSettings || {}
-      );
+    // Initialize Gemini service with advanced settings
+    const gemini = new GeminiService(
+      config.geminiApiKey,
+      config.geminiModel,
+      config.advancedSettings || {}
+    );
 
-    // Estimate token count and get model limits to decide chunking by input cap
-    const estimatedTokens = gemini.estimateTokenCount(sourceContent);
-    const limits = await gemini.getModelLimits();
-    const modelInputCap = typeof limits.inputTokenLimit === 'number' ? limits.inputTokenLimit : 32000;
-    const safetyMarginIn = Math.floor(modelInputCap * 0.1);
-    console.log(`[Translation] Estimated tokens: ${estimatedTokens} (model input cap ~${modelInputCap})`);
+    // Initialize new Translation Engine (structure-first approach)
+    const translationEngine = new TranslationEngine(gemini);
 
-    // Also consider model output limits; large inputs can expand 2-3x upon translation
-    const modelOutputCap = typeof limits.outputTokenLimit === 'number' ? limits.outputTokenLimit : 8192;
-    const safetyMarginOut = Math.floor(modelOutputCap * 0.05);
-    const expectedOutputTokens = Math.max(8192, Math.floor(estimatedTokens * 2.5));
-    console.log(`[Translation] Expected output tokens ~${expectedOutputTokens} (model output cap ~${modelOutputCap})`);
+    console.log('[Translation] Using new structure-first translation engine');
 
-    // Translate with automatic fallback to chunking
+    // Setup progressive partial saving
+    const translatedEntries = [];
+    let lastFlush = Date.now();
+    const flushInterval = 15000; // Flush every 15 seconds
+
+    const savePartial = async () => {
+      if (translatedEntries.length === 0) return;
+
+      // Build partial SRT with translated entries so far
+      const partialSrt = buildPartialSrtWithTail(toSRT(translatedEntries));
+      if (partialSrt && partialSrt.length > 0) {
+        await saveToPartialCacheAsync(cacheKey, {
+          content: partialSrt,
+          expiresAt: Date.now() + 60 * 60 * 1000
+        });
+        console.log(`[Translation] Saved partial: ${translatedEntries.length} entries (${partialSrt.length} chars)`);
+      }
+    };
+
+    // Translate using structure-first engine with progress callback
     let translatedContent;
-    // Chunk files above 25k tokens (chunks will be ~12k tokens each for faster progressive updates)
-    const useChunking = estimatedTokens > 25000;
-    if (useChunking) {
-      console.log('[Translation] Using chunked translation (file size > 25k tokens, chunks ~12k each) for progressive updates');
-    } else {
-      console.log(`[Translation] File size ${estimatedTokens} tokens <= 25k, using streaming for progressive updates`);
-    }
+    try {
+      translatedContent = await translationEngine.translateSubtitle(
+        sourceContent,
+        targetLangName,
+        config.translationPrompt,
+        async (progress) => {
+          // Store translated entry
+          translatedEntries.push(progress.entry);
 
-    if (useChunking) {
-        console.log('[Translation] Using chunked translation with per-chunk streaming for progressive updates');
-        const soFar = [];
-        let lastFlush = Date.now(); // Initialize to now so first partial respects 10s interval
-        let flushCount = 0;
-        // Tiered flush intervals: 10s, 60s, 180s, then 300s for all subsequent
-        const flushIntervals = [10000, 60000, 180000, 300000];
-        const getFlushInterval = () => flushIntervals[Math.min(flushCount, flushIntervals.length - 1)];
-        const savePartial = async () => {
-          const merged = soFar.join('\n\n');
-          console.log(`[Translation] Saving partial: ${soFar.length} chunks merged (${merged.length} chars)`);
-          const partialSrt = buildPartialSrtWithTail(merged);
-          if (partialSrt && partialSrt.length > 0) {
-            flushCount++;
-            const nextInterval = getFlushInterval();
-            console.log(`[Translation] Partial SRT built successfully (${partialSrt.length} chars), saving to partial cache (flush #${flushCount}, next flush in ${nextInterval / 1000}s)`);
-            await saveToPartialCacheAsync(cacheKey, {
-              content: partialSrt,
-              // expire after 1 hour; final will overwrite with persistent cache
-              expiresAt: Date.now() + 60 * 60 * 1000
-            });
-          } else {
-            console.log('[Translation] Partial SRT is null/empty, not saving to cache');
+          // Flush periodically
+          const now = Date.now();
+          if (now - lastFlush > flushInterval) {
+            lastFlush = now;
+            await savePartial();
           }
-        };
-        translatedContent = await gemini.translateSubtitleInChunksWithStreaming(
-          sourceContent,
-          'detected source language',
-          targetLangName,
-          config.translationPrompt,
-          null,
-          async ({ index, total, translatedChunk, isDelta }) => {
-            if (isDelta) {
-              // Token-level delta - add to current chunk buffer and flush at tiered intervals
-              soFar[index] = (soFar[index] || '') + translatedChunk;
-              const now = Date.now();
-              const currentInterval = getFlushInterval();
-              if (now - lastFlush > currentInterval) {
-                lastFlush = now;
-                await savePartial();
-              }
-            } else {
-              // Full chunk completed - always save
-              soFar[index] = translatedChunk;
-              console.log(`[Translation] Chunk ${index + 1}/${total} completed via streaming (${translatedChunk.length} chars)`);
-              await savePartial();
-            }
-          }
-        );
-      } else {
-        // Use streaming for smaller files (< 12k tokens) for faster progressive updates
-        console.log('[Translation] Using token-level streaming with progressive updates');
-        let buffer = '';
-        let lastWrite = Date.now(); // Initialize to now so first partial respects 10s interval
-        let flushCount = 0;
-        // Tiered flush intervals: 10s, 60s, 180s, then 300s for all subsequent
-        const flushIntervals = [10000, 60000, 180000, 300000];
-        const getFlushInterval = () => flushIntervals[Math.min(flushCount, flushIntervals.length - 1)];
-        const flushPartial = async () => {
-          const cleaned = gemini.cleanTranslatedSubtitle(buffer);
-          const partialSrt = buildPartialSrtWithTail(cleaned);
-          if (partialSrt && partialSrt.length > 0) {
-            flushCount++;
-            const nextInterval = getFlushInterval();
-            await saveToPartialCacheAsync(cacheKey, {
-              content: partialSrt,
-              expiresAt: Date.now() + 60 * 60 * 1000
-            });
-            console.log(`[Translation] Regular streaming flush #${flushCount} (${partialSrt.length} chars), next flush in ${nextInterval / 1000}s`);
-          }
-        };
-        try {
-          await gemini.translateSubtitleStream(
-            sourceContent,
-            'detected source language',
-            targetLangName,
-            config.translationPrompt,
-            (delta) => {
-              buffer += delta;
-              const now = Date.now();
-              const currentInterval = getFlushInterval();
-              if (now - lastWrite > currentInterval) {
-                lastWrite = now;
-                // Queue flush async without awaiting (callback must return immediately)
-                flushPartial().catch(err => console.error('[Translation] Async flush error:', err.message));
-              }
-            }
-          );
-          // Stream ended; flush any remaining buffer and set final content
-          if (buffer.length > 0) {
-            await flushPartial();
-          }
-          console.log(`[Translation] Stream completed with ${flushCount} progressive updates (${buffer.length} final chars)`);
-          translatedContent = gemini.cleanTranslatedSubtitle(buffer);
-        } catch (e) {
-          console.warn('[Translation] Streaming failed, falling back to chunking:', e.message);
-          // Fallback to chunking if streaming fails
-          const soFar = [];
-          const savePartial = async () => {
-            const merged = soFar.join('\n\n');
-            console.log(`[Translation] Fallback chunking: Saving partial with ${soFar.length} chunks (${merged.length} chars)`);
-            const partialSrt = buildPartialSrtWithTail(merged);
-            if (partialSrt && partialSrt.length > 0) {
-              await saveToPartialCacheAsync(cacheKey, {
-                content: partialSrt,
-                expiresAt: Date.now() + 60 * 60 * 1000
-              });
-            }
-          };
-          try {
-            translatedContent = await gemini.translateSubtitleInChunksWithProgress(
-              sourceContent,
-              'detected source language',
-              targetLangName,
-              config.translationPrompt,
-              null,
-              async ({ index, total, translatedChunk }) => {
-                soFar.push(translatedChunk);
-                await savePartial();
-              }
-            );
-          } catch (chunkError) {
-            console.error('[Translation] Both streaming and chunking failed:', chunkError.message);
-            throw chunkError;
+
+          // Log progress
+          if (progress.completedEntries % 50 === 0 || progress.completedEntries === progress.totalEntries) {
+            console.log(`[Translation] Progress: ${progress.completedEntries}/${progress.totalEntries} entries (batch ${progress.currentBatch}/${progress.totalBatches})`);
           }
         }
-      }
+      );
+
+      // Final flush
+      await savePartial();
+
+      console.log('[Translation] Structure-first translation completed successfully');
+
+    } catch (error) {
+      console.error('[Translation] Structure-first translation failed:', error.message);
+      throw error;
+    }
 
     console.log('[Translation] Background translation completed successfully');
 
