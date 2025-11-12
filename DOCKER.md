@@ -68,7 +68,7 @@ docker build -t stremio-submaker .
 ```bash
 docker run -d \
   --name stremio-submaker \
-  -p 7000:7000 \
+  -p 7001:7001 \
   -e STORAGE_TYPE=redis \
   -e REDIS_HOST=your-redis-host \
   -e REDIS_PORT=6379 \
@@ -82,7 +82,7 @@ Requires volume mount for data persistence:
 ```bash
 docker run -d \
   --name stremio-submaker \
-  -p 7000:7000 \
+  -p 7001:7001 \
   -v $(pwd)/.cache:/app/.cache \
   -v $(pwd)/data:/app/data \
   -e STORAGE_TYPE=filesystem \

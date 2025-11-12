@@ -6,10 +6,10 @@ services:
     build: .
     container_name: stremio-submaker-local
     ports:
-      - "${PORT:-7000}:7000"
+      - "${PORT:-7001}:7001"
     environment:
       # Application configuration
-      - PORT=7000
+      - PORT=7001
 
       # Storage configuration - Use filesystem (default)
       - STORAGE_TYPE=filesystem
