@@ -1,5 +1,6 @@
 const axios = require('axios');
 const { toISO6391, toISO6392 } = require('../utils/languages');
+const { handleSearchError, handleDownloadError } = require('../utils/apiErrorHandler');
 
 const SUBDL_API_URL = 'https://api.subdl.com/api/v1';
 const USER_AGENT = 'StremioSubtitleTranslator v1.0';
@@ -174,18 +175,7 @@ class SubDLService {
       return limitedSubtitles;
 
     } catch (error) {
-      console.error('[SubDL] Search error:', error.message);
-      if (error.response) {
-        console.error('[SubDL] Response status:', error.response.status);
-        console.error('[SubDL] Response headers:', JSON.stringify(error.response.headers));
-        console.error('[SubDL] Response data:', JSON.stringify(error.response.data));
-        
-        if (error.response.status === 401 || error.response.status === 403) {
-          console.error('[SubDL] Authentication failed! Please check your API key.');
-          console.error('[SubDL] Get a free API key from: https://subdl.com');
-        }
-      }
-      return [];
+      return handleSearchError(error, 'SubDL');
     }
   }
 
@@ -268,16 +258,7 @@ class SubDLService {
       return subtitleContent;
 
     } catch (error) {
-      console.error('[SubDL] Download error:', error.message);
-      if (error.response) {
-        console.error('[SubDL] Response status:', error.response.status);
-        console.error('[SubDL] Response headers:', JSON.stringify(error.response.headers));
-        // Don't log entire response data as it may be large
-        if (error.response.data && typeof error.response.data === 'string') {
-          console.error('[SubDL] Response preview:', error.response.data.substring(0, 500));
-        }
-      }
-      throw error;
+      handleDownloadError(error, 'SubDL');
     }
   }
 

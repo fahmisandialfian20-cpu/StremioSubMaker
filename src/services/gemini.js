@@ -1,5 +1,6 @@
 const axios = require('axios');
 const { parseSRT, toSRT } = require('../utils/subtitle');
+const { handleTranslationError, logApiError } = require('../utils/apiErrorHandler');
 
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta';
 
@@ -99,7 +100,7 @@ class GeminiService {
       return models;
 
     } catch (error) {
-      console.error('[Gemini] Error fetching models:', error.message);
+      logApiError(error, 'Gemini', 'Fetch models', { skipResponseData: true });
       return [];
     }
   }
@@ -334,11 +335,6 @@ async translateSubtitle(subtitleContent, sourceLanguage, targetLanguage, customP
       return this.cleanTranslatedSubtitle(translatedText);
 
     } catch (error) {
-      console.error('[Gemini] Translation error:', error.message);
-      if (error.response) {
-        console.error('[Gemini] Response status:', error.response.status);
-        console.error('[Gemini] Response data:', JSON.stringify(error.response.data, null, 2));
-      }
       // Preserve custom flags so callers can decide on chunked fallback
       if (error && (error.shouldChunk || error.needsSmallerChunks)) {
         const wrapped = new Error(`Translation failed: ${error.message}`);
@@ -346,7 +342,8 @@ async translateSubtitle(subtitleContent, sourceLanguage, targetLanguage, customP
         if (error.needsSmallerChunks) wrapped.needsSmallerChunks = true;
         throw wrapped;
       }
-      throw new Error(`Translation failed: ${error.message}`);
+      // Use centralized error handler for all other errors
+      handleTranslationError(error, 'Gemini', { skipResponseData: true });
     }
     });
   }
@@ -875,8 +872,7 @@ async translateSubtitle(subtitleContent, sourceLanguage, targetLanguage, customP
         response.data.on('error', reject);
       });
     } catch (error) {
-      console.error('[Gemini] Streaming translation error:', error.message);
-      throw error;
+      handleTranslationError(error, 'Gemini', { skipResponseData: true });
     }
   }
 

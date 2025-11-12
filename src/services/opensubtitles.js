@@ -1,5 +1,6 @@
 const axios = require('axios');
 const { toISO6391, toISO6392 } = require('../utils/languages');
+const { handleSearchError, handleDownloadError, handleAuthError } = require('../utils/apiErrorHandler');
 
 const OPENSUBTITLES_API_URL = 'https://api.opensubtitles.com/api/v1';
 const USER_AGENT = 'SubMaker v1.0.1';
@@ -115,8 +116,7 @@ class OpenSubtitlesService {
       return this.token;
 
     } catch (error) {
-      console.error('[OpenSubtitles] User authentication failed:', error.message);
-      throw error;
+      return handleAuthError(error, 'OpenSubtitles');
     }
   }
 
@@ -151,10 +151,9 @@ class OpenSubtitlesService {
       }
 
       if (this.isTokenExpired()) {
-        try {
-          await this.login();
-        } catch (error) {
-          console.error('[OpenSubtitles] Authentication failed:', error.message);
+        const loginResult = await this.login();
+        if (!loginResult) {
+          // Authentication failed, handleAuthError already logged it
           return [];
         }
       }
@@ -263,22 +262,7 @@ class OpenSubtitlesService {
       return limitedSubtitles;
 
     } catch (error) {
-      console.error('[OpenSubtitles] Search error:', error.message);
-      if (error.response) {
-        console.error('[OpenSubtitles] Response status:', error.response.status);
-        console.error('[OpenSubtitles] Response headers:', JSON.stringify(error.response.headers));
-        console.error('[OpenSubtitles] Response data:', JSON.stringify(error.response.data));
-
-                if (error.response.status === 401 || error.response.status === 403) {
-          console.error('[OpenSubtitles] Authentication failed!');
-          if (this.config.username && this.config.password) {
-            console.error('[OpenSubtitles] Check your username and password.');
-          } else {
-            console.error('[OpenSubtitles] You may have hit rate limits. Consider adding your OpenSubtitles account credentials for higher limits.');
-          }
-        }
-      }
-      return [];
+      return handleSearchError(error, 'OpenSubtitles');
     }
   }
 
@@ -298,11 +282,10 @@ class OpenSubtitlesService {
       }
 
       if (this.isTokenExpired()) {
-        try {
-          await this.login();
-        } catch (error) {
-          console.error('[OpenSubtitles] Authentication failed:', error.message);
-          throw error;
+        const loginResult = await this.login();
+        if (!loginResult) {
+          // Authentication failed, handleAuthError already logged it
+          throw new Error('OpenSubtitles authentication failed');
         }
       }
 
@@ -331,21 +314,7 @@ class OpenSubtitlesService {
       return subtitleContent;
 
     } catch (error) {
-      console.error('[OpenSubtitles] Download error:', error.message);
-      if (error.response) {
-        console.error('[OpenSubtitles] Response status:', error.response.status);
-        console.error('[OpenSubtitles] Response data:', error.response.data);
-
-        if (error.response.status === 401 || error.response.status === 403) {
-          console.error('[OpenSubtitles] Authentication failed for download!');
-          if (this.config.username && this.config.password) {
-            console.error('[OpenSubtitles] Check your username and password.');
-          } else {
-            console.error('[OpenSubtitles] You may have hit download limits. Consider adding your OpenSubtitles account credentials for higher limits.');
-          }
-        }
-      }
-      throw error;
+      handleDownloadError(error, 'OpenSubtitles');
     }
   }
 

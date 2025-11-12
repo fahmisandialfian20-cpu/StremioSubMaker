@@ -10,6 +10,7 @@
 
 const axios = require('axios');
 const { toISO6391, toISO6392 } = require('../utils/languages');
+const { handleSearchError, handleDownloadError, logApiError } = require('../utils/apiErrorHandler');
 const zlib = require('zlib');
 
 const SUBSOURCE_API_URL = 'https://api.subsource.net/api/v1';
@@ -80,7 +81,7 @@ class SubSourceService {
       console.log('[SubSource] No movie found for IMDB ID:', imdb_id);
       return null;
     } catch (error) {
-      console.error('[SubSource] Error getting movie ID:', error.message);
+      logApiError(error, 'SubSource', 'Get movie ID', { skipResponseData: true, skipUserMessage: true });
       return null;
     }
   }
@@ -332,26 +333,7 @@ class SubSourceService {
       return limitedSubtitles;
 
     } catch (error) {
-      console.error('[SubSource] Search error:', error.message);
-      if (error.response) {
-        console.error('[SubSource] Response status:', error.response.status);
-        console.error('[SubSource] Response headers:', JSON.stringify(error.response.headers));
-
-        if (error.response.data) {
-          const responseData = error.response.data;
-          if (typeof responseData === 'string') {
-            console.error('[SubSource] Response data:', responseData.substring(0, 500));
-          } else {
-            console.error('[SubSource] Response data:', JSON.stringify(responseData));
-          }
-        }
-
-        if (error.response.status === 401 || error.response.status === 403) {
-          console.error('[SubSource] Authentication failed! Please check your API key.');
-          console.error('[SubSource] Get a free API key from: https://subsource.net/');
-        }
-      }
-      return [];
+      return handleSearchError(error, 'SubSource');
     }
   }
 
@@ -432,22 +414,7 @@ class SubSourceService {
       }
 
     } catch (error) {
-      console.error('[SubSource] Download error:', error.message);
-      if (error.response) {
-        console.error('[SubSource] Response status:', error.response.status);
-
-        if (error.response.data) {
-          const responseData = error.response.data;
-          if (typeof responseData === 'string') {
-            console.error('[SubSource] Response data:', responseData.substring(0, 500));
-          } else if (Buffer.isBuffer(responseData)) {
-            console.error('[SubSource] Response data (buffer):', responseData.toString('utf-8').substring(0, 500));
-          } else {
-            console.error('[SubSource] Response data:', JSON.stringify(responseData).substring(0, 500));
-          }
-        }
-      }
-      throw error;
+      handleDownloadError(error, 'SubSource');
     }
   }
 

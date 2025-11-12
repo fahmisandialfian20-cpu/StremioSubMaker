@@ -17,6 +17,7 @@
 
 const axios = require('axios');
 const { toISO6391, toISO6392 } = require('../utils/languages');
+const { handleSearchError, handleDownloadError } = require('../utils/apiErrorHandler');
 
 const PODNAPISI_API_URL = 'https://www.podnapisi.net/en/ppodnapisi/search';
 const PODNAPISI_DOWNLOAD_URL = 'https://www.podnapisi.net/en/subtitles';  // Changed: Added /en/ prefix
@@ -96,11 +97,7 @@ class PodnapisService {
       return subtitles;
 
     } catch (error) {
-      console.error('[Podnapisi] Search error:', error.message);
-      if (error.response) {
-        console.error('[Podnapisi] Response status:', error.response.status);
-      }
-      return [];
+      return handleSearchError(error, 'Podnapisi');
     }
   }
 
@@ -353,11 +350,7 @@ class PodnapisService {
       return content;
 
     } catch (error) {
-      console.error('[Podnapisi] Download error:', error.message);
-      if (error.response && error.response.status === 404) {
-        throw new Error(`Subtitle not available: The subtitle file has been removed from Podnapisi servers (ID: ${podnapisi_id})`);
-      }
-      throw error;
+      handleDownloadError(error, 'Podnapisi');
     }
   }
 
