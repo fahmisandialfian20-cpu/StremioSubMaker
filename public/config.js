@@ -251,6 +251,7 @@ Translate to {target_language}.`;
             subtitleProviders: {
                 opensubtitles: {
                     enabled: true,
+                    implementationType: 'v3', // 'auth' or 'v3'
                     username: '',
                     password: ''
                 },
@@ -587,6 +588,11 @@ Translate to {target_language}.`;
             toggleProviderConfig('opensubtitlesConfig', e.target.checked);
         });
 
+        // OpenSubtitles implementation type selection
+        document.querySelectorAll('input[name="opensubtitlesImplementation"]').forEach(radio => {
+            radio.addEventListener('change', handleOpenSubtitlesImplChange);
+        });
+
         // Password visibility toggle
         const togglePasswordBtn = document.getElementById('toggleOpenSubsPassword');
         if (togglePasswordBtn) {
@@ -669,6 +675,31 @@ Translate to {target_language}.`;
     function handlePromptStyleChange(e) {
         // Prompt style change handler - no longer needed for custom prompts
         // Keeping this function for potential future extensions
+    }
+
+    function handleOpenSubtitlesImplChange(e) {
+        const implementationType = e.target.value;
+        const authConfig = document.getElementById('opensubtitlesAuthConfig');
+
+        if (implementationType === 'auth') {
+            // Show auth fields
+            authConfig.style.display = 'block';
+        } else if (implementationType === 'v3') {
+            // Hide auth fields for V3
+            authConfig.style.display = 'none';
+        }
+
+        // Update visual selection state
+        document.querySelectorAll('input[name="opensubtitlesImplementation"]').forEach(radio => {
+            const label = radio.closest('label');
+            if (radio.checked) {
+                label.style.borderColor = 'var(--primary)';
+                label.style.background = 'var(--surface-light)';
+            } else {
+                label.style.borderColor = 'var(--border)';
+                label.style.background = 'white';
+            }
+        });
     }
 
     /**
@@ -1200,6 +1231,16 @@ Translate to {target_language}.`;
         const opensubtitlesEnabled = (isFirstRun ? false : (currentConfig.subtitleProviders?.opensubtitles?.enabled !== false));
         document.getElementById('enableOpenSubtitles').checked = opensubtitlesEnabled;
 
+        // Load implementation type
+        const implementationType = currentConfig.subtitleProviders?.opensubtitles?.implementationType || 'v3';
+        const authRadio = document.getElementById('opensubtitlesImplAuth');
+        const v3Radio = document.getElementById('opensubtitlesImplV3');
+        if (implementationType === 'auth') {
+            authRadio.checked = true;
+        } else {
+            v3Radio.checked = true;
+        }
+
         // Load user credentials (optional)
         document.getElementById('opensubtitlesUsername').value =
             currentConfig.subtitleProviders?.opensubtitles?.username || '';
@@ -1207,6 +1248,9 @@ Translate to {target_language}.`;
             currentConfig.subtitleProviders?.opensubtitles?.password || '';
 
         toggleProviderConfig('opensubtitlesConfig', opensubtitlesEnabled);
+
+        // Trigger implementation change to show/hide auth fields and update visuals
+        handleOpenSubtitlesImplChange({ target: implementationType === 'v3' ? v3Radio : authRadio });
 
         // SubDL
         const subdlEnabled = (isFirstRun ? false : (currentConfig.subtitleProviders?.subdl?.enabled !== false));
@@ -1281,6 +1325,7 @@ Translate to {target_language}.`;
             subtitleProviders: {
                 opensubtitles: {
                     enabled: document.getElementById('enableOpenSubtitles').checked,
+                    implementationType: document.querySelector('input[name="opensubtitlesImplementation"]:checked')?.value || 'v3',
                     username: document.getElementById('opensubtitlesUsername').value.trim(),
                     password: document.getElementById('opensubtitlesPassword').value.trim()
                 },

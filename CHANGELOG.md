@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## SubMaker 1.3.0 (Unreleased)
+
+**New Features:**
+- Added OpenSubtitles V3 implementation as an alternative to the default authenticated API
+  - Users can now choose between "Auth" (default, requires OpenSubtitles account) or "V3" (no authentication, uses Stremio's official OpenSubtitles V3 addon)
+  - V3 implementation provides simpler setup with no authentication required
+  - Auth implementation provides higher download limits and more subtitle options
+  - Configuration UI updated with clear explanation of both options
+
 ## SubMaker 1.2.0
 
 **Translation Engine - Complete Rewrite:**

@@ -1,4 +1,5 @@
 const OpenSubtitlesService = require('../services/opensubtitles');
+const OpenSubtitlesV3Service = require('../services/opensubtitles-v3');
 const SubDLService = require('../services/subdl');
 const SubSourceService = require('../services/subsource');
 const PodnapisService = require('../services/podnapisi');
@@ -863,10 +864,18 @@ function createSubtitleHandler(config) {
 
         // Check if OpenSubtitles provider is enabled
         if (config.subtitleProviders?.opensubtitles?.enabled) {
-          console.log('[Subtitles] OpenSubtitles provider is enabled');
-          const opensubtitles = new OpenSubtitlesService(config.subtitleProviders.opensubtitles);
+          const implementationType = config.subtitleProviders.opensubtitles.implementationType || 'v3';
+          console.log(`[Subtitles] OpenSubtitles provider is enabled (implementation: ${implementationType})`);
+
+          let opensubtitles;
+          if (implementationType === 'v3') {
+            opensubtitles = new OpenSubtitlesV3Service();
+          } else {
+            opensubtitles = new OpenSubtitlesService(config.subtitleProviders.opensubtitles);
+          }
+
           const opensubtitlesResults = await opensubtitles.searchSubtitles(searchParams);
-          console.log(`[Subtitles] Found ${opensubtitlesResults.length} subtitles from OpenSubtitles`);
+          console.log(`[Subtitles] Found ${opensubtitlesResults.length} subtitles from OpenSubtitles (${implementationType})`);
           subtitles = [...subtitles, ...opensubtitlesResults];
         } else {
           console.log('[Subtitles] OpenSubtitles provider is disabled');
@@ -1167,14 +1176,23 @@ async function handleSubtitleDownload(fileId, language, config) {
         const podnapisi = new PodnapisService(config.subtitleProviders.podnapisi.apiKey);
         console.log('[Download] Downloading subtitle via Podnapisi API');
         return await podnapisi.downloadSubtitle(fileId);
+      } else if (fileId.startsWith('v3_')) {
+        // OpenSubtitles V3 subtitle
+        if (!config.subtitleProviders?.opensubtitles?.enabled) {
+          throw new Error('OpenSubtitles provider is disabled');
+        }
+
+        const opensubtitlesV3 = new OpenSubtitlesV3Service();
+        console.log('[Download] Downloading subtitle via OpenSubtitles V3 API');
+        return await opensubtitlesV3.downloadSubtitle(fileId);
       } else {
-        // OpenSubtitles subtitle (default)
+        // OpenSubtitles subtitle (Auth implementation - default)
         if (!config.subtitleProviders?.opensubtitles?.enabled) {
           throw new Error('OpenSubtitles provider is disabled');
         }
 
         const opensubtitles = new OpenSubtitlesService(config.subtitleProviders.opensubtitles);
-        console.log('[Download] Downloading subtitle via OpenSubtitles API');
+        console.log('[Download] Downloading subtitle via OpenSubtitles Auth API');
         return await opensubtitles.downloadSubtitle(fileId);
       }
     })();
@@ -1463,8 +1481,16 @@ async function performTranslation(sourceFileId, targetLanguage, config, cacheKey
 
       const podnapisi = new PodnapisService(config.subtitleProviders.podnapisi.apiKey);
       sourceContent = await podnapisi.downloadSubtitle(sourceFileId);
+    } else if (sourceFileId.startsWith('v3_')) {
+      // OpenSubtitles V3 subtitle
+      if (!config.subtitleProviders?.opensubtitles?.enabled) {
+        throw new Error('OpenSubtitles provider is disabled');
+      }
+
+      const opensubtitlesV3 = new OpenSubtitlesV3Service();
+      sourceContent = await opensubtitlesV3.downloadSubtitle(sourceFileId);
     } else {
-      // OpenSubtitles subtitle (default)
+      // OpenSubtitles subtitle (Auth implementation - default)
       if (!config.subtitleProviders?.opensubtitles?.enabled) {
         throw new Error('OpenSubtitles provider is disabled');
       }
@@ -1717,7 +1743,15 @@ async function getAvailableSubtitlesForTranslation(videoId, config) {
 
       // Check if OpenSubtitles provider is enabled
       if (config.subtitleProviders?.opensubtitles?.enabled) {
-        const opensubtitles = new OpenSubtitlesService(config.subtitleProviders.opensubtitles);
+        const implementationType = config.subtitleProviders.opensubtitles.implementationType || 'v3';
+
+        let opensubtitles;
+        if (implementationType === 'v3') {
+          opensubtitles = new OpenSubtitlesV3Service();
+        } else {
+          opensubtitles = new OpenSubtitlesService(config.subtitleProviders.opensubtitles);
+        }
+
         const opensubtitlesResults = await opensubtitles.searchSubtitles(searchParams);
         subs = [...subs, ...opensubtitlesResults];
       }
