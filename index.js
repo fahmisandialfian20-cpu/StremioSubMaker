@@ -659,10 +659,10 @@ app.get('/addon/:config/translate/:sourceFileId/:targetLang', searchLimiter, val
                 } else {
                     // Reset the counter immediately to avoid loops
                     firstClickTracker.set(clickKey, { times: [] });
-                    const hadCache = hasCachedTranslation(sourceFileId, targetLang, config);
+                    const hadCache = await hasCachedTranslation(sourceFileId, targetLang, config);
                     if (hadCache) {
                         console.log(`[PurgeTrigger] 3 rapid loads detected (<6s) for ${sourceFileId}/${targetLang}. Purging cache and re-triggering translation.`);
-                        purgeTranslationCache(sourceFileId, targetLang, config);
+                        await purgeTranslationCache(sourceFileId, targetLang, config);
                     } else {
                         console.log(`[PurgeTrigger] 3 rapid loads detected but no cached translation found for ${sourceFileId}/${targetLang}. Skipping purge.`);
                     }
