@@ -71,6 +71,10 @@ class TranslationEngine {
 
       // Use Gemini's chunking with streaming and progress callback
       let accumulatedChunks = [];
+      let streamBuffer = ''; // Buffer for accumulating streaming deltas
+      let lastPartialSave = Date.now();
+      const partialSaveInterval = 10000; // Save partial content every 10 seconds during streaming
+
       const translatedSrt = await this.gemini.translateSubtitleInChunksWithStreaming(
         srtContent,
         'detected',
@@ -79,27 +83,62 @@ class TranslationEngine {
         null, // Use default chunk size
         async (info) => {
           // Call progress callback if provided
-          if (typeof onProgress === 'function' && !info.isDelta) {
+          if (typeof onProgress === 'function') {
             try {
-              // Accumulate completed chunks for partial delivery
-              accumulatedChunks.push(info.translatedChunk);
+              if (info.isDelta) {
+                // Accumulate streaming deltas
+                streamBuffer += info.translatedChunk;
 
-              // Parse all accumulated chunks to get actual entries
-              const mergedChunks = accumulatedChunks.join('\n\n');
-              const parsedEntries = parseSRT(mergedChunks);
+                // Periodically try to parse and save partial content during streaming
+                const now = Date.now();
+                if (now - lastPartialSave > partialSaveInterval) {
+                  lastPartialSave = now;
 
-              const totalEstimatedEntries = Math.floor(estimatedTotalTokens / 50); // Rough estimate
-              const completedEntries = parsedEntries.length;
+                  // Try to parse what we have so far
+                  const currentContent = accumulatedChunks.length > 0
+                    ? accumulatedChunks.join('\n\n') + '\n\n' + streamBuffer
+                    : streamBuffer;
 
-              // Provide the merged partial content for partial caching
-              await onProgress({
-                totalEntries: totalEstimatedEntries,
-                completedEntries: completedEntries,
-                currentBatch: info.index + 1,
-                totalBatches: info.total,
-                entry: null, // No individual entry
-                partialContent: mergedChunks // Provide accumulated chunks for partial caching
-              });
+                  const parsedEntries = parseSRT(currentContent);
+                  if (parsedEntries.length > 0) {
+                    const totalEstimatedEntries = Math.floor(estimatedTotalTokens / 50);
+                    const completedEntries = parsedEntries.length;
+
+                    // Provide partial content for partial caching during streaming
+                    await onProgress({
+                      totalEntries: totalEstimatedEntries,
+                      completedEntries: completedEntries,
+                      currentBatch: info.index + 1,
+                      totalBatches: info.total,
+                      entry: null,
+                      partialContent: currentContent
+                    });
+                  }
+                }
+              } else {
+                // Chunk completed - add buffer to accumulated chunks
+                if (streamBuffer.length > 0) {
+                  accumulatedChunks.push(streamBuffer);
+                  streamBuffer = ''; // Reset buffer for next chunk
+                }
+
+                // Parse all accumulated chunks to get actual entries
+                const mergedChunks = accumulatedChunks.join('\n\n');
+                const parsedEntries = parseSRT(mergedChunks);
+
+                const totalEstimatedEntries = Math.floor(estimatedTotalTokens / 50); // Rough estimate
+                const completedEntries = parsedEntries.length;
+
+                // Provide the merged partial content for partial caching
+                await onProgress({
+                  totalEntries: totalEstimatedEntries,
+                  completedEntries: completedEntries,
+                  currentBatch: info.index + 1,
+                  totalBatches: info.total,
+                  entry: null, // No individual entry
+                  partialContent: mergedChunks // Provide accumulated chunks for partial caching
+                });
+              }
             } catch (err) {
               console.warn('[TranslationEngine] Progress callback error:', err.message);
             }
