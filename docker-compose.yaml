@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Stremio SubMaker application
   stremio-submaker:
@@ -19,13 +17,8 @@ services:
       - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD:-}
       - REDIS_DB=0
-      - REDIS_KEY_PREFIX=stremio:
+      - REDIS_KEY_PREFIX=stremio
 
-      # API Keys (configure these in your .env file)
-      - OPENSUBTITLES_API_KEY=${OPENSUBTITLES_API_KEY:-}
-
-      # Optional: Session configuration
-      - SESSION_SECRET=${SESSION_SECRET:-change-this-secret}
     depends_on:
       redis:
         condition: service_healthy
