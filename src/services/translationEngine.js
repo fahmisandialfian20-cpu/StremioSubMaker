@@ -318,7 +318,8 @@ class TranslationEngine {
 
       if (translatedEntries.length < batch.length) {
         // Missing entries - fill in with original text (untranslated)
-        console.log(`[TranslationEngine] Fixing ${batch.length - translatedEntries.length} missing entries by keeping original text`);
+        const missingCount = batch.length - translatedEntries.length;
+        console.warn(`[TranslationEngine] ${missingCount} entries missing in translation, using original text for those entries`);
 
         // Create a map of translated entries by index
         const translatedMap = new Map();
@@ -335,8 +336,7 @@ class TranslationEngine {
               text: translatedMap.get(i)
             });
           } else {
-            // Use original text for missing entry
-            console.warn(`[TranslationEngine] Entry ${i + 1} missing in translation, using original text`);
+            // Use original text for missing entry (no per-entry logging to avoid spam)
             completeEntries.push({
               index: i,
               text: batch[i].text
