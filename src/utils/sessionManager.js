@@ -298,17 +298,17 @@ class SessionManager {
         const shutdown = async (signal) => {
             // Prevent multiple shutdown attempts
             if (isShuttingDown) {
-                console.log(`[SessionManager] Shutdown already in progress, ignoring ${signal}`);
+                console.warn(`[SessionManager] Shutdown already in progress, ignoring ${signal}`);
                 return;
             }
             isShuttingDown = true;
 
-            console.log(`[SessionManager] Received ${signal}, saving sessions...`);
+            console.warn(`[SessionManager] Received ${signal}, saving sessions...`);
 
             // Clear the auto-save timer
             if (this.saveTimer) {
                 clearInterval(this.saveTimer);
-                console.log('[SessionManager] Cleared auto-save timer');
+                console.warn('[SessionManager] Cleared auto-save timer');
             }
 
             // Save with timeout to prevent hanging
@@ -321,7 +321,7 @@ class SessionManager {
                 });
 
                 await Promise.race([savePromise, timeoutPromise]);
-                console.log('[SessionManager] Sessions saved successfully');
+                console.warn('[SessionManager] Sessions saved successfully');
             } catch (err) {
                 saveFailed = true;
                 console.error('[SessionManager] Failed to save sessions on shutdown:', err.message);
@@ -331,7 +331,7 @@ class SessionManager {
             // Close the server if provided
             if (server) {
                 server.close(() => {
-                    console.log('[SessionManager] Server closed gracefully');
+                    console.warn('[SessionManager] Server closed gracefully');
                     // Close logger before exit
                     shutdownLogger();
                     process.exit(saveFailed ? 1 : 0);
@@ -371,7 +371,7 @@ class SessionManager {
             }
         });
 
-        console.log('[SessionManager] Graceful shutdown handlers registered (SIGTERM, SIGINT, uncaughtException)');
+        console.warn('[SessionManager] Graceful shutdown handlers registered (SIGTERM, SIGINT, uncaughtException)');
     }
 
     /**
