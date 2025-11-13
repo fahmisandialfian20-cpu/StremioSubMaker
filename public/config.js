@@ -964,7 +964,13 @@ Translate to {target_language}.`;
             // Clear and populate model dropdown
             modelSelect.innerHTML = '<option value="">Select a model...</option>';
 
-            models.forEach(model => {
+            // Filter to only show models containing "pro" or "flash" (case-insensitive)
+            const filteredModels = models.filter(model => {
+                const nameLower = model.name.toLowerCase();
+                return nameLower.includes('pro') || nameLower.includes('flash');
+            });
+
+            filteredModels.forEach(model => {
                 const option = document.createElement('option');
                 option.value = model.name;
                 option.textContent = `${model.displayName}`;
@@ -977,23 +983,23 @@ Translate to {target_language}.`;
             });
 
             // Select default if none selected
-            if (!modelSelect.value && models.length > 0) {
-                // Priority: Gemini Flash-Lite Latest → flash-lite latest → flash-lite (any) → flash (any) → first model
-                const geminiFlashLiteLatest = models.find(m => m.displayName && m.displayName.includes('Gemini Flash-Lite Latest'));
-                const flashLiteLatest = models.find(m => m.name.includes('flash-lite') && !m.name.includes('preview'));
-                const flashLiteAny = models.find(m => m.name.includes('flash-lite'));
-                const flashModel = models.find(m => m.name.includes('flash'));
+            if (!modelSelect.value && filteredModels.length > 0) {
+                // Default: gemini-flash-lite-latest (exact match preferred)
+                const defaultModel = filteredModels.find(m => m.name === 'gemini-flash-lite-latest');
+                const flashLiteLatest = filteredModels.find(m => m.name.includes('flash-lite-latest'));
+                const flashLiteAny = filteredModels.find(m => m.name.includes('flash-lite'));
+                const flashModel = filteredModels.find(m => m.name.includes('flash'));
 
-                if (geminiFlashLiteLatest) {
-                    modelSelect.value = geminiFlashLiteLatest.name;
+                if (defaultModel) {
+                    modelSelect.value = defaultModel.name;
                 } else if (flashLiteLatest) {
                     modelSelect.value = flashLiteLatest.name;
                 } else if (flashLiteAny) {
                     modelSelect.value = flashLiteAny.name;
                 } else if (flashModel) {
                     modelSelect.value = flashModel.name;
-                } else {
-                    modelSelect.value = models[0].name;
+                } else if (filteredModels.length > 0) {
+                    modelSelect.value = filteredModels[0].name;
                 }
             }
 

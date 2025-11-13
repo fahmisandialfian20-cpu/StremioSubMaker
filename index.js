@@ -554,7 +554,13 @@ app.post('/api/gemini-models', async (req, res) => {
         const gemini = new GeminiService(apiKey);
         const models = await gemini.getAvailableModels();
 
-        res.json(models);
+        // Filter to only show models containing "pro" or "flash" (case-insensitive)
+        const filteredModels = models.filter(model => {
+            const nameLower = model.name.toLowerCase();
+            return nameLower.includes('pro') || nameLower.includes('flash');
+        });
+
+        res.json(filteredModels);
     } catch (error) {
         log.error(() => '[API] Error fetching Gemini models:', error);
         res.status(500).json({ error: 'Failed to fetch models' });
