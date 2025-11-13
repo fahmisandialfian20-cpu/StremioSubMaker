@@ -312,46 +312,14 @@ class TranslationEngine {
       return [...firstHalfTranslated, ...secondHalfTranslated];
     }
 
-    // Translate with retry logic for 503 errors
+    // Translate without retries - fail fast to avoid wasting time and API quota
     log.debug(() => `[TranslationEngine] Translating batch ${batchIndex + 1}/${totalBatches}`);
-    let translatedText;
-    let lastError;
-    const maxRetries = 3;
-
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        translatedText = await this.gemini.translateSubtitle(
-          batchText,
-          'detected',
-          targetLanguage,
-          prompt
-        );
-        break; // Success, exit retry loop
-      } catch (error) {
-        lastError = error;
-
-        // Check if it's a 503 (service overloaded) error
-        const is503 = error.message && (
-          error.message.includes('503') ||
-          error.message.includes('overloaded') ||
-          error.message.includes('UNAVAILABLE')
-        );
-
-        if (is503 && attempt < maxRetries) {
-          // Exponential backoff: 2s, 4s, 8s
-          const delayMs = Math.pow(2, attempt) * 1000;
-          log.debug(() => `[TranslationEngine] Batch ${batchIndex + 1} got 503 error, retrying in ${delayMs}ms (attempt ${attempt}/${maxRetries})`);
-          await new Promise(resolve => setTimeout(resolve, delayMs));
-        } else {
-          // Not a 503 or out of retries
-          throw error;
-        }
-      }
-    }
-
-    if (!translatedText) {
-      throw lastError || new Error('Translation failed after retries');
-    }
+    const translatedText = await this.gemini.translateSubtitle(
+      batchText,
+      'detected',
+      targetLanguage,
+      prompt
+    );
 
     // Parse translated text back into entries
     const translatedEntries = this.parseBatchResponse(translatedText, batch.length);
@@ -393,16 +361,41 @@ class TranslationEngine {
         translatedEntries.push(...completeEntries);
 
       } else if (translatedEntries.length > batch.length) {
-        // Too many entries - truncate to expected count
-        log.debug(() => `[TranslationEngine] Removing ${translatedEntries.length - batch.length} extra entries`);
+        // Too many entries - match by index and use original text for any mismatches
+        // This preserves sync by ensuring we have exactly the right number of entries
+        // in the correct order, even if Gemini returned duplicates or extra entries
+        const extraCount = translatedEntries.length - batch.length;
+        log.warn(() => `[TranslationEngine] ${extraCount} extra entries in translation, matching by index to preserve sync`);
 
-        // Keep only the first batch.length entries
-        translatedEntries.length = batch.length;
-
-        // Ensure indices are correct (0 to batch.length-1)
-        for (let i = 0; i < translatedEntries.length; i++) {
-          translatedEntries[i].index = i;
+        // Create a map of translated entries by index
+        const translatedMap = new Map();
+        for (const entry of translatedEntries) {
+          // Only keep the first occurrence of each index
+          if (!translatedMap.has(entry.index)) {
+            translatedMap.set(entry.index, entry.text);
+          }
         }
+
+        // Build complete array with exactly batch.length entries, matching by index
+        const completeEntries = [];
+        for (let i = 0; i < batch.length; i++) {
+          if (translatedMap.has(i)) {
+            completeEntries.push({
+              index: i,
+              text: translatedMap.get(i)
+            });
+          } else {
+            // Use original text if this index is missing (e.g., Gemini skipped it)
+            completeEntries.push({
+              index: i,
+              text: batch[i].text
+            });
+          }
+        }
+
+        // Replace translatedEntries with the complete version
+        translatedEntries.length = 0;
+        translatedEntries.push(...completeEntries);
       }
 
       log.debug(() => `[TranslationEngine] Entry count fixed: now have ${translatedEntries.length} entries`);
