@@ -273,10 +273,12 @@ function decryptUserConfig(config) {
 
   // Check if config is marked as encrypted
   const isConfigEncrypted = decrypted._encrypted === true;
+  log.debug(() => `[Encryption] decryptUserConfig called, isConfigEncrypted: ${isConfigEncrypted}`);
 
   try {
     // Decrypt Gemini API key
     if (decrypted.geminiApiKey && (isConfigEncrypted || isEncrypted(decrypted.geminiApiKey))) {
+      log.debug(() => '[Encryption] Decrypting Gemini API key');
       decrypted.geminiApiKey = decrypt(decrypted.geminiApiKey, true);
     }
 
@@ -286,28 +288,44 @@ function decryptUserConfig(config) {
       if (decrypted.subtitleProviders.opensubtitles) {
         if (decrypted.subtitleProviders.opensubtitles.username &&
             (isConfigEncrypted || isEncrypted(decrypted.subtitleProviders.opensubtitles.username))) {
+          log.debug(() => '[Encryption] Decrypting OpenSubtitles username');
           decrypted.subtitleProviders.opensubtitles.username =
             decrypt(decrypted.subtitleProviders.opensubtitles.username, true);
         }
         if (decrypted.subtitleProviders.opensubtitles.password &&
             (isConfigEncrypted || isEncrypted(decrypted.subtitleProviders.opensubtitles.password))) {
+          log.debug(() => '[Encryption] Decrypting OpenSubtitles password');
           decrypted.subtitleProviders.opensubtitles.password =
             decrypt(decrypted.subtitleProviders.opensubtitles.password, true);
         }
       }
 
       // SubDL API key
-      if (decrypted.subtitleProviders.subdl?.apiKey &&
-          (isConfigEncrypted || isEncrypted(decrypted.subtitleProviders.subdl.apiKey))) {
-        decrypted.subtitleProviders.subdl.apiKey =
-          decrypt(decrypted.subtitleProviders.subdl.apiKey, true);
+      if (decrypted.subtitleProviders.subdl?.apiKey) {
+        const subdlKeyEncrypted = isEncrypted(decrypted.subtitleProviders.subdl.apiKey);
+        log.debug(() => `[Encryption] SubDL API key exists, encrypted: ${subdlKeyEncrypted}, will decrypt: ${isConfigEncrypted || subdlKeyEncrypted}`);
+        if (isConfigEncrypted || subdlKeyEncrypted) {
+          const before = decrypted.subtitleProviders.subdl.apiKey.substring(0, 30);
+          decrypted.subtitleProviders.subdl.apiKey =
+            decrypt(decrypted.subtitleProviders.subdl.apiKey, true);
+          const after = typeof decrypted.subtitleProviders.subdl.apiKey === 'string' ?
+            decrypted.subtitleProviders.subdl.apiKey.substring(0, 30) : 'NOT_STRING';
+          log.debug(() => `[Encryption] SubDL key decrypted: before="${before}..." after="${after}..."`);
+        }
       }
 
       // SubSource API key
-      if (decrypted.subtitleProviders.subsource?.apiKey &&
-          (isConfigEncrypted || isEncrypted(decrypted.subtitleProviders.subsource.apiKey))) {
-        decrypted.subtitleProviders.subsource.apiKey =
-          decrypt(decrypted.subtitleProviders.subsource.apiKey, true);
+      if (decrypted.subtitleProviders.subsource?.apiKey) {
+        const subsourceKeyEncrypted = isEncrypted(decrypted.subtitleProviders.subsource.apiKey);
+        log.debug(() => `[Encryption] SubSource API key exists, encrypted: ${subsourceKeyEncrypted}, will decrypt: ${isConfigEncrypted || subsourceKeyEncrypted}`);
+        if (isConfigEncrypted || subsourceKeyEncrypted) {
+          const before = decrypted.subtitleProviders.subsource.apiKey.substring(0, 30);
+          decrypted.subtitleProviders.subsource.apiKey =
+            decrypt(decrypted.subtitleProviders.subsource.apiKey, true);
+          const after = typeof decrypted.subtitleProviders.subsource.apiKey === 'string' ?
+            decrypted.subtitleProviders.subsource.apiKey.substring(0, 30) : 'NOT_STRING';
+          log.debug(() => `[Encryption] SubSource key decrypted: before="${before}..." after="${after}..."`);
+        }
       }
     }
 
