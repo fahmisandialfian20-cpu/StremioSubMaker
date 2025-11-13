@@ -248,7 +248,7 @@ Translate to {target_language}.`;
             sourceLanguages: ['eng'], // Up to 3 source languages allowed
             targetLanguages: [],
             geminiApiKey: DEFAULT_API_KEYS.GEMINI,
-            geminiModel: 'gemini-flash-lite-latest',
+            geminiModel: 'gemini-2.5-flash-lite',
             promptStyle: 'strict', // 'natural' or 'strict'
             translationPrompt: STRICT_TRANSLATION_PROMPT,
             subtitleProviders: {
@@ -984,16 +984,13 @@ Translate to {target_language}.`;
 
             // Select default if none selected
             if (!modelSelect.value && filteredModels.length > 0) {
-                // Default: gemini-flash-lite-latest (exact match preferred)
-                const defaultModel = filteredModels.find(m => m.name === 'gemini-flash-lite-latest');
-                const flashLiteLatest = filteredModels.find(m => m.name.includes('flash-lite-latest'));
+                // Default: gemini-2.5-flash-lite (exact match preferred)
+                const defaultModel = filteredModels.find(m => m.name === 'gemini-2.5-flash-lite');
                 const flashLiteAny = filteredModels.find(m => m.name.includes('flash-lite'));
                 const flashModel = filteredModels.find(m => m.name.includes('flash'));
 
                 if (defaultModel) {
                     modelSelect.value = defaultModel.name;
-                } else if (flashLiteLatest) {
-                    modelSelect.value = flashLiteLatest.name;
                 } else if (flashLiteAny) {
                     modelSelect.value = flashLiteAny.name;
                 } else if (flashModel) {
@@ -1205,7 +1202,7 @@ Translate to {target_language}.`;
 
         // Load Gemini model
         const modelSelect = document.getElementById('geminiModel');
-        const modelToUse = currentConfig.geminiModel || 'gemini-flash-lite-latest';
+        const modelToUse = currentConfig.geminiModel || 'gemini-2.5-flash-lite';
         const option = document.createElement('option');
         option.value = modelToUse;
         option.textContent = modelToUse;
