@@ -391,6 +391,97 @@ app.get('/configure', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'configure.html'));
 });
 
+// Health check endpoint for Kubernetes/Docker readiness and liveness probes
+app.get('/health', async (req, res) => {
+    try {
+        const { getStorageAdapter } = require('./src/storage/StorageFactory');
+        const { StorageAdapter } = require('./src/storage');
+
+        // Check storage health
+        let storageHealthy = false;
+        let storageType = process.env.STORAGE_TYPE || 'filesystem';
+
+        try {
+            const adapter = await getStorageAdapter();
+            storageHealthy = await adapter.healthCheck();
+        } catch (error) {
+            log.warn(() => `[Health] Storage health check failed: ${error.message}`);
+        }
+
+        // Get cache sizes if storage is healthy
+        let cacheSizes = {};
+        if (storageHealthy) {
+            try {
+                const adapter = await getStorageAdapter();
+                for (const [name, type] of Object.entries(StorageAdapter.CACHE_TYPES)) {
+                    const sizeBytes = await adapter.size(type);
+                    const limitBytes = StorageAdapter.SIZE_LIMITS[type];
+                    cacheSizes[type] = {
+                        current: sizeBytes,
+                        currentMB: (sizeBytes / (1024 * 1024)).toFixed(2),
+                        limit: limitBytes,
+                        limitMB: limitBytes ? (limitBytes / (1024 * 1024)).toFixed(2) : 'unlimited',
+                        utilizationPercent: limitBytes ? ((sizeBytes / limitBytes) * 100).toFixed(1) : 0
+                    };
+                }
+            } catch (error) {
+                log.warn(() => `[Health] Cache size check failed: ${error.message}`);
+            }
+        }
+
+        // Get memory usage
+        const memUsage = process.memoryUsage();
+        const memory = {
+            rss: (memUsage.rss / (1024 * 1024)).toFixed(2) + ' MB',
+            heapUsed: (memUsage.heapUsed / (1024 * 1024)).toFixed(2) + ' MB',
+            heapTotal: (memUsage.heapTotal / (1024 * 1024)).toFixed(2) + ' MB',
+            external: (memUsage.external / (1024 * 1024)).toFixed(2) + ' MB'
+        };
+
+        const healthy = storageHealthy;
+        const status = healthy ? 'healthy' : 'unhealthy';
+        const statusCode = healthy ? 200 : 503;
+
+        res.status(statusCode).json({
+            status,
+            timestamp: new Date().toISOString(),
+            uptime: Math.floor(process.uptime()),
+            uptimeHuman: formatUptime(process.uptime()),
+            version,
+            storage: {
+                type: storageType,
+                healthy: storageHealthy,
+                caches: cacheSizes
+            },
+            memory,
+            sessions: sessionManager.getStats()
+        });
+    } catch (error) {
+        log.error(() => `[Health] Error: ${error.message}`);
+        res.status(503).json({
+            status: 'unhealthy',
+            error: error.message,
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+
+// Helper function to format uptime in human-readable format
+function formatUptime(seconds) {
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+
+    const parts = [];
+    if (days > 0) parts.push(`${days}d`);
+    if (hours > 0) parts.push(`${hours}h`);
+    if (minutes > 0) parts.push(`${minutes}m`);
+    if (secs > 0 || parts.length === 0) parts.push(`${secs}s`);
+
+    return parts.join(' ');
+}
+
 // API endpoint to get all languages
 app.get('/api/languages', (req, res) => {
     try {

@@ -25,10 +25,12 @@ services:
     restart: unless-stopped
     networks:
       - stremio-network
-    # Uncomment below if you want to use filesystem storage as fallback
-    # volumes:
-    #   - ./data:/app/data
-    #   - ./.cache:/app/.cache
+    volumes:
+      # Persistent storage for sessions and filesystem-based caches
+      # Required for data persistence across pod restarts
+      - app-data:/app/data
+      - app-cache:/app/.cache
+      - app-logs:/app/logs
 
   # Redis for caching and storage
   redis:
@@ -61,4 +63,10 @@ networks:
 
 volumes:
   redis-data:
+    driver: local
+  app-data:
+    driver: local
+  app-cache:
+    driver: local
+  app-logs:
     driver: local
