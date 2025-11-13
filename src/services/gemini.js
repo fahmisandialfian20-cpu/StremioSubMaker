@@ -442,15 +442,16 @@ async translateSubtitle(subtitleContent, sourceLanguage, targetLanguage, customP
 
       // Calculate total tokens for better logging
       const totalTokens = chunks.reduce((sum, chunk) => sum + this.estimateTokenCount(chunk), 0);
-      log.debug(() => `[Gemini] Split into ${chunks.length} chunks (avg ~${Math.round(totalTokens / chunks.length)} tokens each)`);
+      const concurrency = this.chunkConcurrency;
+      log.debug(() => `[Gemini] Split into ${chunks.length} chunks (avg ~${Math.round(totalTokens / chunks.length)} tokens each), processing with concurrency=${concurrency}`);
 
-      // Translate each chunk
-      const translatedChunks = [];
-      for (let i = 0; i < chunks.length; i++) {
-        const chunkText = chunks[i];
+      // Translate chunks in parallel with concurrency limit
+      const translatedChunks = await this._processInParallel(chunks, async (chunkText, i) => {
         const chunkTokens = this.estimateTokenCount(chunkText);
 
         // Build small context window by mapping chunk back to entries
+        // NOTE: Context shows ORIGINAL (untranslated) surrounding entries for translation quality
+        // This is intentional - parallel processing doesn't affect context since it's from source
         const thisEntries = chunkText.split(/(\r?\n){2,}/).filter(s => s && s.trim() && !s.match(/^\s*$/));
         let beforeCtx = '';
         let afterCtx = '';
@@ -484,13 +485,14 @@ async translateSubtitle(subtitleContent, sourceLanguage, targetLanguage, customP
         const contextTokens = totalTokens - chunkTokens;
         log.debug(() => `[Gemini] Translating chunk ${i + 1}/${chunks.length}: ${chunkTokens} chunk + ${contextTokens} context = ${totalTokens} total tokens`);
         const translated = await this.translateSubtitle(composed, sourceLanguage, normalizedTarget, customPrompt);
-        translatedChunks.push(translated);
 
-        // Small delay to avoid rate limiting
-        if (i < chunks.length - 1) {
+        // Small delay between chunks to avoid rate limiting (only in sequential mode)
+        if (concurrency === 1 && i < chunks.length - 1) {
           await new Promise(resolve => setTimeout(resolve, 1000));
         }
-      }
+
+        return translated;
+      }, concurrency);
 
       log.debug(() => '[Gemini] All chunks translated');
       const merged = translatedChunks.join('\n\n');
@@ -679,7 +681,9 @@ async translateSubtitle(subtitleContent, sourceLanguage, targetLanguage, customP
       const translatedChunks = await this._processInParallel(chunks, async (chunkText, i) => {
         const chunkTokens = this.estimateTokenCount(chunkText);
 
-        // Build small context window by mapping chunk back to entries (same as non-streaming mode)
+        // Build small context window by mapping chunk back to entries
+        // NOTE: Context shows ORIGINAL (untranslated) surrounding entries for translation quality
+        // This is intentional - parallel processing doesn't affect context since it's from source
         const thisEntries = chunkText.split(/(\r?\n){2,}/).filter(s => s && s.trim() && !s.match(/^\s*$/));
         let beforeCtx = '';
         let afterCtx = '';

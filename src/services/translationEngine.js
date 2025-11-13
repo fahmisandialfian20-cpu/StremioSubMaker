@@ -77,8 +77,6 @@ class TranslationEngine {
       // Use Gemini's chunking with streaming and progress callback
       let accumulatedChunks = [];
       let streamBuffer = ''; // Buffer for accumulating streaming deltas
-      let lastPartialSave = Date.now();
-      const partialSaveInterval = 10000; // Save partial content every 10 seconds during streaming
 
       const translatedSrt = await this.gemini.translateSubtitleInChunksWithStreaming(
         srtContent,
@@ -91,35 +89,9 @@ class TranslationEngine {
           if (typeof onProgress === 'function') {
             try {
               if (info.isDelta) {
-                // Accumulate streaming deltas
+                // Accumulate streaming deltas (don't save partial content from incomplete tokens)
+                // Saving incomplete streaming deltas causes malformed SRT with overlapping timestamps
                 streamBuffer += info.translatedChunk;
-
-                // Periodically try to parse and save partial content during streaming
-                const now = Date.now();
-                if (now - lastPartialSave > partialSaveInterval) {
-                  lastPartialSave = now;
-
-                  // Try to parse what we have so far
-                  const currentContent = accumulatedChunks.length > 0
-                    ? accumulatedChunks.join('\n\n') + '\n\n' + streamBuffer
-                    : streamBuffer;
-
-                  const parsedEntries = parseSRT(currentContent);
-                  if (parsedEntries.length > 0) {
-                    const totalEstimatedEntries = Math.floor(estimatedTotalTokens / 50);
-                    const completedEntries = parsedEntries.length;
-
-                    // Provide partial content for partial caching during streaming
-                    await onProgress({
-                      totalEntries: totalEstimatedEntries,
-                      completedEntries: completedEntries,
-                      currentBatch: info.index + 1,
-                      totalBatches: info.total,
-                      entry: null,
-                      partialContent: currentContent
-                    });
-                  }
-                }
               } else {
                 // Chunk completed - add buffer to accumulated chunks
                 if (streamBuffer.length > 0) {
@@ -131,10 +103,17 @@ class TranslationEngine {
                 const mergedChunks = accumulatedChunks.join('\n\n');
                 const parsedEntries = parseSRT(mergedChunks);
 
+                // Validate that we have well-formed SRT before saving as partial
+                if (parsedEntries.length === 0) {
+                  log.warn(() => '[TranslationEngine] Skipping partial save: no valid SRT entries parsed');
+                  return;
+                }
+
                 const totalEstimatedEntries = Math.floor(estimatedTotalTokens / 50); // Rough estimate
                 const completedEntries = parsedEntries.length;
 
-                // Provide the merged partial content for partial caching
+                // Provide ONLY validated, complete chunks for partial caching
+                // This prevents malformed SRT from being displayed to users
                 await onProgress({
                   totalEntries: totalEstimatedEntries,
                   completedEntries: completedEntries,
