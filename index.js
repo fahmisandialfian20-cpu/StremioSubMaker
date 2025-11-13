@@ -18,6 +18,7 @@ const crypto = require('crypto');
 const { parseConfig, getDefaultConfig, buildManifest } = require('./src/utils/config');
 const { version } = require('./src/utils/version');
 const { getAllLanguages, getLanguageName } = require('./src/utils/languages');
+const { generateCacheKeys } = require('./src/utils/cacheKeys');
 const { createSubtitleHandler, handleSubtitleDownload, handleTranslation, getAvailableSubtitlesForTranslation, createLoadingSubtitle, readFromPartialCache, readFromBypassCache, hasCachedTranslation, purgeTranslationCache, translationStatus } = require('./src/handlers/subtitles');
 const GeminiService = require('./src/services/gemini');
 const syncCache = require('./src/utils/syncCache');
@@ -124,9 +125,26 @@ app.set('trust proxy', 1)
 // Helper: compute a short hash for a config string (used to scope bypass cache per user/config)
 function computeConfigHash(configStr) {
     try {
-        return crypto.createHash('sha256').update(String(configStr)).digest('hex').slice(0, 16);
-    } catch (_) {
-        return '';
+        // Validate input - empty/undefined configs should get a consistent but identifiable hash
+        if (!configStr || configStr === 'undefined' || configStr === 'null' || String(configStr).trim().length === 0) {
+            log.warn(() => '[ConfigHash] Received empty/invalid config string for hashing');
+            // Return a special marker hash for empty configs instead of empty string
+            // This ensures they don't collide with failed hash generation
+            return 'empty_config_00';
+        }
+
+        const hash = crypto.createHash('sha256').update(String(configStr)).digest('hex').slice(0, 16);
+
+        if (!hash || hash.length === 0) {
+            throw new Error('Hash generation returned empty result');
+        }
+
+        return hash;
+    } catch (error) {
+        log.error(() => ['[ConfigHash] Failed to compute config hash:', error.message]);
+        // Return a fallback hash that indicates failure but is still unique enough
+        // Use timestamp to ensure different failures don't collide
+        return `hash_error_${Date.now().toString(36).slice(-8)}`;
     }
 }
 
@@ -154,48 +172,56 @@ function isLocalhost(req) {
  *
  * @param {string} clickKey - The click tracker key (includes config and fileId)
  * @param {string} sourceFileId - The subtitle file ID
- * @param {string} configHash - The user's config hash
+ * @param {object} config - The user's config object
  * @param {string} targetLang - The target language
  * @returns {boolean} - True if the 3-click cache reset should be BLOCKED
  */
-function shouldBlockCacheReset(clickKey, sourceFileId, configHash, targetLang) {
+function shouldBlockCacheReset(clickKey, sourceFileId, config, targetLang) {
     try {
-        // Extract user hash from the click key
-        // Format: translate-click:${configStr}:${sourceFileId}:${targetLang}
         const clickEntry = firstClickTracker.get(clickKey);
 
         if (!clickEntry || !clickEntry.times || clickEntry.times.length < 3) {
             return false; // Not enough clicks yet
         }
 
-        // Get the translation status to check if translation is in progress
-        // The status key format is: ${sourceFileId}_${targetLanguage} (optionally with __u_${userHash})
-        // This translationStatus cache is imported from subtitles.js and shared across the app
+        // Determine which cache type the user is using
+        const bypass = config && config.bypassCache === true;
+        const bypassCfg = (config && (config.bypassCacheConfig || config.tempCache)) || {};
+        const bypassEnabled = bypass && (bypassCfg.enabled !== false);
+
+        const configHash = (config && typeof config.__configHash === 'string' && config.__configHash.length > 0)
+            ? config.__configHash
+            : '';
+
         const baseCacheKey = `${sourceFileId}_${targetLang}`;
-        const userScopedCacheKey = `${baseCacheKey}__u_${configHash}`;
 
-        // Try both the user-scoped key and the base key
-        let status = translationStatus.get(userScopedCacheKey);
-        if (!status) {
-            status = translationStatus.get(baseCacheKey);
+        if (bypassEnabled && configHash) {
+            // USER IS USING BYPASS CACHE
+            // Only block if THIS user's bypass translation is in progress
+            // This ensures user isolation - User A's bypass translation doesn't block User B's reset
+            const userScopedKey = `${baseCacheKey}__u_${configHash}`;
+            const status = translationStatus.get(userScopedKey);
+
+            if (!status || !status.inProgress) {
+                return false; // Not in progress, allow reset
+            }
+
+            log.debug(() => `[SafetyBlock] Blocking bypass cache reset: User's translation in progress for ${sourceFileId} (user: ${configHash})`);
+            return true;
+
+        } else {
+            // USER IS USING PERMANENT CACHE (shared between all users)
+            // Block if ANY permanent cache translation is in progress
+            // This prevents corruption of shared translations being generated by any user
+            const status = translationStatus.get(baseCacheKey);
+
+            if (!status || !status.inProgress) {
+                return false; // Not in progress, allow reset
+            }
+
+            log.debug(() => `[SafetyBlock] Blocking permanent cache reset: Shared translation in progress for ${sourceFileId}`);
+            return true;
         }
-
-        // If no translation status found, it's not in progress
-        if (!status) {
-            return false;
-        }
-
-        // Check if translation is actively in progress
-        if (!status.inProgress) {
-            return false; // Translation not in progress, allow reset
-        }
-
-        // Validate that all 3 clicks are for the SAME subtitle and SAME user
-        // The clickKey already includes the sourceFileId and configStr (which is used to compute configHash)
-        // So if we got here with the same clickKey, it means all 3 clicks are for the same subtitle and user
-
-        log.debug(() => `[SafetyBlock] Blocking cache reset: Translation is in progress for ${sourceFileId} (user: ${configHash}, target: ${targetLang})`);
-        return true; // BLOCK the cache reset
     } catch (e) {
         log.warn(() => '[SafetyBlock] Error checking cache reset safety:', e.message);
         return false; // On error, allow the reset to proceed
@@ -697,12 +723,12 @@ app.get('/addon/:config/translate/:sourceFileId/:targetLang', searchLimiter, val
         // Create deduplication key based on source file and target language
         const dedupKey = `translate:${configStr}:${sourceFileId}:${targetLang}`;
 
-        // Unusual purge: if same translated subtitle is loaded 3 times in < 6s, purge and retrigger
+        // Unusual purge: if same translated subtitle is loaded 3 times in < 5s, purge and retrigger
         // SAFETY BLOCK: Only purge if translation is NOT currently in progress
         try {
             const clickKey = `translate-click:${configStr}:${sourceFileId}:${targetLang}`;
             const now = Date.now();
-            const windowMs = 6_000; // 6 seconds
+            const windowMs = 5_000; // 5 seconds
             const entry = firstClickTracker.get(clickKey) || { times: [] };
             // Keep only clicks within window
             entry.times = (entry.times || []).filter(t => now - t <= windowMs);
@@ -710,8 +736,8 @@ app.get('/addon/:config/translate/:sourceFileId/:targetLang', searchLimiter, val
             firstClickTracker.set(clickKey, entry);
 
             if (entry.times.length >= 3) {
-                // SAFETY CHECK: Block cache reset if translation is in progress for same subtitle and same user
-                const shouldBlock = shouldBlockCacheReset(clickKey, sourceFileId, config.__configHash, targetLang);
+                // SAFETY CHECK: Block cache reset if translation is in progress
+                const shouldBlock = shouldBlockCacheReset(clickKey, sourceFileId, config, targetLang);
 
                 if (shouldBlock) {
                     log.debug(() => `[PurgeTrigger] 3 rapid loads detected but BLOCKED: Translation in progress for ${sourceFileId}/${targetLang} (user: ${config.__configHash})`);
@@ -720,7 +746,7 @@ app.get('/addon/:config/translate/:sourceFileId/:targetLang', searchLimiter, val
                     firstClickTracker.set(clickKey, { times: [] });
                     const hadCache = await hasCachedTranslation(sourceFileId, targetLang, config);
                     if (hadCache) {
-                        log.debug(() => `[PurgeTrigger] 3 rapid loads detected (<6s) for ${sourceFileId}/${targetLang}. Purging cache and re-triggering translation.`);
+                        log.debug(() => `[PurgeTrigger] 3 rapid loads detected (<5s) for ${sourceFileId}/${targetLang}. Purging cache and re-triggering translation.`);
                         await purgeTranslationCache(sourceFileId, targetLang, config);
                     } else {
                         log.debug(() => `[PurgeTrigger] 3 rapid loads detected but no cached translation found for ${sourceFileId}/${targetLang}. Skipping purge.`);
@@ -737,10 +763,12 @@ app.get('/addon/:config/translate/:sourceFileId/:targetLang', searchLimiter, val
         if (isAlreadyInFlight) {
             log.debug(() => `[Translation] Duplicate request detected for ${sourceFileId} to ${targetLang} - checking for partial results`);
 
-            const baseKey = `${sourceFileId}_${targetLang}`;
+            // Generate cache keys using shared utility (single source of truth for cache key scoping)
+            const { cacheKey } = generateCacheKeys(config, sourceFileId, targetLang);
 
             // For duplicate requests, check partial cache FIRST (in-flight translations)
-            const partialCached = await readFromPartialCache(baseKey);
+            // Both partial cache and bypass cache use the same scoped key (cacheKey)
+            const partialCached = await readFromPartialCache(cacheKey);
             if (partialCached && typeof partialCached.content === 'string' && partialCached.content.length > 0) {
                 log.debug(() => `[Translation] Found in-flight partial in partial cache for ${sourceFileId} (${partialCached.content.length} chars)`);
                 res.setHeader('Content-Type', 'text/plain; charset=utf-8');
@@ -750,16 +778,10 @@ app.get('/addon/:config/translate/:sourceFileId/:targetLang', searchLimiter, val
             }
 
             // Then check bypass cache for user-controlled bypass cache behavior
-            const bypass = config.bypassCache === true;
-            const bypassCfg = config.bypassCacheConfig || config.tempCache || {}; // Support both old and new names
-            const bypassEnabled = bypass && (bypassCfg.enabled !== false);
-            const userHash = (config && typeof config.__configHash === 'string' && config.__configHash.length > 0) ? config.__configHash : '';
-            const bypassCacheKey = (bypass && bypassEnabled && userHash) ? `${baseKey}__u_${userHash}` : baseKey;
-
             const { StorageAdapter } = require('./src/storage');
             const { getStorageAdapter } = require('./src/storage/StorageFactory');
             const adapter = await getStorageAdapter();
-            const bypassCached = await adapter.get(bypassCacheKey, StorageAdapter.CACHE_TYPES.BYPASS);
+            const bypassCached = await adapter.get(cacheKey, StorageAdapter.CACHE_TYPES.BYPASS);
             if (bypassCached && typeof bypassCached.content === 'string' && bypassCached.content.length > 0) {
                 log.debug(() => `[Translation] Found bypass cache result for ${sourceFileId} (${bypassCached.content.length} chars)`);
                 res.setHeader('Content-Type', 'text/plain; charset=utf-8');

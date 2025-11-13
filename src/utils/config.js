@@ -164,10 +164,6 @@ function migrateOldConfig(oldConfig) {
       enabled: true,
       username: '',
       password: ''
-    },
-    podnapisi: {
-      enabled: false,
-      apiKey: DEFAULT_API_KEYS.PODNAPISI
     }
   };
 
@@ -218,10 +214,6 @@ function getDefaultConfig() {
       subsource: {
         enabled: true,
         apiKey: DEFAULT_API_KEYS.SUBSOURCE
-      },
-      podnapisi: {
-        enabled: false, // Disabled by default - not accessible from UI
-        apiKey: DEFAULT_API_KEYS.PODNAPISI
       }
     },
     translationCache: {

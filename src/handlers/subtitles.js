@@ -2,7 +2,6 @@ const OpenSubtitlesService = require('../services/opensubtitles');
 const OpenSubtitlesV3Service = require('../services/opensubtitles-v3');
 const SubDLService = require('../services/subdl');
 const SubSourceService = require('../services/subsource');
-const PodnapisService = require('../services/podnapisi');
 const GeminiService = require('../services/gemini');
 const TranslationEngine = require('../services/translationEngine');
 const { parseSRT, toSRT, parseStremioId } = require('../utils/subtitle');
@@ -11,6 +10,7 @@ const { LRUCache } = require('lru-cache');
 const syncCache = require('../utils/syncCache');
 const { StorageFactory, StorageAdapter } = require('../storage');
 const log = require('../utils/logger');
+const { generateCacheKeys } = require('../utils/cacheKeys');
 
 const fs = require('fs');
 const path = require('path');
@@ -655,28 +655,141 @@ function parseReleaseMetadata(filename) {
   else if (lower.includes('1080p')) resolution = '1080p';
   else if (lower.includes('720p')) resolution = '720p';
   else if (lower.includes('480p')) resolution = '480p';
+  else if (lower.includes('360p')) resolution = '360p';
 
-  // Quality tier detection (lower tier = more specific, more likely to sync)
-  let qualityTier = 0;
-  if (lower.includes('webrip')) qualityTier = 1; // Most specific/common for subs
-  else if (lower.includes('bluray') || lower.includes('bdrip')) qualityTier = 2;
-  else if (lower.includes('hdtv')) qualityTier = 3;
-  else if (lower.includes('dvdrip')) qualityTier = 4;
-  else if (lower.includes('ts') || lower.includes('telesync')) qualityTier = 5;
+  // Rip type detection (CRITICAL for sync - different rips have different timing)
+  // More specific types = lower tier number = higher priority
+  let ripType = null;
+  let ripTier = 0;
 
-  // Codec detection
-  let codec = null;
-  if (lower.includes('x265') || lower.includes('h.265') || lower.includes('h265')) codec = 'x265';
-  else if (lower.includes('x264') || lower.includes('h.264') || lower.includes('h264')) codec = 'x264';
-
-  // Extract release group (usually at end, after last dash or bracket)
-  let releaseGroup = null;
-  const groupMatch = filename.match(/[-_]([A-Z0-9]{2,})\s*$/i);
-  if (groupMatch) {
-    releaseGroup = groupMatch[1].toLowerCase();
+  // Web sources (most common, best quality for recent content)
+  if (lower.includes('web-dl') || lower.includes('webdl')) {
+    ripType = 'web-dl';
+    ripTier = 1;
+  } else if (lower.includes('webrip')) {
+    ripType = 'webrip';
+    ripTier = 2;
+  } else if (lower.includes('web')) {
+    ripType = 'web';
+    ripTier = 3;
+  }
+  // Blu-ray sources (high quality, scene releases)
+  else if (lower.includes('bluray') || lower.includes('blu-ray')) {
+    ripType = 'bluray';
+    ripTier = 4;
+  } else if (lower.includes('bdrip') || lower.includes('brrip')) {
+    ripType = 'bdrip';
+    ripTier = 5;
+  } else if (lower.includes('bdremux') || lower.includes('bd-remux')) {
+    ripType = 'bdremux';
+    ripTier = 4;
+  }
+  // TV sources
+  else if (lower.includes('hdtv')) {
+    ripType = 'hdtv';
+    ripTier = 6;
+  } else if (lower.includes('pdtv')) {
+    ripType = 'pdtv';
+    ripTier = 7;
+  }
+  // DVD sources
+  else if (lower.includes('dvdrip')) {
+    ripType = 'dvdrip';
+    ripTier = 8;
+  } else if (lower.includes('dvdscr')) {
+    ripType = 'dvdscr';
+    ripTier = 10;
+  }
+  // Lower quality sources
+  else if (lower.includes('hdrip')) {
+    ripType = 'hdrip';
+    ripTier = 9;
+  } else if (lower.includes('cam') || lower.includes('camrip')) {
+    ripType = 'cam';
+    ripTier = 12;
+  } else if (lower.includes('telesync') || lower.includes('ts')) {
+    ripType = 'telesync';
+    ripTier = 11;
+  } else if (lower.includes('screener') || lower.includes('scr')) {
+    ripType = 'screener';
+    ripTier = 10;
   }
 
-  return { resolution, qualityTier, codec, releaseGroup };
+  // Video codec detection
+  let codec = null;
+  if (lower.includes('x265') || lower.includes('h.265') || lower.includes('h265') || lower.includes('hevc')) codec = 'x265';
+  else if (lower.includes('x264') || lower.includes('h.264') || lower.includes('h264') || lower.includes('avc')) codec = 'x264';
+  else if (lower.includes('xvid')) codec = 'xvid';
+  else if (lower.includes('av1')) codec = 'av1';
+
+  // Audio codec detection (helps differentiate releases)
+  let audio = null;
+  if (lower.includes('atmos')) audio = 'atmos';
+  else if (lower.includes('truehd')) audio = 'truehd';
+  else if (lower.includes('dts-hd') || lower.includes('dtshd')) audio = 'dts-hd';
+  else if (lower.includes('dts')) audio = 'dts';
+  else if (lower.includes('dd5.1') || lower.includes('dd51') || lower.includes('ac3')) audio = 'ac3';
+  else if (lower.includes('aac')) audio = 'aac';
+  else if (lower.includes('eac3') || lower.includes('ddp')) audio = 'eac3';
+
+  // HDR detection (4K releases often have multiple versions)
+  let hdr = null;
+  if (lower.includes('dolbyvision') || lower.includes('dv')) hdr = 'dolbyvision';
+  else if (lower.includes('hdr10+') || lower.includes('hdr10plus')) hdr = 'hdr10+';
+  else if (lower.includes('hdr10') || lower.includes('hdr')) hdr = 'hdr10';
+  else if (lower.includes('sdr')) hdr = 'sdr';
+
+  // Source platform (streaming service - different cuts/timings)
+  let platform = null;
+  if (lower.includes('netflix') || lower.includes('.nf.')) platform = 'netflix';
+  else if (lower.includes('amazon') || lower.includes('amzn')) platform = 'amazon';
+  else if (lower.includes('disney+') || lower.includes('dsnp')) platform = 'disney+';
+  else if (lower.includes('hulu')) platform = 'hulu';
+  else if (lower.includes('hbo') || lower.includes('hmax')) platform = 'hbo';
+  else if (lower.includes('apple') || lower.includes('atvp')) platform = 'apple';
+  else if (lower.includes('paramount') || lower.includes('pmtp')) platform = 'paramount';
+
+  // Extract release group (usually at end, after last dash or in brackets)
+  // Patterns: "Movie.Name-GROUP", "Movie.Name[GROUP]", "Movie.Name (GROUP)"
+  let releaseGroup = null;
+
+  // Try multiple patterns (most specific first)
+  const patterns = [
+    /\[([A-Z0-9]+)\]\s*$/i,           // [RARBG] at end
+    /\(([A-Z0-9]+)\)\s*$/i,           // (YTS) at end
+    /[-_]([A-Z0-9]{2,})\s*$/i,        // -ETRG or _PSA at end
+    /\b([A-Z0-9]{2,})\s*$/i           // SPARKS at end (no separator)
+  ];
+
+  for (const pattern of patterns) {
+    const match = filename.match(pattern);
+    if (match) {
+      releaseGroup = match[1].toLowerCase();
+      break;
+    }
+  }
+
+  // Determine if this is a popular/trusted release group
+  const POPULAR_GROUPS = new Set([
+    'rarbg', 'yts', 'etrg', 'psa', 'sparks', 'yify', 'ettv', 'galaxyrg',
+    'cmrg', 'shaanig', 'nf', 'amzn', 'amiable', 'crimson', 'scene',
+    'ntb', 'ntg', 'ghd', 'geckos', 'pahe', 'ion10', 'tigole', 'qxr',
+    'joy', 'bokutox', 'iextreme', 'tgx', 'sigma', 'mrcs', 'xlf', 'hqc'
+  ]);
+
+  const isPopularGroup = releaseGroup && POPULAR_GROUPS.has(releaseGroup);
+
+  return {
+    resolution,
+    ripType,
+    ripTier,
+    codec,
+    audio,
+    hdr,
+    platform,
+    releaseGroup,
+    isPopularGroup
+  };
 }
 
 /**
@@ -726,22 +839,46 @@ function calculateFilenameMatchScore(streamFilename, subtitleName) {
   // If both have release groups and they match = very likely to sync
   if (streamMeta.releaseGroup && subtitleMeta.releaseGroup) {
     if (streamMeta.releaseGroup === subtitleMeta.releaseGroup) {
-      score += 3000; // Exact release group match = very high probability
+      // Exact release group match = very high probability
+      // Popular/trusted groups get extra weight (even more reliable)
+      if (streamMeta.isPopularGroup || subtitleMeta.isPopularGroup) {
+        score += 5000; // Popular group exact match (RARBG, YTS, etc.)
+      } else {
+        score += 4000; // Standard group exact match
+      }
     } else {
       score -= 100; // Different release groups = lower probability
     }
+  } else if (subtitleMeta.releaseGroup && subtitleMeta.isPopularGroup) {
+    // Subtitle has popular release group (even without stream group match)
+    // These are generally high-quality and well-synced
+    score += 200; // Small bonus for popular group subtitles
   }
 
-  // QUALITY TIER MATCHING (second priority)
-  // Lower tier (more specific) quality markers are better
-  if (streamMeta.qualityTier > 0 && subtitleMeta.qualityTier > 0) {
-    const tierDifference = Math.abs(streamMeta.qualityTier - subtitleMeta.qualityTier);
-    if (tierDifference === 0) {
-      score += 1500; // Same quality tier = very likely to match
-    } else if (tierDifference === 1) {
-      score += 700; // Adjacent quality tier (acceptable match)
+  // RIP TYPE MATCHING (second priority - CRITICAL for timing sync)
+  // Different rip types (WEB-DL vs BluRay vs HDTV) have different frame timing
+  if (streamMeta.ripType && subtitleMeta.ripType) {
+    if (streamMeta.ripType === subtitleMeta.ripType) {
+      score += 2500; // Exact rip type match = VERY high sync probability
+    } else if (streamMeta.ripTier && subtitleMeta.ripTier) {
+      const ripTierDiff = Math.abs(streamMeta.ripTier - subtitleMeta.ripTier);
+      if (ripTierDiff === 1) {
+        score += 800; // Adjacent rip tier (e.g., WEB-DL vs WEBRip)
+      } else if (ripTierDiff === 2) {
+        score += 300; // Close rip tier (might work)
+      } else {
+        score -= 500; // Very different rip types (CAM vs BluRay = bad sync)
+      }
+    }
+  }
+
+  // STREAMING PLATFORM MATCHING (important for WEB releases)
+  // Netflix/Amazon/etc have different cuts and timing
+  if (streamMeta.platform && subtitleMeta.platform) {
+    if (streamMeta.platform === subtitleMeta.platform) {
+      score += 1200; // Same platform = same cut/timing
     } else {
-      score -= 300; // Very different quality tiers (less likely to match)
+      score -= 200; // Different platforms = different cuts
     }
   }
 
@@ -766,10 +903,34 @@ function calculateFilenameMatchScore(streamFilename, subtitleName) {
     }
   }
 
-  // CODEC MATCHING (bonus for matching codec)
+  // VIDEO CODEC MATCHING (different encodes can have timing shifts)
   if (streamMeta.codec && subtitleMeta.codec) {
     if (streamMeta.codec === subtitleMeta.codec) {
-      score += 300; // Same codec = good sign
+      score += 500; // Same video codec = better sync (increased from 300)
+    } else {
+      // x265 and x264 from same source are usually compatible
+      const codecCompatible =
+        (streamMeta.codec === 'x265' && subtitleMeta.codec === 'x264') ||
+        (streamMeta.codec === 'x264' && subtitleMeta.codec === 'x265');
+      if (codecCompatible) {
+        score += 200; // Compatible codecs (same source, different encode)
+      }
+    }
+  }
+
+  // AUDIO CODEC MATCHING (helps identify exact release variant)
+  if (streamMeta.audio && subtitleMeta.audio) {
+    if (streamMeta.audio === subtitleMeta.audio) {
+      score += 400; // Same audio codec = likely same exact release
+    }
+  }
+
+  // HDR MATCHING (4K releases often have HDR/SDR variants with different timing)
+  if (streamMeta.hdr && subtitleMeta.hdr) {
+    if (streamMeta.hdr === subtitleMeta.hdr) {
+      score += 600; // Same HDR type = same release variant
+    } else {
+      score -= 150; // Different HDR variants (DV vs HDR10) may have timing differences
     }
   }
 
@@ -883,8 +1044,8 @@ function createSubtitleHandler(config) {
       // Collect subtitles from all enabled providers with deduplication
       const foundSubtitles = await deduplicateSearch(dedupKey, async () => {
         // Parallelize all provider searches using Promise.allSettled for better performance
-        // This reduces search time from (OpenSubtitles + SubDL + SubSource + Podnapisi) sequential
-        // to max(OpenSubtitles, SubDL, SubSource, Podnapisi) parallel
+        // This reduces search time from (OpenSubtitles + SubDL + SubSource) sequential
+        // to max(OpenSubtitles, SubDL, SubSource) parallel
         const searchPromises = [];
 
         // Check if OpenSubtitles provider is enabled
@@ -932,19 +1093,6 @@ function createSubtitleHandler(config) {
           );
         } else {
           log.debug(() => '[Subtitles] SubSource provider is disabled');
-        }
-
-        // Check if Podnapisi provider is enabled
-        if (config.subtitleProviders?.podnapisi?.enabled) {
-          log.debug(() => '[Subtitles] Podnapisi provider is enabled');
-          const podnapisi = new PodnapisService(config.subtitleProviders.podnapisi.apiKey);
-          searchPromises.push(
-            podnapisi.searchSubtitles(searchParams)
-              .then(results => ({ provider: 'Podnapisi', results }))
-              .catch(error => ({ provider: 'Podnapisi', results: [], error }))
-          );
-        } else {
-          log.debug(() => '[Subtitles] Podnapisi provider is disabled');
         }
 
         // Execute all searches in parallel
@@ -1214,15 +1362,6 @@ async function handleSubtitleDownload(fileId, language, config) {
         const subsource = new SubSourceService(config.subtitleProviders.subsource.apiKey);
         log.debug(() => '[Download] Downloading subtitle via SubSource API');
         return await subsource.downloadSubtitle(fileId);
-      } else if (fileId.startsWith('podnapisi_')) {
-        // Podnapisi subtitle
-        if (!config.subtitleProviders?.podnapisi?.enabled) {
-          throw new Error('Podnapisi provider is disabled');
-        }
-
-        const podnapisi = new PodnapisService(config.subtitleProviders.podnapisi.apiKey);
-        log.debug(() => '[Download] Downloading subtitle via Podnapisi API');
-        return await podnapisi.downloadSubtitle(fileId);
       } else if (fileId.startsWith('v3_')) {
         // OpenSubtitles V3 subtitle
         if (!config.subtitleProviders?.opensubtitles?.enabled) {
@@ -1326,44 +1465,54 @@ async function handleTranslation(sourceFileId, targetLanguage, config) {
   try {
     log.debug(() => `[Translation] Handling translation request for ${sourceFileId} to ${targetLanguage}`);
 
-    // Check disk cache first
-    const baseKey = `${sourceFileId}_${targetLanguage}`;
-    const bypass = config.bypassCache === true;
-    const bypassCfg = config.bypassCacheConfig || config.tempCache || {}; // Support both old and new names
-    const bypassEnabled = bypass && (bypassCfg.enabled !== false);
-    const userHash = (config && typeof config.__configHash === 'string' && config.__configHash.length > 0) ? config.__configHash : '';
+    // Generate cache keys using shared utility (single source of truth for cache key scoping)
+    const { baseKey, cacheKey, bypass, bypassEnabled, userHash } = generateCacheKeys(
+      config,
+      sourceFileId,
+      targetLanguage
+    );
 
-    // Scope bypass cache by user/config hash only when bypassing permanent cache
-    const cacheKey = (bypass && bypassEnabled && userHash)
-      ? `${baseKey}__u_${userHash}`
-      : baseKey;
+    log.debug(() => `[Translation] Cache key: ${cacheKey} (bypass: ${bypass && bypassEnabled})`);
+
 
     if (bypass) {
       // Skip reading permanent cache; optionally read bypass cache
       if (bypassEnabled) {
         const bypassCached = await readFromBypassStorage(cacheKey);
         if (bypassCached) {
-          // Check if this is a cached error
-          if (bypassCached.isError === true) {
-            log.debug(() => ['[Translation] Cached error found (bypass) key=', cacheKey, '— showing error and clearing cache']);
-            const errorSrt = createTranslationErrorSubtitle(bypassCached.errorType, bypassCached.errorMessage);
+          // SECURITY: Validate that the cached entry belongs to this user
+          // This prevents cache poisoning and ensures user isolation
+          if (bypassCached.configHash && bypassCached.configHash !== userHash) {
+            log.warn(() => `[Translation] Bypass cache configHash mismatch for key=${cacheKey} (cached: ${bypassCached.configHash}, current: ${userHash}) - treating as cache miss`);
+            // Don't return the cached entry - treat as cache miss
+            // This shouldn't happen normally, but protects against cache key collisions
+          } else if (!bypassCached.configHash) {
+            log.warn(() => `[Translation] Bypass cache entry missing configHash for key=${cacheKey} - treating as cache miss for security`);
+            // Legacy entry without configHash - treat as cache miss for security
+          } else {
+            // Valid cache entry with matching configHash
+            // Check if this is a cached error
+            if (bypassCached.isError === true) {
+              log.debug(() => ['[Translation] Cached error found (bypass) key=', cacheKey, '— showing error and clearing cache']);
+              const errorSrt = createTranslationErrorSubtitle(bypassCached.errorType, bypassCached.errorMessage);
 
-            // Delete the error cache so next click retries translation
-            const adapter = await getStorageAdapter();
-            try {
-              await adapter.delete(cacheKey, StorageAdapter.CACHE_TYPES.BYPASS);
-              log.debug(() => '[Translation] Cleared error cache for retry');
-            } catch (e) {
-              log.warn(() => ['[Translation] Failed to delete error cache:', e.message]);
+              // Delete the error cache so next click retries translation
+              const adapter = await getStorageAdapter();
+              try {
+                await adapter.delete(cacheKey, StorageAdapter.CACHE_TYPES.BYPASS);
+                log.debug(() => '[Translation] Cleared error cache for retry');
+              } catch (e) {
+                log.warn(() => ['[Translation] Failed to delete error cache:', e.message]);
+              }
+
+              return errorSrt;
             }
 
-            return errorSrt;
+            log.debug(() => ['[Translation] Cache hit (bypass) key=', cacheKey, 'userHash=', userHash, '— serving cached translation']);
+            cacheMetrics.hits++;
+            cacheMetrics.estimatedCostSaved += 0.004;
+            return bypassCached.content || bypassCached;
           }
-
-          log.debug(() => ['[Translation] Cache hit (bypass) key=', cacheKey, '— serving cached translation']);
-          cacheMetrics.hits++;
-          cacheMetrics.estimatedCostSaved += 0.004;
-          return bypassCached.content || bypassCached;
         }
       }
     } else {
@@ -1520,14 +1669,6 @@ async function performTranslation(sourceFileId, targetLanguage, config, cacheKey
 
       const subsource = new SubSourceService(config.subtitleProviders.subsource.apiKey);
       sourceContent = await subsource.downloadSubtitle(sourceFileId);
-    } else if (sourceFileId.startsWith('podnapisi_')) {
-      // Podnapisi subtitle
-      if (!config.subtitleProviders?.podnapisi?.enabled) {
-        throw new Error('Podnapisi provider is disabled');
-      }
-
-      const podnapisi = new PodnapisService(config.subtitleProviders.podnapisi.apiKey);
-      sourceContent = await podnapisi.downloadSubtitle(sourceFileId);
     } else if (sourceFileId.startsWith('v3_')) {
       // OpenSubtitles V3 subtitle
       if (!config.subtitleProviders?.opensubtitles?.enabled) {
@@ -1555,7 +1696,8 @@ async function performTranslation(sourceFileId, targetLanguage, config, cacheKey
         await saveToBypassStorage(cacheKey, {
           content: msg,
           // expire after 10 minutes so user can try again later
-          expiresAt: Date.now() + 10 * 60 * 1000
+          expiresAt: Date.now() + 10 * 60 * 1000,
+          configHash: userHash  // Include user hash for isolation
         });
         translationStatus.delete(cacheKey);
         log.debug(() => '[Translation] Aborted due to invalid/corrupted source subtitle (too small).');
@@ -1658,16 +1800,25 @@ async function performTranslation(sourceFileId, targetLanguage, config, cacheKey
       // Save only to bypass storage with TTL
       const bypassDuration = (typeof bypassCfg.duration === 'number') ? bypassCfg.duration : 12;
       const expiresAt = Date.now() + (bypassDuration * 60 * 60 * 1000);
-      const cachedData = {
-        key: cacheKey,
-        content: translatedContent,
-        createdAt: Date.now(),
-        expiresAt,
-        sourceFileId,
-        targetLanguage,
-        configHash: (config && typeof config.__configHash === 'string') ? config.__configHash : undefined
-      };
-      await saveToBypassStorage(cacheKey, cachedData);
+
+      // CRITICAL: Ensure we have a valid configHash before saving
+      // At this point, userHash should always be valid due to earlier validation
+      if (!userHash) {
+        log.error(() => `[Translation] CRITICAL: Attempted to save bypass cache without valid userHash for key=${cacheKey} - skipping cache write`);
+        // Skip bypass cache write if we somehow got here without a userHash
+      } else {
+        const cachedData = {
+          key: cacheKey,
+          content: translatedContent,
+          createdAt: Date.now(),
+          expiresAt,
+          sourceFileId,
+          targetLanguage,
+          configHash: userHash  // Always set configHash for user isolation
+        };
+        await saveToBypassStorage(cacheKey, cachedData);
+        log.debug(() => `[Translation] Saved to bypass cache: key=${cacheKey}, userHash=${userHash}, expiresAt=${new Date(expiresAt).toISOString()}`);
+      }
     } else if (cacheConfig.enabled && cacheConfig.persistent !== false) {
       // Save to permanent storage (no expiry)
       const cacheDuration = cacheConfig.duration; // 0 = permanent
@@ -1686,7 +1837,16 @@ async function performTranslation(sourceFileId, targetLanguage, config, cacheKey
     // Mark translation as complete
     translationStatus.set(cacheKey, { inProgress: false, completedAt: Date.now() });
 
-    // Note: No manual cleanup needed - LRU cache handles TTL automatically
+    // Clean up partial cache now that final translation is saved
+    // Partial cache is no longer needed and should be deleted to free disk space
+    try {
+      const adapter = await getStorageAdapter();
+      await adapter.delete(cacheKey, StorageAdapter.CACHE_TYPES.PARTIAL);
+      log.debug(() => `[Translation] Cleaned up partial cache for ${cacheKey}`);
+    } catch (e) {
+      // Ignore - partial cache might not exist or already cleaned
+      log.debug(() => `[Translation] Partial cache cleanup skipped (might not exist): ${e.message}`);
+    }
 
     log.debug(() => '[Translation] Translation cached and ready to serve');
 
@@ -1727,6 +1887,7 @@ async function performTranslation(sourceFileId, targetLanguage, config, cacheKey
 
       if (bypass && bypassEnabled) {
         // Save to bypass storage with short TTL
+        errorCache.configHash = userHash;  // Include user hash for isolation
         await saveToBypassStorage(cacheKey, errorCache);
         log.debug(() => '[Translation] Error cached to bypass storage');
       } else {
@@ -1740,6 +1901,16 @@ async function performTranslation(sourceFileId, targetLanguage, config, cacheKey
 
     // Remove from status so it can be retried
     try { translationStatus.delete(cacheKey); } catch (_) {}
+
+    // Clean up partial cache on error as well
+    try {
+      const adapter = await getStorageAdapter();
+      await adapter.delete(cacheKey, StorageAdapter.CACHE_TYPES.PARTIAL);
+      log.debug(() => `[Translation] Cleaned up partial cache after error for ${cacheKey}`);
+    } catch (e) {
+      // Ignore - partial cache might not exist
+    }
+
     throw error;
   } finally {
     // Decrement per-user concurrency counter
@@ -1910,71 +2081,123 @@ module.exports = {
   readFromPartialCache, // Export for checking in-flight partial results during duplicate requests
   translationStatus, // Export for safety block to check if translation is in progress
   /**
-   * Check if a translated subtitle exists in permanent storage
-   * Mirrors the cache key logic used in handleTranslation (without bypass)
+   * Check if a translated subtitle exists in cache (bypass or permanent)
+   * Mirrors the cache key logic used in handleTranslation
    */
   hasCachedTranslation: async function (sourceFileId, targetLanguage, config) {
     try {
       const baseKey = `${sourceFileId}_${targetLanguage}`;
-      const cached = await readFromStorage(baseKey);
-      return !!(cached && ((cached.content && typeof cached.content === 'string' && cached.content.length > 0) || (typeof cached === 'string' && cached.length > 0)));
+
+      // Determine which cache type the user is using
+      const bypass = config && config.bypassCache === true;
+      const bypassCfg = (config && (config.bypassCacheConfig || config.tempCache)) || {};
+      const bypassEnabled = bypass && (bypassCfg.enabled !== false);
+
+      const userHash = (config && typeof config.__configHash === 'string' && config.__configHash.length > 0)
+        ? config.__configHash
+        : '';
+
+      if (bypass && bypassEnabled && userHash) {
+        // Check bypass cache with user-scoped key
+        const scopedKey = `${baseKey}__u_${userHash}`;
+        const cached = await readFromBypassCache(scopedKey);
+        return !!(cached && ((cached.content && typeof cached.content === 'string' && cached.content.length > 0) || (typeof cached === 'string' && cached.length > 0)));
+      } else {
+        // Check permanent cache
+        const cached = await readFromStorage(baseKey);
+        return !!(cached && ((cached.content && typeof cached.content === 'string' && cached.content.length > 0) || (typeof cached === 'string' && cached.length > 0)));
+      }
     } catch (_) {
       return false;
     }
   },
   /**
-   * Purge any cached translation (permanent + temp) and reset in-progress state
+   * Purge cached translation based on user's cache type and reset in-progress state
+   * CACHE-TYPE AWARE: Only deletes the cache type the user is using
    */
   purgeTranslationCache: async function (sourceFileId, targetLanguage, config) {
     try {
       const baseKey = `${sourceFileId}_${targetLanguage}`;
       const adapter = await getStorageAdapter();
 
-      // Delete permanent cache
-      try {
-        await adapter.delete(baseKey, StorageAdapter.CACHE_TYPES.TRANSLATION);
-        log.debug(() => `[Purge] Removed permanent cache for ${baseKey}`);
-      } catch (e) {
-        log.warn(() => [`[Purge] Failed removing permanent cache for ${baseKey}:`, e.message]);
+      // Determine which cache type the user is using
+      const bypass = config && config.bypassCache === true;
+      const bypassCfg = (config && (config.bypassCacheConfig || config.tempCache)) || {};
+      const bypassEnabled = bypass && (bypassCfg.enabled !== false);
+
+      const userHash = (config && typeof config.__configHash === 'string' && config.__configHash.length > 0)
+        ? config.__configHash
+        : '';
+
+      // CACHE-TYPE AWARE DELETION: Only delete the cache type the user is using
+      if (bypass && bypassEnabled) {
+        // User is using BYPASS CACHE - only delete bypass cache entries
+        log.debug(() => `[Purge] User is using bypass cache - deleting bypass entries only`);
+
+        try {
+          // Delete user-scoped bypass cache (primary key)
+          if (userHash) {
+            const scopedKey = `${baseKey}__u_${userHash}`;
+            await adapter.delete(scopedKey, StorageAdapter.CACHE_TYPES.BYPASS);
+            log.debug(() => `[Purge] Removed user-scoped bypass cache for ${scopedKey}`);
+          }
+
+          // Also try deleting unscoped bypass cache (legacy fallback)
+          // This handles old entries created before user isolation was implemented
+          try {
+            await adapter.delete(baseKey, StorageAdapter.CACHE_TYPES.BYPASS);
+            log.debug(() => `[Purge] Removed legacy unscoped bypass cache for ${baseKey}`);
+          } catch (e) {
+            // Ignore - legacy key might not exist
+          }
+        } catch (e) {
+          log.warn(() => [`[Purge] Failed removing bypass cache for ${baseKey}:`, e.message]);
+        }
+
+        // Clear user-scoped translation status
+        try {
+          if (userHash) {
+            const scopedKey = `${baseKey}__u_${userHash}`;
+            translationStatus.delete(scopedKey);
+            log.debug(() => `[Purge] Cleared user-scoped translation status for ${scopedKey}`);
+          }
+        } catch (_) {}
+
+      } else {
+        // User is using PERMANENT CACHE - only delete permanent cache
+        log.debug(() => `[Purge] User is using permanent cache - deleting permanent entries only`);
+
+        try {
+          await adapter.delete(baseKey, StorageAdapter.CACHE_TYPES.TRANSLATION);
+          log.debug(() => `[Purge] Removed permanent cache for ${baseKey}`);
+        } catch (e) {
+          log.warn(() => [`[Purge] Failed removing permanent cache for ${baseKey}:`, e.message]);
+        }
+
+        // Clear unscoped translation status
+        try {
+          translationStatus.delete(baseKey);
+          log.debug(() => `[Purge] Cleared translation status for ${baseKey}`);
+        } catch (_) {}
       }
 
-      // Delete bypass cache (both scoped and unscoped variants just in case)
+      // ALWAYS delete partial cache (in-flight translations)
+      // Partial cache stores incomplete translations that are still being generated
+      // IMPORTANT: For bypass cache, partial cache is also user-scoped
       try {
-        const userHash = (config && typeof config.__configHash === 'string' && config.__configHash.length > 0)
-          ? config.__configHash
-          : '';
-        const scopedKey = `${baseKey}__u_${userHash}`;
-        const bypassKeys = [baseKey, scopedKey];
-
-        for (const key of bypassKeys) {
-          try {
-            await adapter.delete(key, StorageAdapter.CACHE_TYPES.BYPASS);
-            log.debug(() => `[Purge] Removed bypass cache for ${key}`);
-          } catch (e) {
-            // Ignore - key might not exist
-          }
+        if (bypass && bypassEnabled && userHash) {
+          // Delete user-scoped partial cache for bypass users
+          const scopedKey = `${baseKey}__u_${userHash}`;
+          await adapter.delete(scopedKey, StorageAdapter.CACHE_TYPES.PARTIAL);
+          log.debug(() => `[Purge] Removed user-scoped partial cache for ${scopedKey}`);
+        } else {
+          // Delete unscoped partial cache for permanent cache users
+          await adapter.delete(baseKey, StorageAdapter.CACHE_TYPES.PARTIAL);
+          log.debug(() => `[Purge] Removed partial cache for ${baseKey}`);
         }
       } catch (e) {
-        log.warn(() => [`[Purge] Failed removing bypass cache for ${baseKey}:`, e.message]);
+        // Ignore - partial cache might not exist
       }
-
-      // Delete partial cache (in-flight translations)
-      try {
-        await adapter.delete(baseKey, StorageAdapter.CACHE_TYPES.PARTIAL);
-        log.debug(() => `[Purge] Removed partial cache for ${baseKey}`);
-      } catch (e) {
-        log.warn(() => [`[Purge] Failed removing partial cache for ${baseKey}:`, e.message]);
-      }
-
-      // Clear in-progress status so a fresh translation can start
-      try {
-        translationStatus.delete(baseKey);
-        const userHash = (config && typeof config.__configHash === 'string' && config.__configHash.length > 0)
-          ? config.__configHash
-          : '';
-        const scopedKey = `${baseKey}__u_${userHash}`;
-        translationStatus.delete(scopedKey);
-      } catch (_) {}
 
       return true;
     } catch (error) {

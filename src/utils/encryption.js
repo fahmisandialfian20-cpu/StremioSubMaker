@@ -246,12 +246,6 @@ function encryptUserConfig(config) {
         encrypted.subtitleProviders.subsource.apiKey =
           encrypt(encrypted.subtitleProviders.subsource.apiKey);
       }
-
-      // Podnapisi API key
-      if (encrypted.subtitleProviders.podnapisi?.apiKey) {
-        encrypted.subtitleProviders.podnapisi.apiKey =
-          encrypt(encrypted.subtitleProviders.podnapisi.apiKey);
-      }
     }
 
     // Mark as encrypted for future detection
@@ -314,13 +308,6 @@ function decryptUserConfig(config) {
           (isConfigEncrypted || isEncrypted(decrypted.subtitleProviders.subsource.apiKey))) {
         decrypted.subtitleProviders.subsource.apiKey =
           decrypt(decrypted.subtitleProviders.subsource.apiKey, true);
-      }
-
-      // Podnapisi API key
-      if (decrypted.subtitleProviders.podnapisi?.apiKey &&
-          (isConfigEncrypted || isEncrypted(decrypted.subtitleProviders.podnapisi.apiKey))) {
-        decrypted.subtitleProviders.podnapisi.apiKey =
-          decrypt(decrypted.subtitleProviders.podnapisi.apiKey, true);
       }
     }
 

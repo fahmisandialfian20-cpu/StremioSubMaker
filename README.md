@@ -100,7 +100,7 @@ docker-compose up -d
 Stremio Player
     ↓
 SubMaker Addon (Express + Stremio SDK)
-    ├── Subtitle Fetcher → [OpenSubtitles, SubDL, SubSource, Podnapisi]
+    ├── Subtitle Fetcher → [OpenSubtitles, SubDL, SubSource]
     ├── Translation Engine → [Google Gemini AI]
     └── Cache Manager → [Memory LRU + Persistent Disk]
 ```

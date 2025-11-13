@@ -16,7 +16,6 @@
         // Do not ship real keys in the client bundle
         SUBDL: '',
         SUBSOURCE: '',
-        PODNAPISI: '',
         GEMINI: ''
     };
 
@@ -88,8 +87,7 @@ Translate to {target_language}.`;
             currentConfig.subtitleProviders = {
                 opensubtitles: { ...(defaults.subtitleProviders?.opensubtitles || {}), enabled: false },
                 subdl: { ...(defaults.subtitleProviders?.subdl || {}), enabled: false },
-                subsource: { ...(defaults.subtitleProviders?.subsource || {}), enabled: false },
-                podnapisi: { ...(defaults.subtitleProviders?.podnapisi || {}), enabled: false }
+                subsource: { ...(defaults.subtitleProviders?.subsource || {}), enabled: false }
             };
         }
 
@@ -262,10 +260,6 @@ Translate to {target_language}.`;
                 subsource: {
                     enabled: true,
                     apiKey: DEFAULT_API_KEYS.SUBSOURCE
-                },
-                podnapisi: {
-                    enabled: false, // Disabled by default - not accessible from UI
-                    apiKey: DEFAULT_API_KEYS.PODNAPISI
                 }
             },
             translationCache: {
@@ -632,11 +626,6 @@ Translate to {target_language}.`;
         document.getElementById('enableSubSource').addEventListener('change', (e) => {
             toggleProviderConfig('subsourceConfig', e.target.checked);
         });
-
-        // Podnapisi removed from UI - no event listener needed
-        // document.getElementById('enablePodnapisi').addEventListener('change', (e) => {
-        //     toggleProviderConfig('podnapisConfig', e.target.checked);
-        // });
 
         // Install and copy buttons
         document.getElementById('installBtn').addEventListener('click', installAddon);
@@ -1308,13 +1297,6 @@ Translate to {target_language}.`;
             currentConfig.subtitleProviders?.subsource?.apiKey || DEFAULT_API_KEYS.SUBSOURCE;
         toggleProviderConfig('subsourceConfig', subsourceEnabled);
 
-        // Podnapisi removed from UI - no need to load config
-        // const podnapisEnabled = currentConfig.subtitleProviders?.podnapisi?.enabled === true;
-        // document.getElementById('enablePodnapisi').checked = podnapisEnabled;
-        // document.getElementById('podnapisApiKey').value =
-        //     currentConfig.subtitleProviders?.podnapisi?.apiKey || DEFAULT_API_KEYS.PODNAPISI;
-        // toggleProviderConfig('podnapisConfig', podnapisEnabled);
-
         // Load file translation setting
         document.getElementById('fileTranslationEnabled').checked = currentConfig.fileTranslationEnabled !== false;
 
@@ -1378,10 +1360,6 @@ Translate to {target_language}.`;
                 subsource: {
                     enabled: document.getElementById('enableSubSource').checked,
                     apiKey: document.getElementById('subsourceApiKey').value.trim()
-                },
-                podnapisi: {
-                    enabled: false, // Podnapisi disabled - not accessible from UI
-                    apiKey: DEFAULT_API_KEYS.PODNAPISI
                 }
             },
             translationCache: {
@@ -1413,6 +1391,13 @@ Translate to {target_language}.`;
         const anyProviderEnabled = Object.values(config.subtitleProviders).some(p => p.enabled);
         if (!anyProviderEnabled) {
             errors.push('⚠️ Please enable at least one subtitle provider');
+        }
+
+        // Validate that at least one of cache options is enabled
+        const cacheEnabled = document.getElementById('cacheEnabled').checked;
+        const bypassCache = document.getElementById('bypassCache')?.checked || false;
+        if (!cacheEnabled && !bypassCache) {
+            errors.push('⚠️ At least one cache option must be enabled: either "Enable SubMaker Database" or "Bypass SubMaker Database Cache"');
         }
 
         // Validate enabled subtitle sources have API keys (where required)

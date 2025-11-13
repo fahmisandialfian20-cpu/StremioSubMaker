@@ -1315,7 +1315,7 @@
                                         <input type="radio" name="opensubtitlesImplementation" id="opensubtitlesImplAuth" value="auth" style="margin-top: 0.25rem;">
                                         <div>
                                             <strong style="display: block; margin-bottom: 0.25rem;">Auth</strong>
-                                            <span class="label-description" style="margin: 0; font-size: 0.875rem;">Uses your OpenSubtitles account with API key authentication. Requires username/password but provides higher download limits.</span>
+                                            <span class="label-description" style="margin: 0; font-size: 0.875rem;">Uses your OpenSubtitles account with API key authentication. Requires username/password.</span>
                                         </div>
                                     </label>
                                 </div>
@@ -1332,7 +1332,7 @@
                                     <span class="password-toggle-icon" id="toggleOpenSubsPassword" title="Show/hide password">👁️</span>
                                 </div>
 
-                                <span class="label-description">Login with your OpenSubtitles account for higher download limits.<br><a href="https://www.opensubtitles.com/en/newuser" target="_blank" style="color: var(--primary-light);">Create a free account</a> if you don't have one. If not provided, uses basic API access with standard limits.</span>
+                                <span class="label-description"><a href="https://www.opensubtitles.com/en/newuser" target="_blank" style="color: var(--primary-light);">Create a free account</a> if you don't have one.</span>
                             </div>
                         </div>
                     </div>
@@ -1376,8 +1376,6 @@
                             <input type="text" id="subdlApiKey" placeholder="Enter SubDL API key">
                         </div>
                     </div>
-
-                    <!-- Podnapisi removed from UI - provider still available in code but not accessible -->
                 </div>
             </div>
 
@@ -1429,7 +1427,7 @@
                 <div class="card-content">
                     <div class="form-group">
                         <label for="geminiApiKey">
-                            API Key *
+                            Gemini API Key
                             <span class="label-description">Get your free API key from <a href="https://makersuite.google.com/app/apikey" target="_blank" style="color: var(--primary-light);">Google AI Studio</a></span>
                         </label>
                         <input type="password" id="geminiApiKey" required placeholder="Enter your Gemini API key">
@@ -1468,7 +1466,7 @@
                 <div class="card-header">
                     <div class="card-title-group">
                         <div class="card-icon">🌍</div>
-                        <h2 class="card-title">Source Language (Translation)</h2>
+                        <h2 class="card-title">Source Language</h2>
                         <span class="card-badge" id="sourceBadge">0</span>
                     </div>
                     <button type="button" class="collapse-btn collapsed" data-collapse="source"></button>
@@ -1477,8 +1475,8 @@
                 <div class="card-content">
                     <div class="form-group">
                         <label>
-                            Source languages for translations *
-                            <span class="label-description">Select up to 3 source languages. All subtitles from these languages will be available for translation in the translation selector AND will be fetched.</span>
+                            * Source languages for translations
+                            <span class="label-description">Select up to 3 source languages for translation. All subtitles from these languages will be available for translation in the translation selector AND will be fetched (original subtitles will show up).</span>
                         </label>
 
                         <div class="language-search">
@@ -1508,7 +1506,7 @@
                 <div class="card-content">
                     <div class="form-group">
                         <label>
-                            Target languages for subtitles and translations *
+                            * Target languages for subtitles and translations
                             <span class="label-description">Subtitles in target languages will be fetched AND translation buttons will appear for translating FROM the source language TO these languages.</span>
                         </label>
 
@@ -1546,7 +1544,7 @@
                         <label>
                             <input type="checkbox" id="fileTranslationEnabled">
                             Enable "Translate SRT"
-                            <span class="label-description">Show the "Translate SRT" option in the subtitles list to upload and translate your own .srt files.</span>
+                            <span class="label-description">Show the "Translate SRT" option in the subtitles list to upload and translate subtitles files directly.</span>
                         </label>
                     </div>
 

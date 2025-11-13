@@ -4,27 +4,33 @@ All notable changes to this project will be documented in this file.
 
 ## SubMaker 1.1.0
 
-**Infrastructure:**
-- Redis support: Full Redis integration for translation cache, session storage, and subtitle cache with configurable TTLs and automatic key expiration (enables distributed HA deployments)
-- Encryption support: AES-256-GCM encryption for user configurations and sensitive API keys with per-user key derivation and secure session token generation
-- Docker deployment support with docker-compose configurations for both standalone and Redis-backed deployments
-- Filesystem storage adapter still available for local deployment and fallback
-
-**New Features and Updates:**
-- Added OpenSubtitles V3 implementation as an alternative to the default authenticated API
-  - Users can now choose between "Auth" (requires OpenSubtitles account) or "V3" (no authentication, uses Stremio's official OpenSubtitles V3 addon)
-- Translation Cache Overwrite reduced from 5 clicks in 10 seconds to 3 clicks in 3 seconds (to avoid Stremio rate-limiting)
-
 **Translation Engine - Complete Rewrite:**
 - Completely rewrote subtitle translation workflow with structure-first approach to eliminate sync problems
 - NEW: Translation engine now preserves original SRT timing (timings never sent to AI, can't be modified)
 - Hardcoded gemini-flash-8b-1.5 (alias: gemini-flash-lite-latest) for consistency across all translations
 - Model selection UI will return in future versions with workflow optimization for different models
 
+**New Features and Updates:**
+- Added OpenSubtitles V3 implementation as an alternative to the default authenticated API
+  - Users can now choose between "Auth" (requires OpenSubtitles account) or "V3" (no authentication, uses Stremio's official OpenSubtitles V3 addon)
+- Translation Cache Overwrite reduced from 5 clicks in 10 seconds to 3 clicks in 5 seconds (to avoid Stremio rate-limiting)
+
+**Infrastructure:**
+- Redis support: Full Redis integration for translation cache, session storage, and subtitle cache with configurable TTLs and automatic key expiration (enables distributed HA deployments)
+- Encryption support: AES-256-GCM encryption for user configurations and sensitive API keys with per-user key derivation and secure session token generation
+- Docker deployment support with docker-compose configurations for both standalone and Redis-backed deployments
+- Filesystem storage adapter still available for local deployment and fallback
+
 **Performance & Logging:**
 - High-performance logging overhaul: Lazy evaluation with callbacks for all 520+ log statements eliminates 40-70% CPU overhead from string interpolation on filtered logs
 - Async file logging with buffering replaces synchronous writes, eliminating event loop blocking (1-5ms per log) that caused 100-300ms p99 latency spikes under load
 - Log sampling support for extreme load scenarios (LOG_SAMPLE_RATE, LOG_SAMPLE_DEBUG_ONLY) allows reducing log volume while preserving critical errors
+
+**Bug Fixes:**
+- Fixed bypass cache user isolation: Each user now gets their own user-scoped bypass cache entries (identified by config hash), preventing users from accessing each other's cached translations when using "Bypass Database Cache" mode
+- Fixed 3-click cache reset to properly handle bypass vs permanent cache
+- Config hash generation now handles edge cases gracefully with identifiable fallback values instead of silent failures
+- Various major and minor bug fixes
 
 ## SubMaker 1.0.3
 
