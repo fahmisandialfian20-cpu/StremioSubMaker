@@ -60,7 +60,12 @@ Translate to {target_language}.`;
     const TOKEN_KEY = 'submaker_session_token';
 
     // Initialize
-    document.addEventListener('DOMContentLoaded', init);
+    if (document.readyState !== 'loading') {
+        // If DOM is already loaded (dynamic script injection), run init immediately
+        setTimeout(init, 0);
+    } else {
+        document.addEventListener('DOMContentLoaded', init);
+    }
 
     async function init() {
         // Priority: cached config > URL config > default config

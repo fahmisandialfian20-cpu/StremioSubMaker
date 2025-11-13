@@ -1242,18 +1242,11 @@
                         // Show version badge
                         var el = document.getElementById('version-badge');
                         if (el) { el.textContent = 'v' + d.version; el.style.display = 'inline-block'; }
-
-                        // Cache-bust static assets
+                        // Optionally cache-bust logo image
                         var logo = document.querySelector('.logo img');
                         if (logo && logo.src && logo.src.indexOf('?v=') === -1) {
                             logo.src = logo.src + (logo.src.indexOf('?') === -1 ? '?v=' : '&v=') + d.version;
                         }
-                        var scripts = document.querySelectorAll('script[src]');
-                        scripts.forEach(function(s){
-                            if (/config\.js(\?.*)?$/i.test(s.getAttribute('src')) && s.src.indexOf('?v=') === -1) {
-                                s.src = s.src + (s.src.indexOf('?') === -1 ? '?v=' : '&v=') + d.version;
-                            }
-                        });
                     })
                     .catch(function(){});
             } catch (_) {}
@@ -1687,6 +1680,29 @@
         </div>
     </div>
 
-    <script src="config.js"></script>
+    <script>
+    (function(){
+        function loadConfigJs(versionQuery){
+            var s = document.createElement('script');
+            s.src = 'config.js' + versionQuery;
+            s.defer = false;
+            document.body.appendChild(s);
+        }
+
+        try {
+            fetch('/api/session-stats', { cache: 'no-store' })
+                .then(function(r){ return r.ok ? r.json() : null; })
+                .then(function(d){
+                    var vq = d && d.version ? ('?v=' + d.version) : ('?v=' + Date.now());
+                    loadConfigJs(vq);
+                })
+                .catch(function(){
+                    loadConfigJs('?v=' + Date.now());
+                });
+        } catch (e) {
+            loadConfigJs('?v=' + Date.now());
+        }
+    })();
+    </script>
 </body>
 </html>
