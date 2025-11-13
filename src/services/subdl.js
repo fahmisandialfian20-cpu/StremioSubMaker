@@ -216,7 +216,7 @@ class SubDLService {
         headers: {
           'User-Agent': USER_AGENT
         },
-        timeout: 30000, // 30 second timeout
+        timeout: 12000, // 12 second timeout
         httpAgent,
         httpsAgent
       });

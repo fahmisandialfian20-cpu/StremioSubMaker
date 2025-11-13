@@ -156,7 +156,7 @@ class OpenSubtitlesV3Service {
         headers: {
           'User-Agent': USER_AGENT
         },
-        timeout: 30000, // 30 second timeout for download
+        timeout: 12000, // 12 second timeout for download
         httpAgent,
         httpsAgent
       });

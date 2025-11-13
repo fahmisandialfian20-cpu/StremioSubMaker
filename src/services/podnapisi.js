@@ -314,7 +314,7 @@ class PodnapisService {
 
       const response = await axios.get(downloadUrl, {
         headers: { 'User-Agent': USER_AGENT },
-        timeout: 30000,
+        timeout: 12000,
         responseType: 'text',  // Get as text directly
         validateStatus: function (status) {
           return status >= 200 && status < 500; // Accept 4xx to handle gracefully
