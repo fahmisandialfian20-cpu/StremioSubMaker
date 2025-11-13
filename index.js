@@ -8,7 +8,7 @@ const express = require('express');
 const compression = require('compression');
 const cors = require('cors');
 const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
+const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 const { LRUCache } = require('lru-cache');
 const { addonBuilder, getRouter } = require('stremio-addon-sdk');
 const path = require('path');
@@ -250,7 +250,8 @@ const searchLimiter = rateLimit({
             }
         }
         // Fallback to IP address for non-authenticated requests
-        return `ip:${req.ip}`;
+        // Use ipKeyGenerator to properly handle IPv6 subnet masking
+        return `ip:${ipKeyGenerator(req.ip)}`;
     },
     skip: (req) => {
         // Skip rate limiting for cached subtitle search results
@@ -281,7 +282,8 @@ const fileTranslationLimiter = rateLimit({
             }
         }
         // Fallback to IP address for non-authenticated requests
-        return `ip:${req.ip}`;
+        // Use ipKeyGenerator to properly handle IPv6 subnet masking
+        return `ip:${ipKeyGenerator(req.ip)}`;
     }
 });
 
