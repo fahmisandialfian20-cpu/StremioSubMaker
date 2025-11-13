@@ -248,7 +248,7 @@ Translate to {target_language}.`;
             sourceLanguages: ['eng'], // Up to 3 source languages allowed
             targetLanguages: [],
             geminiApiKey: DEFAULT_API_KEYS.GEMINI,
-            geminiModel: 'gemini-2.5-flash-lite',
+            geminiModel: 'gemini-2.5-flash-lite-preview-09-2025',
             promptStyle: 'strict', // 'natural' or 'strict'
             translationPrompt: STRICT_TRANSLATION_PROMPT,
             subtitleProviders: {
@@ -984,8 +984,8 @@ Translate to {target_language}.`;
 
             // Select default if none selected
             if (!modelSelect.value && filteredModels.length > 0) {
-                // Default: gemini-2.5-flash-lite (exact match preferred)
-                const defaultModel = filteredModels.find(m => m.name === 'gemini-2.5-flash-lite');
+                // Default: gemini-2.5-flash-lite-preview-09-2025 (exact match preferred)
+                const defaultModel = filteredModels.find(m => m.name === 'gemini-2.5-flash-lite-preview-09-2025');
                 const flashLiteAny = filteredModels.find(m => m.name.includes('flash-lite'));
                 const flashModel = filteredModels.find(m => m.name.includes('flash'));
 
@@ -1202,7 +1202,7 @@ Translate to {target_language}.`;
 
         // Load Gemini model
         const modelSelect = document.getElementById('geminiModel');
-        const modelToUse = currentConfig.geminiModel || 'gemini-2.5-flash-lite';
+        const modelToUse = currentConfig.geminiModel || 'gemini-2.5-flash-lite-preview-09-2025';
         const option = document.createElement('option');
         option.value = modelToUse;
         option.textContent = modelToUse;
