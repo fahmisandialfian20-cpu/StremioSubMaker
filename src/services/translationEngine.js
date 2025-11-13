@@ -28,7 +28,9 @@ const MAX_ENTRY_CACHE_SIZE = parseInt(process.env.ENTRY_CACHE_SIZE) || 100000;
 // Configuration constants
 const BATCH_SIZE = parseInt(process.env.TRANSLATION_BATCH_SIZE) || 150; // Entries per batch
 const MAX_TOKENS_PER_BATCH = parseInt(process.env.MAX_TOKENS_PER_BATCH) || 25000; // Max tokens before auto-chunking
-const CACHE_TRANSLATIONS = process.env.CACHE_TRANSLATIONS !== 'false'; // Enable/disable entry caching
+// Entry cache disabled by default - causes stale data on cache resets and not HA-aware
+// Only useful for repeated translations with identical config (rare)
+const CACHE_TRANSLATIONS = process.env.CACHE_TRANSLATIONS === 'true'; // Enable/disable entry caching
 
 class TranslationEngine {
   constructor(geminiService) {
