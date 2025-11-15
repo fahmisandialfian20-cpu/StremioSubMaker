@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## SubMaker 1.1.6
+
+**New Features:**
+- **Multi-Model Support**: Added Gemini model selection dropdown on config page with two options:
+  - Gemini 2.5 Flash - Better quality, slower
+  - Gemini 2.5 Flash-Lite - Well tested, faster and cheaper alternative (recommended if Flash has issues)
+- Advanced Settings can still override the selected model for per-translation customization
+
 ## SubMaker 1.1.5
 
 **Bug Fixes:**

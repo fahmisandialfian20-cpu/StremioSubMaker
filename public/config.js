@@ -264,7 +264,7 @@ Translate to {target_language}.`;
             sourceLanguages: ['eng'], // Up to 3 source languages allowed
             targetLanguages: [],
             geminiApiKey: DEFAULT_API_KEYS.GEMINI,
-            geminiModel: 'gemini-2.5-flash-lite-preview-09-2025',
+            geminiModel: 'gemini-2.5-flash-preview-09-2025',
             promptStyle: 'strict', // 'natural' or 'strict'
             translationPrompt: STRICT_TRANSLATION_PROMPT,
             subtitleProviders: {
@@ -1386,11 +1386,20 @@ Translate to {target_language}.`;
         // Clear and populate advanced model dropdown with ALL models
         advModelSelect.innerHTML = '<option value="">Use Default Model</option>';
 
-        // Show ALL models (no filtering)
-        models.forEach(model => {
+        // Define hardcoded multi-model options
+        const hardcodedModels = [
+            { name: 'gemini-2.5-flash-lite-preview-09-2025', displayName: 'Gemini 2.5 Flash-Lite' },
+            { name: 'gemini-2.5-flash-preview-09-2025', displayName: 'Gemini 2.5 Flash' }
+        ];
+
+        // Track added models to avoid duplicates
+        const addedModels = new Set(['', ...hardcodedModels.map(m => m.name)]);
+
+        // Add hardcoded models first
+        hardcodedModels.forEach(model => {
             const option = document.createElement('option');
             option.value = model.name;
-            option.textContent = `${model.displayName}`;
+            option.textContent = model.displayName;
 
             // Preserve user's saved selection if it exists
             if (currentConfig.advancedSettings?.geminiModel === model.name) {
@@ -1398,6 +1407,23 @@ Translate to {target_language}.`;
             }
 
             advModelSelect.appendChild(option);
+        });
+
+        // Add API-fetched models (avoid duplicates)
+        models.forEach(model => {
+            if (!addedModels.has(model.name)) {
+                const option = document.createElement('option');
+                option.value = model.name;
+                option.textContent = `${model.displayName}`;
+
+                // Preserve user's saved selection if it exists
+                if (currentConfig.advancedSettings?.geminiModel === model.name) {
+                    option.selected = true;
+                }
+
+                advModelSelect.appendChild(option);
+                addedModels.add(model.name);
+            }
         });
 
         console.log('[Advanced Settings] Dropdown populated successfully');
@@ -1585,12 +1611,10 @@ Translate to {target_language}.`;
 
         // Load Gemini model
         const modelSelect = document.getElementById('geminiModel');
-        const modelToUse = currentConfig.geminiModel || 'gemini-2.5-flash-lite-preview-09-2025';
-        const option = document.createElement('option');
-        option.value = modelToUse;
-        option.textContent = modelToUse;
-        option.selected = true;
-        modelSelect.appendChild(option);
+        const modelToUse = currentConfig.geminiModel || 'gemini-2.5-flash-preview-09-2025';
+        if (modelSelect) {
+            modelSelect.value = modelToUse;
+        }
 
         // Load prompt style
         const promptStyle = currentConfig.promptStyle || 'natural';
@@ -1702,9 +1726,9 @@ Translate to {target_language}.`;
             noTranslationMode: currentConfig.noTranslationMode,
             noTranslationLanguages: currentConfig.noTranslationLanguages,
             geminiApiKey: document.getElementById('geminiApiKey').value.trim(),
-            // Don't send model - let backend use its defaults (.env or hardcoded)
-            // Advanced settings will override if enabled
-            geminiModel: '',
+            // Save the selected model from the dropdown
+            // Advanced settings can override this if enabled
+            geminiModel: document.getElementById('geminiModel')?.value || 'gemini-2.5-flash-preview-09-2025',
             promptStyle: promptStyle,
             translationPrompt: translationPrompt,
             sourceLanguages: currentConfig.sourceLanguages,
