@@ -4,15 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## SubMaker 1.1.8 (sessions-experimental-refactor branch)
 
-**🔧 Critical Session Persistence & Reliability Improvements**
+**Critical Session Persistence & Reliability Improvements**
 
-This release focuses on completely overhauling the session token/config persistence system to eliminate "session not found" errors that occurred during server restarts, code updates, Docker rebuilds, and deployments.
-
-**Major Changes vs. Main Branch:**
-
-The `sessions-experimental-refactor` branch includes a comprehensive refactor of how session tokens and user configurations are stored, retrieved, and validated. This addresses chronic issues where users would lose their configuration between server updates or restarts.
-
-**What's Different from Main:**
+This release focuses on completely overhauling the session token/config persistence system to eliminate "session not found" errors that occurred during server restarts, code updates, Docker rebuilds and deployments.
 
 1. **Session Manager Initialization**
    - Added proper async initialization with `waitUntilReady()` method
@@ -55,32 +49,12 @@ The `sessions-experimental-refactor` branch includes a comprehensive refactor of
 **Bug Fixes:**
 
 - **CRITICAL**: Fixed server accepting requests before sessions loaded (race condition during startup)
-- **CRITICAL**: Fixed sessions not persisting between restarts due to missing save verification
 - Fixed session expiration using wrong timestamp (lastAccessedAt instead of createdAt)
 - Fixed potential memory leak with LRU cache and sliding TTL
 - Fixed invalid tokens in storage breaking session loading
 - Fixed no alerting when storage repeatedly fails
 - Fixed client not validating token format before storage
 - Fixed concurrent StorageFactory initializations causing race conditions
-
-**Technical Details:**
-
-All session-related changes are documented in commit `0721ad2`:
-- `index.js:3781-3790`: Server startup timing fix
-- `src/utils/sessionManager.js:268-286`: Save verification
-- `src/utils/sessionManager.js:411-454`: Memory cleanup
-- `src/utils/sessionManager.js:317-322`: Token validation during loading
-- `src/utils/sessionManager.js:388-397`: Consecutive failure tracking
-- `public/config.js:62-87, 1914-1942`: Client-side token validation
-- `src/storage/StorageFactory.js:14-40`: Concurrent initialization protection
-
-**Testing:**
-- Verified sessions load before server starts accepting requests
-- Confirmed session persistence across Docker rebuilds
-- Validated token format checking and invalid token cleanup
-- Tested Redis connection failure fallback to filesystem
-
-This release should eliminate the chronic "session not found" errors users were experiencing during server lifecycle events.
 
 ## SubMaker 1.1.7
 
