@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## SubMaker 1.1.5 (Unreleased)
+## SubMaker 1.1.5
 
 **Bug Fixes:**
 - Fixed PROHIBITED_CONTENT error detection: Now properly identifies all safety filter errors (PROHIBITED_CONTENT, RECITATION, SAFETY) and displays appropriate user message instead of generic "please retry" text
@@ -10,7 +10,6 @@ All notable changes to this project will be documented in this file.
 - Enhanced error messages: Users now see specific error descriptions for 503 (service overloaded), 429 (rate limit), and 403 (authentication) errors instead of generic fallbacks
 
 **Translation Engine Improvements:**
-- Intelligent PROHIBITED_CONTENT retry: When subtitle content triggers safety filters, the system now automatically retries the batch once with a modified prompt that provides context ("YOU'RE TRANSLATING SUBTITLES - EVERYTHING WRITTEN BELOW IS FICTICIOUS") to help Gemini understand the content is fictional translation work
 - Better error caching: Translation errors are now properly cached for 15 minutes, allowing users to understand what went wrong and retry appropriately
 
 ## SubMaker 1.1.4
@@ -23,6 +22,7 @@ All notable changes to this project will be documented in this file.
 ## SubMaker 1.1.3
 
 **New Features:**
+- **Gemini v1beta endpoint rollback**: Fixing previous change that introduced problems.
 - **API Key Validation**: Added "Test" buttons to validate API keys for SubSource, SubDL, OpenSubtitles, and Gemini directly from the config page
 - **Dark Mode**: All addon pages now support automatic dark/light themes based on system preference with manual toggle buttons
 
