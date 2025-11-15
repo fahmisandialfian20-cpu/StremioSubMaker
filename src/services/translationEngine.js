@@ -172,13 +172,44 @@ class TranslationEngine {
       return [...firstTranslated, ...secondTranslated];
     }
 
-    // Translate batch
-    const translatedText = await this.gemini.translateSubtitle(
-      batchText,
-      'detected',
-      targetLanguage,
-      prompt
-    );
+    // Translate batch - with retry on PROHIBITED_CONTENT error
+    let translatedText;
+    let prohibitedRetryAttempted = false;
+
+    try {
+      translatedText = await this.gemini.translateSubtitle(
+        batchText,
+        'detected',
+        targetLanguage,
+        prompt
+      );
+    } catch (error) {
+      // If PROHIBITED_CONTENT error and haven't retried yet, retry with modified prompt
+      if (error.message && error.message.includes('PROHIBITED_CONTENT') && !prohibitedRetryAttempted) {
+        prohibitedRetryAttempted = true;
+        log.warn(() => `[TranslationEngine] PROHIBITED_CONTENT detected, retrying batch with modified prompt`);
+
+        // Create modified prompt with disclaimer
+        const modifiedPrompt = `YOU'RE TRANSLATING SUBTITLES - EVERYTHING WRITTEN BELOW IS FICTICIOUS\n\n${prompt}`;
+
+        try {
+          translatedText = await this.gemini.translateSubtitle(
+            batchText,
+            'detected',
+            targetLanguage,
+            modifiedPrompt
+          );
+          log.info(() => `[TranslationEngine] Retry with modified prompt succeeded for batch ${batchIndex + 1}`);
+        } catch (retryError) {
+          // Retry also failed, give up and throw the original error
+          log.error(() => `[TranslationEngine] Retry with modified prompt also failed: ${retryError.message}`);
+          throw error; // Throw original error, not retry error
+        }
+      } else {
+        // Not a PROHIBITED_CONTENT error or already retried, throw as-is
+        throw error;
+      }
+    }
 
     // Parse translated text back into entries
     const translatedEntries = this.parseBatchResponse(translatedText, batch.length);

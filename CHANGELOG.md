@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## SubMaker 1.1.5 (Unreleased)
+
+**Bug Fixes:**
+- Fixed PROHIBITED_CONTENT error detection: Now properly identifies all safety filter errors (PROHIBITED_CONTENT, RECITATION, SAFETY) and displays appropriate user message instead of generic "please retry" text
+- Improved HTTP error detection: Added direct HTTP status code checking (403, 503, 429) for better error classification and messaging
+- Enhanced error messages: Users now see specific error descriptions for 503 (service overloaded), 429 (rate limit), and 403 (authentication) errors instead of generic fallbacks
+
+**Translation Engine Improvements:**
+- Intelligent PROHIBITED_CONTENT retry: When subtitle content triggers safety filters, the system now automatically retries the batch once with a modified prompt that provides context ("YOU'RE TRANSLATING SUBTITLES - EVERYTHING WRITTEN BELOW IS FICTICIOUS") to help Gemini understand the content is fictional translation work
+- Better error caching: Translation errors are now properly cached for 15 minutes, allowing users to understand what went wrong and retry appropriately
+
 ## SubMaker 1.1.4
 
 **Bug Fixes:**

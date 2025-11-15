@@ -3,8 +3,8 @@ const { handleTranslationError, logApiError } = require('../utils/apiErrorHandle
 const { httpAgent, httpsAgent } = require('../utils/httpAgents');
 const log = require('../utils/logger');
 
-// Prefer stable v1 endpoint; some keys return 400 against v1beta
-const GEMINI_API_URL = process.env.GEMINI_API_BASE || 'https://generativelanguage.googleapis.com/v1';
+// Use v1beta endpoint - v1 endpoint doesn't support /models/{model} operations
+const GEMINI_API_URL = process.env.GEMINI_API_BASE || 'https://generativelanguage.googleapis.com/v1beta';
 
 // Normalize human-readable target language names for Gemini prompts
 function normalizeTargetName(name) {
@@ -137,8 +137,10 @@ class GeminiService {
 
     try {
       const response = await axios.get(`${this.baseUrl}/models/${this.model}`, {
-        params: { key: this.apiKey },
-        timeout: 10000
+        headers: { 'x-goog-api-key': String(this.apiKey || '').trim() },
+        timeout: 10000,
+        httpAgent,
+        httpsAgent
       });
 
       const data = response.data || {};
@@ -280,7 +282,7 @@ class GeminiService {
         }
         // If thinkingBudget is 0, don't add thinkingConfig at all (disabled)
 
-        // Call Gemini API
+        // Call Gemini API (use header auth for consistency and security)
         const response = await axios.post(
           `${this.baseUrl}/models/${this.model}:generateContent`,
           {
@@ -292,7 +294,7 @@ class GeminiService {
             generationConfig
           },
           {
-            params: { key: this.apiKey },
+            headers: { 'x-goog-api-key': String(this.apiKey || '').trim() },
             timeout: this.timeout,
             httpAgent,
             httpsAgent

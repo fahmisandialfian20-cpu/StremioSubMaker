@@ -257,23 +257,32 @@ function createTranslationErrorSubtitle(errorType, errorMessage) {
   } else if (errorType === '503') {
     errorTitle = 'Translation Failed: Service Overloaded (503)';
     errorExplanation = 'The Gemini API is temporarily overloaded with requests.\nThis is usually temporary and resolves within minutes.';
-    retryAdvice = '(503) - Wait a moment for Gemini service to recover,\nthen click this subtitle again to retry translation.';
+    retryAdvice = '(503) Service Unavailable - Wait a moment for Gemini to recover,\nthen click this subtitle again to retry translation.';
   } else if (errorType === '429') {
     errorTitle = 'Translation Failed: Usage Limit Reached (429)';
     errorExplanation = 'Your Gemini API usage limit has been exceeded.\nThis may be a rate limit or quota limit.';
-    retryAdvice = '(429) - Gemini API rate or quota limiting error\nWait a few minutes, then click again to retry.';
+    retryAdvice = '(429) Rate/Quota Limit - Gemini API is temporarily limiting requests.\nWait a few minutes, then click again to retry.';
   } else if (errorType === 'MAX_TOKENS') {
     errorTitle = 'Translation Failed: Content Too Large';
     errorExplanation = 'The subtitle file is too large for a single translation.\nThe system attempted chunking but still exceeded limits.';
-    retryAdvice = '(MAX_TOKENS) Try translating a shorter subtitle file,\nPlease let us know if this persists.';
+    retryAdvice = '(MAX_TOKENS) Try translating a shorter subtitle file.\nPlease let us know if this persists.';
   } else if (errorType === 'SAFETY') {
+    errorTitle = 'Translation Failed: Content Filtered';
+    errorExplanation = 'The subtitle content was blocked by safety filters.\nThis is rare and usually a false positive.';
+    retryAdvice = '(PROHIBITED) Subtitle content was filtered by Gemini.\nPlease retry, or try a different subtitle from the list.';
+  } else if (errorType === 'PROHIBITED_CONTENT') {
     errorTitle = 'Translation Failed: Content Filtered';
     errorExplanation = 'The subtitle content was blocked by safety filters.\nThis is rare and usually a false positive.';
     retryAdvice = '(PROHIBITED) Subtitle content was filtered by Gemini.\nPlease retry, or try a different subtitle from the list.';
   } else if (errorType === 'INVALID_SOURCE') {
     errorTitle = 'Translation Failed: Invalid Source File';
     errorExplanation = 'The source subtitle file appears corrupted or invalid.\nIt may be too small or have formatting issues.';
-    retryAdvice = '(CORRUPT SOURCE)\nPlease retry or try a different subtitle from the list.';
+    retryAdvice = '(CORRUPT SOURCE) Please retry or try a different subtitle from the list.';
+  } else if (errorType === 'other') {
+    // Generic error - still provide helpful message with actual error
+    errorTitle = 'Translation Failed: Unexpected Error';
+    errorExplanation = errorMessage ? `Error: ${errorMessage}` : 'An unexpected error occurred during translation.';
+    retryAdvice = 'Click this subtitle again to retry.\nIf the problem persists, try a different subtitle from the list.';
   }
 
   return `1
@@ -2110,7 +2119,17 @@ async function performTranslation(sourceFileId, targetLanguage, config, cacheKey
     let errorType = 'other';
     let errorMessage = error.message;
 
-    if (error.message && error.message.includes('403')) {
+    // Check HTTP status codes first (from axios error.response)
+    const statusCode = error.response?.status;
+    if (statusCode === 403) {
+      errorType = '403';
+    } else if (statusCode === 503) {
+      errorType = '503';
+    } else if (statusCode === 429) {
+      errorType = '429';
+    }
+    // Then check error message content
+    else if (error.message && error.message.includes('403')) {
       errorType = '403';
     } else if (error.message && error.message.includes('503')) {
       errorType = '503';
@@ -2118,8 +2137,8 @@ async function performTranslation(sourceFileId, targetLanguage, config, cacheKey
       errorType = '429';
     } else if (error.message && (error.message.includes('MAX_TOKENS') || error.message.includes('exceeded maximum token limit'))) {
       errorType = 'MAX_TOKENS';
-    } else if (error.message && error.message.includes('SAFETY')) {
-      errorType = 'SAFETY';
+    } else if (error.message && (error.message.includes('SAFETY') || error.message.includes('PROHIBITED_CONTENT') || error.message.includes('safety filters') || error.message.includes('RECITATION'))) {
+      errorType = 'PROHIBITED_CONTENT';
     } else if (error.message && (error.message.includes('invalid') || error.message.includes('corrupted') || error.message.includes('too small'))) {
       errorType = 'INVALID_SOURCE';
     }
