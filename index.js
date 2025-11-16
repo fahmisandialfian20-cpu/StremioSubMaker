@@ -33,6 +33,7 @@ const {
     fileTranslationBodySchema
 } = require('./src/utils/validation');
 const { getSessionManager } = require('./src/utils/sessionManager');
+const { runStartupValidation } = require('./src/utils/startupValidation');
 
 const PORT = process.env.PORT || 7001;
 
@@ -3890,6 +3891,21 @@ app.use((error, req, res, next) => {
     } catch (error) {
         log.error(() => ['[Startup] Session manager initialization failed:', error.message]);
         log.warn(() => '[Startup] Continuing startup anyway, but sessions may not be available');
+    }
+
+    // Run comprehensive startup validation
+    try {
+        log.info(() => '[Startup] Running infrastructure validation...');
+        const validation = await runStartupValidation();
+        if (!validation.success) {
+            log.error(() => ['[Startup] CRITICAL: Infrastructure validation failed']);
+            log.error(() => '[Startup] Server startup ABORTED due to validation errors');
+            log.error(() => '[Startup] Please review the validation errors above and fix your configuration');
+            process.exit(1);
+        }
+    } catch (error) {
+        log.error(() => ['[Startup] Validation check failed unexpectedly:', error.message]);
+        log.warn(() => '[Startup] Continuing startup anyway, but configuration may be invalid');
     }
 
     // Start server and setup graceful shutdown

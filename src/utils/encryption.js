@@ -298,8 +298,10 @@ function decryptUserConfig(config) {
   const decrypted = JSON.parse(JSON.stringify(config));
 
   // Check if config is marked as encrypted
+  // Note: Individual fields are encrypted (e.g., geminiApiKey), NOT the entire config object
+  // This is NOT double encryption - stored.config is the decrypted config object with encrypted fields inside it
   const isConfigEncrypted = decrypted._encrypted === true;
-  log.debug(() => `[Encryption] decryptUserConfig called, isConfigEncrypted: ${isConfigEncrypted}`);
+  log.debug(() => `[Encryption] decryptUserConfig called, isConfigEncrypted: ${isConfigEncrypted} (individual fields may be encrypted)`);
 
   try {
     // Decrypt Gemini API key

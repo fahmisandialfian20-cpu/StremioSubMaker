@@ -2,6 +2,7 @@ const { LRUCache } = require('lru-cache');
 const fs = require('fs').promises;
 const path = require('path');
 const crypto = require('crypto');
+const Redis = require('ioredis');
 const { StorageFactory, StorageAdapter } = require('../storage');
 const log = require('./logger');
 const { shutdownLogger } = require('./logger');
@@ -14,6 +15,44 @@ async function getStorageAdapter() {
     storageAdapter = await StorageFactory.getStorageAdapter();
   }
   return storageAdapter;
+}
+
+// Redis pub/sub client for cross-instance cache invalidation (only in Redis mode)
+let pubSubClient = null;
+async function getPubSubClient() {
+  const storageType = process.env.STORAGE_TYPE || 'filesystem';
+  if (storageType !== 'redis') {
+    return null; // Not needed in filesystem mode
+  }
+
+  if (pubSubClient) {
+    return pubSubClient;
+  }
+
+  try {
+    pubSubClient = new Redis({
+      host: process.env.REDIS_HOST || 'localhost',
+      port: process.env.REDIS_PORT || 6379,
+      password: process.env.REDIS_PASSWORD || undefined,
+      db: process.env.REDIS_DB ? parseInt(process.env.REDIS_DB, 10) : 0,
+      keyPrefix: process.env.REDIS_KEY_PREFIX || 'stremio:',
+      maxRetriesPerRequest: 3,
+      retryStrategy: (times) => {
+        const delay = Math.min(times * 50, 2000);
+        return delay;
+      }
+    });
+
+    // Set up error handlers
+    pubSubClient.on('error', (err) => {
+      log.error(() => ['[SessionManager] Pub/Sub client error:', err.message]);
+    });
+
+    return pubSubClient;
+  } catch (err) {
+    log.error(() => ['[SessionManager] Failed to create pub/sub client:', err.message]);
+    return null;
+  }
 }
 
 /**
@@ -76,20 +115,102 @@ class SessionManager {
     }
 
     /**
-     * Initialize sessions - loads from disk
+     * Initialize sessions - loads from disk and sets up pub/sub
      * This MUST be awaited before using the session manager
      * @private
      * @returns {Promise<void>}
      */
     async _initializeSessions() {
         try {
+            const storageType = process.env.STORAGE_TYPE || 'filesystem';
+            const sessionPreloadEnabled = process.env.SESSION_PRELOAD === 'true';
+            log.debug(() => `[SessionManager] Initializing sessions (storage: ${storageType}, preload: ${sessionPreloadEnabled})`);
+
             await this.loadFromDisk();
+
+            // Initialize Redis pub/sub for cross-instance cache invalidation
+            if (storageType === 'redis') {
+                try {
+                    await this._initializePubSub();
+                } catch (err) {
+                    log.error(() => ['[SessionManager] Failed to initialize pub/sub:', err.message]);
+                    // Continue anyway - pub/sub is not critical
+                }
+            }
+
             this.isReady = true;
-            log.debug(() => '[SessionManager] Ready to accept requests');
+            log.debug(() => `[SessionManager] Ready to accept requests (in-memory sessions: ${this.cache.size})`);
+
+            // In Redis lazy-load mode, add helpful message about cross-instance fallback
+            if (storageType === 'redis' && !sessionPreloadEnabled) {
+                log.debug(() => '[SessionManager] Using lazy-load mode: sessions load from Redis on-demand via fallback');
+            }
         } catch (err) {
             log.error(() => ['[SessionManager] Failed to load sessions from disk during init:', err.message]);
             // Mark as ready anyway to prevent blocking startup, but log the error
             this.isReady = true;
+        }
+    }
+
+    /**
+     * Initialize Redis pub/sub listener for cross-instance cache invalidation
+     * @private
+     */
+    async _initializePubSub() {
+        const pubSub = await getPubSubClient();
+        if (!pubSub) {
+            log.debug(() => '[SessionManager] Pub/Sub not available');
+            return;
+        }
+
+        // Subscribe to session invalidation channel
+        const invalidationChannel = 'session:invalidate';
+
+        pubSub.on('message', (channel, message) => {
+            if (channel === invalidationChannel) {
+                try {
+                    const data = JSON.parse(message);
+                    const { token, action } = data;
+
+                    if (token && this.cache.has(token)) {
+                        this.cache.delete(token);
+                        log.debug(() => `[SessionManager] Invalidated cached session from pub/sub: ${token} (action: ${action})`);
+                    }
+                } catch (err) {
+                    log.error(() => ['[SessionManager] Failed to process pub/sub message:', err.message]);
+                }
+            }
+        });
+
+        pubSub.on('error', (err) => {
+            log.error(() => ['[SessionManager] Pub/Sub error:', err.message]);
+        });
+
+        await pubSub.subscribe(invalidationChannel);
+        log.debug(() => `[SessionManager] Subscribed to pub/sub channel: ${invalidationChannel}`);
+    }
+
+    /**
+     * Publish session invalidation event to other instances
+     * @private
+     */
+    async _publishInvalidation(token, action) {
+        if ((process.env.STORAGE_TYPE || 'filesystem') !== 'redis') {
+            return; // Only in Redis mode
+        }
+
+        try {
+            const pubSub = await getPubSubClient();
+            if (!pubSub) {
+                return;
+            }
+
+            const message = JSON.stringify({ token, action, timestamp: Date.now() });
+            await pubSub.publish('session:invalidate', message);
+            log.debug(() => `[SessionManager] Published invalidation event: ${token} (${action})`);
+        } catch (err) {
+            log.error(() => ['[SessionManager] Failed to publish invalidation event:', err.message]);
+            // Don't throw - pub/sub is best-effort
         }
     }
 
@@ -160,7 +281,7 @@ class SessionManager {
             log.error(() => ['[SessionManager] Failed to persist new session:', err?.message || String(err)]);
         });
 
-        log.debug(() => `[SessionManager] Session created: ${token} (total: ${this.cache.size})`);
+        log.debug(() => `[SessionManager] Session created: ${token} (in-memory: ${this.cache.size})`);
         return token;
     }
 
@@ -242,6 +363,8 @@ class SessionManager {
             const adapter = await getStorageAdapter();
             const ttlSeconds = Number.isFinite(this.maxAge) ? Math.floor(this.maxAge / 1000) : null;
             await adapter.set(token, sessionData, StorageAdapter.CACHE_TYPES.SESSION, ttlSeconds);
+            // Notify other instances to invalidate their cache
+            await this._publishInvalidation(token, 'update');
         }).catch(err => {
             log.error(() => ['[SessionManager] Failed to persist updated session:', err?.message || String(err)]);
         });
@@ -264,6 +387,8 @@ class SessionManager {
             Promise.resolve().then(async () => {
                 const adapter = await getStorageAdapter();
                 await adapter.delete(token, StorageAdapter.CACHE_TYPES.SESSION);
+                // Notify other instances to invalidate their cache
+                await this._publishInvalidation(token, 'delete');
             }).catch(err => {
                 log.error(() => ['[SessionManager] Failed to delete session from storage:', err?.message || String(err)]);
             });
@@ -276,11 +401,16 @@ class SessionManager {
      * @returns {Object} Statistics
      */
     getStats() {
+            const storageType = process.env.STORAGE_TYPE || 'filesystem';
             return {
                 activeSessions: this.cache.size,
                 maxSessions: this.maxSessions || null,
                 maxAge: this.maxAge,
-                persistencePath: this.persistencePath
+                persistencePath: this.persistencePath,
+                storageType: storageType,
+                // Note: In Redis mode with lazy loading, activeSessions is only in-memory count
+                // Sessions in storage but not loaded in memory are NOT counted
+                isLazyLoadingMode: storageType === 'redis' && process.env.SESSION_PRELOAD !== 'true'
             };
         }
 
@@ -292,19 +422,33 @@ class SessionManager {
      */
     async loadSessionFromStorage(token) {
         try {
-            if (!token) return null;
+            if (!token) {
+                log.debug(() => `[SessionManager] loadSessionFromStorage: token is empty or null`);
+                return null;
+            }
+
             const adapter = await getStorageAdapter();
             const stored = await adapter.get(token, StorageAdapter.CACHE_TYPES.SESSION);
-            if (!stored) return null;
+
+            // Session not found in storage
+            if (!stored) {
+                log.debug(() => `[SessionManager] loadSessionFromStorage: session token not found in storage: ${token}`);
+                return null;
+            }
+
+            // Check if session has expired based on inactivity
             const now = Date.now();
             const inactivityAge = now - (stored.lastAccessedAt || stored.createdAt);
             if (Number.isFinite(this.maxAge) && inactivityAge > this.maxAge) {
+                log.warn(() => `[SessionManager] loadSessionFromStorage: session expired due to inactivity (${Math.round(inactivityAge / 1000 / 3600)} hours): ${token}`);
                 try { await adapter.delete(token, StorageAdapter.CACHE_TYPES.SESSION); } catch (_) {}
                 return null;
             }
+
             // Refresh last accessed and cache it
             stored.lastAccessedAt = now;
             this.cache.set(token, stored);
+
             // Refresh persistent TTL on successful load
             try {
                 const ttlSeconds = Number.isFinite(this.maxAge) ? Math.floor(this.maxAge / 1000) : null;
@@ -312,10 +456,20 @@ class SessionManager {
             } catch (e) {
                 log.error(() => ['[SessionManager] Failed to refresh TTL during load from storage:', e?.message || String(e)]);
             }
-            // Return decrypted config
-            return decryptUserConfig(stored.config);
+
+            // Decrypt and return config
+            try {
+                const decryptedConfig = decryptUserConfig(stored.config);
+                if (!decryptedConfig) {
+                    log.warn(() => `[SessionManager] loadSessionFromStorage: decryption returned null/falsy config for token: ${token}`);
+                }
+                return decryptedConfig;
+            } catch (decryptErr) {
+                log.error(() => ['[SessionManager] loadSessionFromStorage: failed to decrypt config:', decryptErr?.message || String(decryptErr)]);
+                return null;
+            }
         } catch (err) {
-            log.error(() => ['[SessionManager] loadSessionFromStorage failed:', err?.message || String(err)]);
+            log.error(() => ['[SessionManager] loadSessionFromStorage: unexpected error while loading from storage:', err?.message || String(err), 'stack:', err?.stack || 'N/A']);
             return null;
         }
     }
@@ -590,6 +744,16 @@ class SessionManager {
 
             if (saveFailed && saveAttempts >= maxSaveAttempts) {
                 log.error(() => '[SessionManager] All save attempts failed during shutdown - sessions may be lost');
+            }
+
+            // Close pub/sub connection if initialized
+            if (pubSubClient) {
+                try {
+                    await pubSubClient.quit();
+                    log.warn(() => '[SessionManager] Pub/Sub connection closed');
+                } catch (err) {
+                    log.error(() => ['[SessionManager] Error closing pub/sub connection:', err.message]);
+                }
             }
 
             // Close the server if provided
