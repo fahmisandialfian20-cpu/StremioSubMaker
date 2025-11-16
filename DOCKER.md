@@ -53,7 +53,7 @@ REDIS_HOST=redis
 REDIS_PORT=6379
 REDIS_PASSWORD=your_secure_password
 REDIS_DB=0
-REDIS_KEY_PREFIX=stremio:
+REDIS_KEY_PREFIX=stremio
 
 # API Keys
 OPENSUBTITLES_API_KEY=your_opensubtitles_key

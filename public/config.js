@@ -57,7 +57,16 @@ Translate to {target_language}.`;
     // localStorage cache keys
     const CACHE_KEY = 'submaker_config_cache';
     const CACHE_EXPIRY_KEY = 'submaker_config_cache_expiry';
+    const CACHE_VERSION_KEY = 'submaker_config_cache_version';  // Tracks version when cache was saved
     const TOKEN_KEY = 'submaker_session_token';
+
+    // Visual state cache keys (these should be cleared on version changes)
+    const VISUAL_STATE_KEYS = [
+        'submaker_dont_show_instructions',
+        'submaker_dont_show_file_translation',
+        'submaker_collapsed_sections',
+        'submaker_scroll_position'
+    ];
 
     /**
      * FIXED: Validate session token format
@@ -97,7 +106,8 @@ Translate to {target_language}.`;
     async function init() {
         // Priority: cached config > URL config > default config
         // This ensures browser cache is respected unless explicitly shared via URL
-        const cachedConfig = loadConfigFromCache();
+        // NOTE: loadConfigFromCache is now async due to version validation
+        const cachedConfig = await loadConfigFromCache();
         const params = new URLSearchParams(window.location.search);
         const rawConfigParam = params.get('config');
         const hasExplicitUrlConfig = params.has('config');
@@ -1614,24 +1624,89 @@ Translate to {target_language}.`;
     }
 
     /**
-     * Save configuration to localStorage
-     * @param {Object} config - The configuration object to save
+     * Get current app version from the page
+     * This version is fetched from /api/session-stats
+     */
+    async function getCurrentAppVersion() {
+        try {
+            const response = await fetch('/api/session-stats', { cache: 'no-store' });
+            const data = await response.json();
+            return data.version || 'unknown';
+        } catch (error) {
+            console.warn('[Config] Failed to fetch app version:', error.message);
+            return 'unknown';
+        }
+    }
+
+    /**
+     * Save configuration to localStorage with version tracking
      */
     function saveConfigToCache(config) {
         try {
             // Save config and timestamp
             localStorage.setItem(CACHE_KEY, JSON.stringify(config));
             localStorage.setItem(CACHE_EXPIRY_KEY, Date.now().toString());
+
+            // Get and save current app version
+            getCurrentAppVersion().then(version => {
+                try {
+                    localStorage.setItem(CACHE_VERSION_KEY, version);
+                    console.log('[Config] Cache saved with version:', version);
+                } catch (error) {
+                    console.warn('[Config] Failed to save cache version:', error.message);
+                }
+            }).catch(err => {
+                console.warn('[Config] Error getting version for cache:', err.message);
+            });
         } catch (error) {
             // Continue anyway - caching is optional
         }
     }
 
     /**
-     * Load configuration from localStorage
-     * @returns {Object|null} The cached configuration or null if not found/invalid
+     * Validate configuration structure and required fields
+     * Returns null if invalid, otherwise returns the config
      */
-    function loadConfigFromCache() {
+    function validateConfig(config) {
+        if (!config || typeof config !== 'object') {
+            console.warn('[Config] Invalid config: not an object');
+            return null;
+        }
+
+        // Check for critical required fields
+        if (typeof config.subtitleProviders !== 'object') {
+            console.warn('[Config] Invalid config: missing subtitleProviders');
+            return null;
+        }
+
+        // Config is valid
+        return config;
+    }
+
+    /**
+     * Clear visual state cache but preserve form data
+     * Called when version changes or config is invalid
+     */
+    function clearVisualStateCache() {
+        try {
+            console.log('[Config] Clearing visual state cache');
+            VISUAL_STATE_KEYS.forEach(key => {
+                try {
+                    localStorage.removeItem(key);
+                } catch (e) {
+                    // Ignore individual removals
+                }
+            });
+        } catch (error) {
+            console.warn('[Config] Failed to clear visual state:', error.message);
+        }
+    }
+
+    /**
+     * Load configuration from localStorage with version validation
+     * @returns {Object|null} The cached configuration or null if not found/invalid/stale
+     */
+    async function loadConfigFromCache() {
         try {
             const cachedConfig = localStorage.getItem(CACHE_KEY);
             if (!cachedConfig) {
@@ -1639,8 +1714,30 @@ Translate to {target_language}.`;
             }
 
             const config = JSON.parse(cachedConfig);
+
+            // Validate config structure
+            if (!validateConfig(config)) {
+                console.warn('[Config] Cached config is invalid, clearing cache');
+                clearConfigCache();
+                clearVisualStateCache();
+                return null;
+            }
+
+            // Check version mismatch
+            const cachedVersion = localStorage.getItem(CACHE_VERSION_KEY);
+            const currentVersion = await getCurrentAppVersion();
+
+            if (cachedVersion && cachedVersion !== currentVersion) {
+                console.log(`[Config] Version mismatch: cached=${cachedVersion}, current=${currentVersion}. Clearing visual state.`);
+                clearVisualStateCache();
+                // Keep the config data but clear visual state
+                // Update the cached version
+                localStorage.setItem(CACHE_VERSION_KEY, currentVersion);
+            }
+
             return config;
         } catch (error) {
+            console.error('[Config] Error loading cached config:', error.message);
             return null;
         }
     }
@@ -1652,6 +1749,7 @@ Translate to {target_language}.`;
         try {
             localStorage.removeItem(CACHE_KEY);
             localStorage.removeItem(CACHE_EXPIRY_KEY);
+            localStorage.removeItem(CACHE_VERSION_KEY);
         } catch (error) {
             // Failed to clear cache
         }

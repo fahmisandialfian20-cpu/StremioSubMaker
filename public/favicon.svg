@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <!-- Background circle -->
+  <circle cx="128" cy="128" r="120" fill="#08A4D5"/>
+
+  <!-- Play triangle (white) -->
+  <polygon points="100,85 100,171 170,128" fill="white" opacity="0.95"/>
+
+  <!-- Subtitle bars (white) -->
+  <rect x="90" y="195" width="76" height="8" rx="4" fill="white" opacity="0.8"/>
+  <rect x="90" y="210" width="55" height="7" rx="3.5" fill="white" opacity="0.8"/>
+</svg>

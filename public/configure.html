@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SubMaker - Configure</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="shortcut icon" href="favicon.svg">
+    <link rel="apple-touch-icon" href="favicon.svg">
     <style>
         * {
             margin: 0;
@@ -2085,6 +2089,48 @@
             });
         }
     })();
+    </script>
+
+    <!-- Service Worker Registration for Cache Management -->
+    <script>
+        /**
+         * Register service worker for automatic cache version management
+         * This ensures users always get the latest version when deployed
+         */
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js', { scope: '/' })
+                    .then(function(reg) {
+                        console.log('[SW Registration] Service worker registered successfully:', reg);
+
+                        // Check for updates periodically (every hour)
+                        setInterval(function() {
+                            reg.update().then(function() {
+                                console.log('[SW Update Check] Service worker update check completed');
+                            }).catch(function(err) {
+                                console.warn('[SW Update Check] Failed to check for updates:', err);
+                            });
+                        }, 60 * 60 * 1000); // 1 hour
+
+                        // Listen for controller change (indicates new SW activated)
+                        navigator.serviceWorker.addEventListener('controllerchange', function() {
+                            console.log('[SW] Controller changed - new version activated');
+                            // Optionally notify user of update
+                            // You could show a banner here asking user to reload
+                        });
+                    })
+                    .catch(function(err) {
+                        console.warn('[SW Registration] Failed to register service worker:', err);
+                    });
+            });
+
+            // Listen for messages from service worker
+            navigator.serviceWorker.addEventListener('message', function(event) {
+                console.log('[SW Message]', event.data);
+            });
+        } else {
+            console.log('[SW] Service workers not supported in this browser');
+        }
     </script>
 </body>
 </html>

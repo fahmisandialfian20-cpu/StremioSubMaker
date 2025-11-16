@@ -138,6 +138,11 @@ class TranslationEngine {
 
     log.info(() => `[TranslationEngine] Translation completed: ${translatedEntries.length} entries`);
 
+    // Final safety: strip any timecodes/timeranges that slipped through
+    for (const entry of translatedEntries) {
+      entry.text = this.sanitizeTimecodes(entry.text);
+    }
+
     // Step 5: Convert back to SRT format
     return toSRT(translatedEntries);
   }
@@ -272,13 +277,13 @@ CRITICAL RULES:
 5. Maintain natural dialogue flow for ${targetLanguage}
 6. Use appropriate colloquialisms for ${targetLanguage}
 
-DO NOT:
-- Add ANY explanations, notes, or commentary
-- Add alternative translations
-- Skip any entries
-- Merge or split entries
-- Change the numbering
-- Add extra entries
+DO NOT add ANY acknowledgements, explanations, notes, or commentary.
+Do not add alternative translations
+Do not skip any entries
+Do not merge or split entries
+Do not change the numbering
+Do not add extra entries
+Do not include any timestamps/timecodes or time ranges
 
 YOUR RESPONSE MUST:
 - Start immediately with "1." (the first entry)
@@ -369,6 +374,40 @@ OUTPUT (EXACTLY ${expectedCount} numbered entries, NO OTHER TEXT):`;
 
     // Normalize line endings (CRLF → LF)
     cleaned = cleaned.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+    return cleaned;
+  }
+
+  /**
+   * Remove timecodes/timeranges from arbitrary text (defensive post-clean)
+   */
+  sanitizeTimecodes(text) {
+    let cleaned = String(text || '').trim();
+
+    // Full-line time ranges with various separators (optional milliseconds)
+    const rangeLine = /^(?:\s*)\d{1,2}:\d{2}:\d{2}(?:[.,]\d{1,3})?\s*(?:-->|–>|—>|->|→|to)\s*\d{1,2}:\d{2}:\d{2}(?:[.,]\d{1,3})?(?:\s*)$/gm;
+    cleaned = cleaned.replace(rangeLine, '');
+
+    // Inline time ranges
+    const rangeInline = /\d{1,2}:\d{2}:\d{2}(?:[.,]\d{1,3})?\s*(?:-->|–>|—>|->|→|to)\s*\d{1,2}:\d{2}:\d{2}(?:[.,]\d{1,3})?/g;
+    cleaned = cleaned.replace(rangeInline, '').trim();
+
+    // Standalone full-line timestamps (with or without ms)
+    const tsLine = /^(?:\s*)\d{1,2}:\d{2}:\d{2}(?:[.,]\d{1,3})?(?:\s*)$/gm;
+    cleaned = cleaned.replace(tsLine, '');
+
+    // Bracketed/parenthesized timestamps
+    const bracketedTs = /[\[(]\s*\d{1,2}:\d{2}:\d{2}(?:[.,]\d{1,3})?\s*[\])]/g;
+    cleaned = cleaned.replace(bracketedTs, '');
+
+    // Normalize line endings and collapse blanks
+    cleaned = cleaned.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    cleaned = cleaned
+      .split('\n')
+      .map(l => l.trimEnd())
+      .filter(l => l.trim().length > 0)
+      .join('\n')
+      .trim();
 
     return cleaned;
   }

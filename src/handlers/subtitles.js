@@ -1,4 +1,4 @@
-const OpenSubtitlesService = require('../services/opensubtitles');
+﻿const OpenSubtitlesService = require('../services/opensubtitles');
 const OpenSubtitlesV3Service = require('../services/opensubtitles-v3');
 const SubDLService = require('../services/subdl');
 const SubSourceService = require('../services/subsource');
@@ -32,7 +32,7 @@ function shortKey(v) {
     return crypto.createHash('sha1').update(String(v)).digest('hex').slice(0, 8);
   } catch (_) {
     const s = String(v || '');
-    return s.length > 12 ? s.slice(0, 12) + '…' : s;
+    return s.length > 12 ? s.slice(0, 12) + 'â€¦' : s;
   }
 }
 
@@ -201,19 +201,15 @@ function buildPartialSrtWithTail(mergedSrt) {
 function createSessionTokenErrorSubtitle() {
   const srt = `1
 00:00:00,000 --> 00:00:03,000
-⚠️ Configuration Error
+Configuration Error\nYour session token was not found or has expired.
 
 2
 00:00:03,001 --> 00:00:06,000
-Your session token was not found or has expired.
-
-3
-00:00:06,001 --> 00:00:09,000
 Please recreate your SubMaker configuration to continue using the addon.
 
-4
-00:00:09,001 --> 04:00:00,000
-Session Token Error\nVisit the addons page, set up preferences again and re-install.
+3
+00:00:06,001 --> 04:00:00,000
+Session Token Error\nSomething is wrong or an update broke your SubMaker config.\nSorry! Please reconfig and reinstall the addon.
 `;
 
   return srt;
@@ -1251,7 +1247,7 @@ function createSubtitleHandler(config) {
         return {
           subtitles: [{
             id: 'config_error_session_token',
-            lang: '⚠️ SubMaker Config Error',
+            lang: 'âš ï¸ SubMaker Config Error',
             url: `{{ADDON_URL}}/error-subtitle/session-token-not-found.srt`
           }]
         };
@@ -1784,7 +1780,7 @@ async function handleTranslation(sourceFileId, targetLanguage, config) {
             // Valid cache entry with matching configHash
             // Check if this is a cached error
             if (bypassCached.isError === true) {
-              log.debug(() => ['[Translation] Cached error found (bypass) key=', cacheKey, '— showing error and clearing cache']);
+              log.debug(() => ['[Translation] Cached error found (bypass) key=', cacheKey, 'â€” showing error and clearing cache']);
               const errorSrt = createTranslationErrorSubtitle(bypassCached.errorType, bypassCached.errorMessage);
 
               // Delete the error cache so next click retries translation
@@ -1799,7 +1795,7 @@ async function handleTranslation(sourceFileId, targetLanguage, config) {
               return errorSrt;
             }
 
-            log.debug(() => ['[Translation] Cache hit (bypass) key=', cacheKey, 'userHash=', userHash, '— serving cached translation']);
+            log.debug(() => ['[Translation] Cache hit (bypass) key=', cacheKey, 'userHash=', userHash, 'â€” serving cached translation']);
             cacheMetrics.hits++;
             cacheMetrics.estimatedCostSaved += 0.004;
             return bypassCached.content || bypassCached;
@@ -1811,7 +1807,7 @@ async function handleTranslation(sourceFileId, targetLanguage, config) {
       if (cached) {
         // Check if this is a cached error
         if (cached.isError === true) {
-          log.debug(() => ['[Translation] Cached error found (permanent) key=', cacheKey, '— showing error and clearing cache']);
+          log.debug(() => ['[Translation] Cached error found (permanent) key=', cacheKey, 'â€” showing error and clearing cache']);
           const errorSrt = createTranslationErrorSubtitle(cached.errorType, cached.errorMessage);
 
           // Delete the error cache so next click retries translation
@@ -1826,7 +1822,7 @@ async function handleTranslation(sourceFileId, targetLanguage, config) {
           return errorSrt;
         }
 
-        log.debug(() => ['[Translation] Cache hit (permanent) key=', cacheKey, '— serving cached translation']);
+        log.debug(() => ['[Translation] Cache hit (permanent) key=', cacheKey, 'â€” serving cached translation']);
         cacheMetrics.hits++;
         cacheMetrics.estimatedCostSaved += 0.004; // Estimated $0.004 per translation
         return cached.content || cached;
@@ -1835,7 +1831,7 @@ async function handleTranslation(sourceFileId, targetLanguage, config) {
 
     // Cache miss
     cacheMetrics.misses++;
-    log.debug(() => ['[Translation] Cache miss key=', cacheKey, '— not cached']);
+    log.debug(() => ['[Translation] Cache miss key=', cacheKey, 'â€” not cached']);
 
     // === RACE CONDITION PROTECTION ===
     // Check if there's already an in-flight request for this exact key
@@ -1950,7 +1946,7 @@ async function performTranslation(sourceFileId, targetLanguage, config, cacheKey
       log.debug(() => `[Translation] Using cached source subtitle for ${sourceFileId} (${sourceContent.length} bytes)`);
     } else {
       // Download subtitle from provider
-      log.debug(() => `[Translation] Cache miss – downloading source subtitle from provider`);
+      log.debug(() => `[Translation] Cache miss â€“ downloading source subtitle from provider`);
 
       if (sourceFileId.startsWith('subdl_')) {
         // SubDL subtitle
@@ -2026,7 +2022,7 @@ async function performTranslation(sourceFileId, targetLanguage, config, cacheKey
     log.debug(() => '[Translation] Using unified translation engine');
 
     // Translate with smart partial delivery to reduce Redis I/O
-    // Strategy: 1st batch → save, then next 3 → save, then next 5 → save, then every 5
+    // Strategy: 1st batch â†’ save, then next 3 â†’ save, then next 5 â†’ save, then every 5
     let translatedContent;
     let lastSavedBatch = 0;
 
@@ -2388,6 +2384,7 @@ setInterval(() => {
 
 // Note: No manual cleanup needed for translationStatus - LRU cache handles TTL automatically
 
+
 module.exports = {
   createSubtitleHandler,
   handleSubtitleDownload,
@@ -2528,3 +2525,4 @@ module.exports = {
    */
   canUserStartTranslation
 };
+

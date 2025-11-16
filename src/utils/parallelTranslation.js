@@ -162,6 +162,20 @@ function reconstructSRT(entries) {
   return entries.map(e => `${e.index}\n${e.timing}\n${e.text}`).join('\n\n') + '\n\n';
 }
 
+// Defensive cleaner: strip time ranges/timestamps that may leak into text
+function _stripTimecodes(text) {
+  let cleaned = String(text || '').trim();
+  const rangeLine = /^(?:\s*)\d{1,2}:\d{2}:\d{2}(?:[.,]\d{1,3})?\s*(?:-->|–>|—>|->|→|to)\s*\d{1,2}:\d{2}:\d{2}(?:[.,]\d{1,3})?(?:\s*)$/gm;
+  cleaned = cleaned.replace(rangeLine, '');
+  const rangeInline = /\d{1,2}:\d{2}:\d{2}(?:[.,]\d{1,3})?\s*(?:-->|–>|—>|->|→|to)\s*\d{1,2}:\d{2}:\d{2}(?:[.,]\d{1,3})?/g;
+  cleaned = cleaned.replace(rangeInline, '');
+  const tsLine = /^(?:\s*)\d{1,2}:\d{2}:\d{2}(?:[.,]\d{1,3})?(?:\s*)$/gm;
+  cleaned = cleaned.replace(tsLine, '');
+  const bracketedTs = /[\[(]\s*\d{1,2}:\d{2}:\d{2}(?:[.,]\d{1,3})?\s*[\])]/g;
+  cleaned = cleaned.replace(bracketedTs, '');
+  return cleaned;
+}
+
 /**
  * Translate a single chunk
  * @param {Object} chunk - Chunk to translate
@@ -349,6 +363,17 @@ async function translateInParallel(srtContent, translationService, targetLanguag
 
   // Reconstruct final SRT
   const finalSRT = reconstructSRT(allTranslatedEntries);
+
+  // Final safety pass: strip any time-like artifacts in text
+  try {
+    const entries = parseSubtitleEntries(finalSRT);
+    if (entries.length > 0) {
+      for (const e of entries) {
+        e.text = _stripTimecodes(e.text);
+      }
+      return reconstructSRT(entries);
+    }
+  } catch (_) {}
 
   const duration = ((Date.now() - startTime) / 1000).toFixed(2);
   log.debug(() => `[ParallelTranslation] Translation complete: ${allTranslatedEntries.length} entries in ${duration}s`);

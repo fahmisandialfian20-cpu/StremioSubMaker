@@ -426,6 +426,19 @@ app.use((req, res, next) => {
 // Security: Limit JSON payload size to 1MB (for file uploads)
 app.use(express.json({ limit: '1mb' }));
 
+// Custom caching middleware for different file types
+app.use((req, res, next) => {
+    // config.js and configure.html should never be cached aggressively
+    if (req.path === '/config.js' || req.path === '/configure.html') {
+        res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+    }
+    // Other static assets (CSS, JS, images) can use long-term caching
+    // assuming they're versioned or immutable by name
+    next();
+});
+
 // Serve static files with caching enabled
 // CSS and JS files get 1 year cache (bust with version in filename if needed)
 // Other static files get 1 year cache as well
@@ -476,14 +489,19 @@ if (process.env.FORCE_SESSION_READY !== 'false') {
     });
 }
 
-// Serve configuration page with caching enabled
+// Serve configuration page with no-cache to ensure users always get latest version
+// Browser will revalidate with server on each visit, but can use 304 Not Modified if unchanged
 app.get('/', (req, res) => {
-    res.setHeader('Cache-Control', 'public, max-age=31536000'); // 1 year cache for HTML
+    res.setHeader('Cache-Control', 'no-cache, must-revalidate'); // Always revalidate with server
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.sendFile(path.join(__dirname, 'public', 'configure.html'));
 });
 
 app.get('/configure', (req, res) => {
-    res.setHeader('Cache-Control', 'public, max-age=31536000'); // 1 year cache for HTML
+    res.setHeader('Cache-Control', 'no-cache, must-revalidate'); // Always revalidate with server
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.sendFile(path.join(__dirname, 'public', 'configure.html'));
 });
 
@@ -2166,6 +2184,10 @@ function generateFileTranslationPage(videoId, configStr, config) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>File Translation - SubMaker</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="shortcut icon" href="/favicon.svg">
+    <link rel="apple-touch-icon" href="/favicon.svg">
     <style>
         * {
             margin: 0;
@@ -3755,7 +3777,7 @@ app.get('/addon/:config/manifest.json', async (req, res) => {
 
         res.json(manifest);
     } catch (error) {
-        log.error(() => '[Manifest] Error:', error);
+        log.error(() => ['[Manifest] Error:', error]);
         res.status(500).json({ error: 'Failed to generate manifest' });
     }
 });
@@ -3770,7 +3792,7 @@ app.get('/addon/:config', (req, res, next) => {
         // Redirect to main configure page with config parameter
         res.redirect(302, `/configure?config=${encodeURIComponent(configStr)}`);
     } catch (error) {
-        log.error(() => '[Addon Base] Error:', error);
+        log.error(() => ['[Addon Base] Error:', error]);
         res.status(500).send('Failed to load configuration page');
     }
 });
@@ -3797,14 +3819,19 @@ app.use('/addon/:config', async (req, res, next) => {
 
             const builder = createAddonWithConfig(config, baseUrl);
             const router = getRouter(builder.getInterface());
-            routerCache.set(configStr, router);
-            log.debug(() => `[Router] Created and cached router for config`);
+            // Do not cache routers for configs that represent an error state
+            if (config && config.__sessionTokenError === true) {
+                log.warn(() => '[Router] Skipping cache for error config (session token missing/expired)');
+            } else {
+                routerCache.set(configStr, router);
+                log.debug(() => `[Router] Created and cached router for config`);
+            }
         }
 
         const router = routerCache.get(configStr);
         router(req, res, next);
     } catch (error) {
-        log.error(() => '[Router] Error:', error);
+        log.error(() => ['[Router] Error:', error]);
         next(error);
     }
 });
@@ -3812,35 +3839,35 @@ app.use('/addon/:config', async (req, res, next) => {
 // Error handling middleware - Route-specific handlers
 // Error handler for /addon/:config/subtitle/* routes (returns SRT format)
 app.use('/addon/:config/subtitle', (error, req, res, next) => {
-    log.error(() => '[Server] Subtitle Error:', error.message);
+    log.error(() => ['[Server] Subtitle Error:', error]);
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
     res.status(500).end('ERROR: Subtitle unavailable\n\n');
 });
 
 // Error handler for /addon/:config/translate/* routes (returns SRT format)
 app.use('/addon/:config/translate', (error, req, res, next) => {
-    log.error(() => '[Server] Translation Error:', error.message);
+    log.error(() => ['[Server] Translation Error:', error]);
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
     res.status(500).end('ERROR: Translation unavailable\n\n');
 });
 
 // Error handler for /addon/:config/translate-selector/* routes (returns HTML format)
 app.use('/addon/:config/translate-selector', (error, req, res, next) => {
-    log.error(() => '[Server] Translation Selector Error:', error.message);
+    log.error(() => ['[Server] Translation Selector Error:', error]);
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.status(500).end('<html><body><p>Error: Failed to load subtitle selector</p></body></html>');
 });
 
 // Error handler for /addon/:config/file-translate/* routes (returns redirect/HTML format)
 app.use('/addon/:config/file-translate', (error, req, res, next) => {
-    log.error(() => '[Server] File Translation Error:', error.message);
+    log.error(() => ['[Server] File Translation Error:', error]);
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.status(500).end('<html><body><p>Error: Failed to load file translation page</p></body></html>');
 });
 
 // Default error handler for manifest/router and other routes (JSON responses)
 app.use((error, req, res, next) => {
-    log.error(() => '[Server] General Error:', error.message);
+    log.error(() => ['[Server] General Error:', error]);
     res.status(500).json({ error: 'Internal server error' });
 });
 
