@@ -3804,7 +3804,9 @@ app.use('/addon/:config', async (req, res, next) => {
         const configStr = req.params.config;
 
         // Check cache first
-        if (!routerCache.has(configStr)) {
+        let router = routerCache.get(configStr);
+
+        if (!router) {
             log.debug(() => `[Router] Parsing config for new router (path: ${req.path})`);
             const config = await resolveConfigAsync(configStr, req);
             config.__configHash = computeConfigHash(configStr);
@@ -3819,7 +3821,7 @@ app.use('/addon/:config', async (req, res, next) => {
             const baseUrl = `${protocol}://${host}`;
 
             const builder = createAddonWithConfig(config, baseUrl);
-            const router = getRouter(builder.getInterface());
+            router = getRouter(builder.getInterface());
             // Do not cache routers for configs that represent an error state
             if (config && config.__sessionTokenError === true) {
                 log.warn(() => '[Router] Skipping cache for error config (session token missing/expired)');
@@ -3829,7 +3831,6 @@ app.use('/addon/:config', async (req, res, next) => {
             }
         }
 
-        const router = routerCache.get(configStr);
         router(req, res, next);
     } catch (error) {
         log.error(() => ['[Router] Error:', error]);
