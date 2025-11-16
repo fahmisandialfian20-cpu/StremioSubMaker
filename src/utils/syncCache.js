@@ -101,53 +101,40 @@ async function saveSyncedSubtitle(videoHash, languageCode, sourceSubId, syncData
 
 /**
  * Get all synced subtitles for a video hash and language
+ * Uses the configured storage adapter (Redis or filesystem)
  * @param {string} videoHash - Video file hash
  * @param {string} languageCode - Language code
  * @returns {Promise<Array>} Array of synced subtitle entries
  */
 async function getSyncedSubtitles(videoHash, languageCode) {
   try {
+    const adapter = await getStorageAdapter();
+    const pattern = `${videoHash}_${languageCode}_*`;
+
+    // List matching keys via the adapter
+    const keys = await adapter.list(StorageAdapter.CACHE_TYPES.SYNC, pattern);
     const results = [];
 
-    // Scan all subdirectories
-    const subdirs = await fs.readdir(SYNC_CACHE_DIR).catch(() => []);
+    for (const cacheKey of keys) {
+      try {
+        const entry = await adapter.get(cacheKey, StorageAdapter.CACHE_TYPES.SYNC);
+        if (!entry) continue;
 
-    for (const subdir of subdirs) {
-      const subdirPath = path.join(SYNC_CACHE_DIR, subdir);
-      const stat = await fs.stat(subdirPath).catch(() => null);
-
-      if (!stat || !stat.isDirectory()) continue;
-
-      // Read files in subdirectory
-      const files = await fs.readdir(subdirPath).catch(() => []);
-
-      for (const file of files) {
-        if (!file.endsWith('.json')) continue;
-
-        // Check if filename matches pattern
-        const cacheKey = file.replace('.json', '');
-        if (cacheKey.startsWith(`${videoHash}_${languageCode}_`)) {
-          const filePath = path.join(subdirPath, file);
-          try {
-            const content = await fs.readFile(filePath, 'utf8');
-            const entry = JSON.parse(content);
-            results.push({
-              cacheKey,
-              sourceSubId: entry.sourceSubId,
-              originalSubId: entry.originalSubId,
-              content: entry.content,
-              metadata: entry.metadata,
-              timestamp: entry.timestamp
-            });
-          } catch (error) {
-            log.warn(() => [`[Sync Cache] Failed to read ${file}:`, error.message]);
-          }
-        }
+        results.push({
+          cacheKey,
+          sourceSubId: entry.sourceSubId,
+          originalSubId: entry.originalSubId,
+          content: entry.content,
+          metadata: entry.metadata,
+          timestamp: entry.timestamp || Date.now()
+        });
+      } catch (error) {
+        log.warn(() => [`[Sync Cache] Failed to fetch entry for ${cacheKey}:`, error.message]);
       }
     }
 
     // Sort by timestamp (newest first)
-    results.sort((a, b) => b.timestamp - a.timestamp);
+    results.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
     log.debug(() => `[Sync Cache] Found ${results.length} synced subtitles for ${videoHash}_${languageCode}`);
     return results;
@@ -217,36 +204,15 @@ async function deleteSyncedSubtitle(videoHash, languageCode, sourceSubId) {
 }
 
 /**
- * Get total cache size and file count
+ * Get total cache size and entry count for sync cache
  * @returns {Promise<Object>} Cache statistics
  */
 async function getCacheStats() {
   try {
-    let totalSize = 0;
-    let fileCount = 0;
-
-    const subdirs = await fs.readdir(SYNC_CACHE_DIR).catch(() => []);
-
-    for (const subdir of subdirs) {
-      const subdirPath = path.join(SYNC_CACHE_DIR, subdir);
-      const stat = await fs.stat(subdirPath).catch(() => null);
-
-      if (!stat || !stat.isDirectory()) continue;
-
-      const files = await fs.readdir(subdirPath).catch(() => []);
-
-      for (const file of files) {
-        if (!file.endsWith('.json')) continue;
-
-        const filePath = path.join(subdirPath, file);
-        const fileStat = await fs.stat(filePath).catch(() => null);
-
-        if (fileStat) {
-          totalSize += fileStat.size;
-          fileCount++;
-        }
-      }
-    }
+    const adapter = await getStorageAdapter();
+    const totalSize = await adapter.size(StorageAdapter.CACHE_TYPES.SYNC);
+    const keys = await adapter.list(StorageAdapter.CACHE_TYPES.SYNC, '*');
+    const fileCount = Array.isArray(keys) ? keys.length : 0;
 
     return {
       totalSize,
@@ -262,83 +228,34 @@ async function getCacheStats() {
 }
 
 /**
- * Enforce cache size limit by removing oldest entries
+ * Enforce cache size limit using the storage adapter's cleanup logic
  * @returns {Promise<void>}
  */
 async function enforceCacheSizeLimit() {
   try {
-    const stats = await getCacheStats();
-
-    if (stats.totalSize <= MAX_CACHE_SIZE_BYTES) {
-      return; // Within limit
+    const adapter = await getStorageAdapter();
+    const result = await adapter.cleanup(StorageAdapter.CACHE_TYPES.SYNC);
+    if (result && (result.deleted > 0 || result.bytesFreed > 0)) {
+      log.debug(() => `[Sync Cache] Cleanup: deleted ${result.deleted} entries, freed ${result.bytesFreed} bytes`);
     }
-
-    log.debug(() => `[Sync Cache] Cache size (${stats.totalSizeMB} MB) exceeds limit (${MAX_CACHE_SIZE_GB} GB), cleaning up...`);
-
-    // Collect all cache files with their metadata
-    const allFiles = [];
-    const subdirs = await fs.readdir(SYNC_CACHE_DIR).catch(() => []);
-
-    for (const subdir of subdirs) {
-      const subdirPath = path.join(SYNC_CACHE_DIR, subdir);
-      const stat = await fs.stat(subdirPath).catch(() => null);
-
-      if (!stat || !stat.isDirectory()) continue;
-
-      const files = await fs.readdir(subdirPath).catch(() => []);
-
-      for (const file of files) {
-        if (!file.endsWith('.json')) continue;
-
-        const filePath = path.join(subdirPath, file);
-        const fileStat = await fs.stat(filePath).catch(() => null);
-
-        if (fileStat) {
-          allFiles.push({
-            path: filePath,
-            size: fileStat.size,
-            timestamp: fileStat.mtimeMs
-          });
-        }
-      }
-    }
-
-    // Sort by timestamp (oldest first)
-    allFiles.sort((a, b) => a.timestamp - b.timestamp);
-
-    // Delete oldest files until we're under the limit
-    let currentSize = stats.totalSize;
-    let deletedCount = 0;
-
-    for (const file of allFiles) {
-      if (currentSize <= MAX_CACHE_SIZE_BYTES * 0.8) { // Delete until 80% of limit
-        break;
-      }
-
-      try {
-        await fs.unlink(file.path);
-        currentSize -= file.size;
-        deletedCount++;
-      } catch (error) {
-        log.warn(() => [`[Sync Cache] Failed to delete ${file.path}:`, error.message]);
-      }
-    }
-
-    log.debug(() => `[Sync Cache] Deleted ${deletedCount} old files, new size: ${(currentSize / (1024 * 1024)).toFixed(2)} MB`);
-
   } catch (error) {
     log.error(() => ['[Sync Cache] Failed to enforce size limit:', error.message]);
   }
 }
 
 /**
- * Clear entire sync cache
+ * Clear entire sync cache via storage adapter
  * @returns {Promise<void>}
  */
 async function clearSyncCache() {
   try {
-    await fs.rm(SYNC_CACHE_DIR, { recursive: true, force: true });
-    await initSyncCache();
+    const adapter = await getStorageAdapter();
+    const keys = await adapter.list(StorageAdapter.CACHE_TYPES.SYNC, '*');
+
+    for (const key of keys) {
+      try { await adapter.delete(key, StorageAdapter.CACHE_TYPES.SYNC); } catch (_) { /* ignore */ }
+    }
+
     log.debug(() => '[Sync Cache] Cleared all cached synced subtitles');
   } catch (error) {
     log.error(() => ['[Sync Cache] Failed to clear cache:', error.message]);

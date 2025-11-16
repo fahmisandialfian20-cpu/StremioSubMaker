@@ -28,7 +28,7 @@ class SessionManager {
             : null;
         this.maxAge = options.maxAge || 90 * 24 * 60 * 60 * 1000; // 90 days (3 months) default
         this.persistencePath = options.persistencePath || path.join(process.cwd(), 'data', 'sessions.json');
-        this.autoSaveInterval = options.autoSaveInterval || 5 * 60 * 1000; // 5 minutes
+        this.autoSaveInterval = options.autoSaveInterval || 60 * 1000; // 1 minute
         this.shutdownTimeout = options.shutdownTimeout || 10 * 1000; // 10 seconds for shutdown save
 
         // Ensure data directory exists

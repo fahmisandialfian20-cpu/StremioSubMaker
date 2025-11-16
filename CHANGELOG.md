@@ -5,7 +5,6 @@ All notable changes to this project will be documented in this file.
 ## Unreleased
 
 - Sessions now use a sliding inactivity TTL: expire only after 90 days without access. Persistent storage TTL is refreshed on use, and original createdAt is preserved.
-- Fixed config page blank fields when opened from Stremio gear: frontend now resolves session tokens in `?config=` via new `GET /api/get-session/:token` to prefill saved settings.
 - Redis/HA optimizations:
   - Skip Redis preload of all sessions at startup (lazy load per token); can be re-enabled with `SESSION_PRELOAD=true`.
   - Do not mark sessions dirty on read in Redis mode and disable periodic auto-save timer to avoid redundant writes.
@@ -75,6 +74,7 @@ This release focuses on completely overhauling the session token/config persiste
 - Fixed no alerting when storage repeatedly fails
 - Fixed client not validating token format before storage
 - Fixed concurrent StorageFactory initializations causing race conditions
+- Fixed config page blank fields when opened from Stremio gear
 
 ## SubMaker 1.1.7
 

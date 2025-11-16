@@ -309,7 +309,7 @@ Translate to {target_language}.`;
             sourceLanguages: ['eng'], // Up to 3 source languages allowed
             targetLanguages: [],
             geminiApiKey: DEFAULT_API_KEYS.GEMINI,
-            geminiModel: 'gemini-flash-lite-latest',
+            geminiModel: 'gemini-2.5-flash-lite-preview-09-2025',
             promptStyle: 'strict', // 'natural' or 'strict'
             translationPrompt: STRICT_TRANSLATION_PROMPT,
             subtitleProviders: {
@@ -1140,10 +1140,25 @@ Translate to {target_language}.`;
      * Show validation feedback message
      * @param {HTMLElement} element - Feedback element
      * @param {string} type - 'success', 'error', or 'info'
-     * @param {string} message - Message to display
+     * @param {string|object} message - Message to display
      */
     function showValidationFeedback(element, type, message) {
-        element.textContent = message;
+        // Safely convert message to string, handling objects
+        let displayMessage = message;
+        if (typeof message === 'object' && message !== null) {
+            // If it's an object, try to extract a meaningful error message
+            if (message.message) {
+                displayMessage = message.message;
+            } else if (message.error) {
+                displayMessage = message.error;
+            } else {
+                displayMessage = JSON.stringify(message);
+            }
+        } else if (!message) {
+            displayMessage = 'Validation failed';
+        }
+
+        element.textContent = displayMessage;
         element.classList.remove('success', 'error', 'info');
         element.classList.add(type, 'show');
 
@@ -1656,7 +1671,7 @@ Translate to {target_language}.`;
 
         // Load Gemini model
         const modelSelect = document.getElementById('geminiModel');
-        const modelToUse = currentConfig.geminiModel || 'gemini-flash-lite-latest';
+        const modelToUse = currentConfig.geminiModel || 'gemini-2.5-flash-lite-preview-09-2025';
         if (modelSelect) {
             modelSelect.value = modelToUse;
         }
@@ -1773,7 +1788,7 @@ Translate to {target_language}.`;
             geminiApiKey: document.getElementById('geminiApiKey').value.trim(),
             // Save the selected model from the dropdown
             // Advanced settings can override this if enabled
-            geminiModel: document.getElementById('geminiModel')?.value || 'gemini-flash-lite-latest',
+            geminiModel: document.getElementById('geminiModel')?.value || 'gemini-2.5-flash-lite-preview-09-2025',
             promptStyle: promptStyle,
             translationPrompt: translationPrompt,
             sourceLanguages: currentConfig.sourceLanguages,

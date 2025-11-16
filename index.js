@@ -38,12 +38,19 @@ const PORT = process.env.PORT || 7001;
 
 // Initialize session manager with environment-based configuration
 // Limit to 50,000 sessions to prevent unbounded memory growth while allowing for production scale
-const sessionManager = getSessionManager({
+const sessionOptions = {
     maxSessions: parseInt(process.env.SESSION_MAX_SESSIONS) || 50000, // Limit to 50k concurrent sessions
     maxAge: parseInt(process.env.SESSION_MAX_AGE) || 90 * 24 * 60 * 60 * 1000, // 90 days (3 months)
-    autoSaveInterval: parseInt(process.env.SESSION_SAVE_INTERVAL) || 5 * 60 * 1000, // 5 minutes
     persistencePath: process.env.SESSION_PERSISTENCE_PATH || path.join(process.cwd(), 'data', 'sessions.json')
-});
+};
+// Only override autoSaveInterval if explicitly provided via env; otherwise let SessionManager default apply
+if (process.env.SESSION_SAVE_INTERVAL) {
+    const parsed = parseInt(process.env.SESSION_SAVE_INTERVAL, 10);
+    if (!Number.isNaN(parsed) && parsed > 0) {
+        sessionOptions.autoSaveInterval = parsed;
+    }
+}
+const sessionManager = getSessionManager(sessionOptions);
 
 // Deployment warning: In multi-instance/Redis mode, require stable encryption key
 if ((process.env.STORAGE_TYPE || 'filesystem') === 'redis' && !process.env.ENCRYPTION_KEY) {
@@ -934,9 +941,17 @@ app.post('/api/validate-gemini', async (req, res) => {
                     error: 'Invalid API key - authentication failed'
                 });
             } else if (apiError.response?.status === 400) {
+                // Extract error message, handling both string and object responses
+                let errorMessage = 'Invalid API key';
+                const errorData = apiError.response?.data?.error || apiError.response?.data?.message;
+                if (typeof errorData === 'string') {
+                    errorMessage = errorData;
+                } else if (errorData && typeof errorData === 'object') {
+                    errorMessage = errorData.message || JSON.stringify(errorData);
+                }
                 res.json({
                     valid: false,
-                    error: apiError.response?.data?.error || apiError.response?.data?.message || 'Invalid API key'
+                    error: errorMessage
                 });
             } else {
                 throw apiError;
@@ -3857,6 +3872,9 @@ app.use((error, req, res, next) => {
     const logToFile = process.env.LOG_TO_FILE !== 'false' ? 'ENABLED' : 'DISABLED';
     const logDir = process.env.LOG_DIR || 'logs/';
     const storageType = (process.env.STORAGE_TYPE || 'filesystem').toUpperCase();
+    // Session stats (after readiness, so counts are accurate)
+    const { activeSessions, maxSessions } = sessionManager.getStats();
+    const sessionsInfo = maxSessions ? `${activeSessions} / ${maxSessions}` : String(activeSessions);
 
     // Use console.startup to ensure banner always shows regardless of log level
     console.startup(`
@@ -3878,6 +3896,9 @@ app.use((error, req, res, next) => {
 ║                                                           ║
 ╚═══════════════════════════════════════════════════════════╝
     `);
+
+    // Also print a concise session count line
+    console.startup(`Active sessions: ${sessionsInfo}`);
 
     // Setup graceful shutdown handlers now that server is running
     sessionManager.setupShutdownHandlers(server);

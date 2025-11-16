@@ -15,7 +15,11 @@ function normalizeTargetName(name) {
     [/^Chinese\s*\(Simplified\)$/i, 'Simplified Chinese'],
     [/^Chinese\s*\(Traditional\)$/i, 'Traditional Chinese'],
     [/^Portuguese\s*\(Portugal\)$/i, 'European Portuguese'],
-    [/^Portuguese\s*\(European\)$/i, 'European Portuguese']
+    [/^Portuguese\s*\(European\)$/i, 'European Portuguese'],
+    // Fix for plain variants - default to standard/main variant to prevent Gemini ambiguity
+    [/^Portuguese$/i, 'European Portuguese'],
+    [/^Spanish$/i, 'Castilian Spanish'],
+    [/^Chinese$/i, 'Simplified Chinese']
   ];
   for (const [re, out] of rules) {
     if (re.test(n)) return out;
