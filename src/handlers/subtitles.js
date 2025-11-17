@@ -4,6 +4,8 @@ const SubDLService = require('../services/subdl');
 const SubSourceService = require('../services/subsource');
 const GeminiService = require('../services/gemini');
 const TranslationEngine = require('../services/translationEngine');
+const AniDBService = require('../services/anidb');
+const KitsuService = require('../services/kitsu');
 const { parseSRT, toSRT, parseStremioId } = require('../utils/subtitle');
 const { getLanguageName, getDisplayName } = require('../utils/languages');
 const { LRUCache } = require('lru-cache');
@@ -25,6 +27,10 @@ async function getStorageAdapter() {
   }
   return storageAdapter;
 }
+
+// Initialize anime ID mapping services
+const anidbService = new AniDBService();
+const kitsuService = new KitsuService();
 
 // Redact/noise-reduce helper for logging large cache keys
 function shortKey(v) {
@@ -1140,10 +1146,11 @@ function rankSubtitlesByFilename(subtitles, streamFilename, videoInfo = null) {
     };
   });
 
-  // Add episode metadata match bonus/penalty (for TV shows)
+  // Add episode metadata match bonus/penalty (for TV shows and anime)
   // This helps rank subtitles when filename matching fails (e.g., numeric IDs)
-  if (videoInfo && videoInfo.type === 'episode' && videoInfo.season && videoInfo.episode) {
-    const targetSeason = videoInfo.season;
+  if (videoInfo && (videoInfo.type === 'episode' || videoInfo.type === 'anime-episode') && videoInfo.episode) {
+    // Default season to 1 for anime when not present
+    const targetSeason = videoInfo.season || 1;
     const targetEpisode = videoInfo.episode;
 
     for (const sub of withScores) {
@@ -1158,14 +1165,21 @@ function rankSubtitlesByFilename(subtitles, streamFilename, videoInfo = null) {
         new RegExp(`season\\s*0*${targetSeason}.*episode\\s*0*${targetEpisode}`, 'i')  // Season 2 Episode 1
       ];
 
-      const hasCorrectEpisode = seasonEpisodePatterns.some(pattern => pattern.test(name));
+      // Anime-friendly episode-only patterns when type is anime-episode
+      const animeEpisodePatterns = [
+        new RegExp(`(?<=\\b|\\s|\\[|\\()e?p?0*${targetEpisode}(?=\\b|\\s|\\]|\\)|\\.|-|_)`, 'i'), // E01 / EP01 / 01
+        new RegExp(`[-_\\s\\[]0*${targetEpisode}(?=[\\]_\\s\\-.])`, 'i'),                         // - 01, _01, [01]
+      ];
+
+      const hasCorrectEpisode = seasonEpisodePatterns.some(pattern => pattern.test(name)) ||
+        (videoInfo.type === 'anime-episode' && animeEpisodePatterns.some(p => p.test(name)));
 
       if (hasCorrectEpisode) {
         // BONUS: Subtitle name explicitly mentions correct episode
         sub._matchScore += 2000; // Large bonus to prioritize correct episodes
       } else {
         // Check if subtitle has ANY episode number (wrong episode)
-        const hasWrongEpisode = /s\d+e\d+|\d+x\d+|season\s*\d+.*episode\s*\d+/i.test(name);
+        const hasWrongEpisode = /s\d+e\d+|\d+x\d+|season\s*\d+.*episode\s*\d+|\b(ep?\d{1,3})\b/i.test(name);
         if (hasWrongEpisode) {
           // PENALTY: Subtitle is for wrong episode (e.g., S02E11 when we want S02E01)
           sub._matchScore -= 3000; // Heavy penalty for wrong episode
@@ -1293,6 +1307,41 @@ function createSubtitleHandler(config) {
       }
 
       log.debug(() => `[Subtitles] Video info: ${JSON.stringify(videoInfo)}`);
+
+      // Handle anime content - try to map anime ID to IMDB ID
+      if (videoInfo.isAnime && videoInfo.animeId) {
+        log.debug(() => `[Subtitles] Anime content detected (${videoInfo.animeIdType}), attempting to map to IMDB ID`);
+
+        if (videoInfo.animeIdType === 'anidb') {
+          try {
+            const imdbId = await anidbService.getImdbId(videoInfo.anidbId);
+            if (imdbId) {
+              log.info(() => `[Subtitles] Mapped AniDB ${videoInfo.anidbId} to ${imdbId}`);
+              videoInfo.imdbId = imdbId;
+            } else {
+              log.warn(() => `[Subtitles] Could not find IMDB mapping for AniDB ${videoInfo.anidbId}, subtitles may be limited`);
+            }
+          } catch (error) {
+            log.error(() => `[Subtitles] Error mapping AniDB to IMDB: ${error.message}`);
+          }
+        } else if (videoInfo.animeIdType === 'kitsu') {
+          try {
+            const imdbId = await kitsuService.getImdbId(videoInfo.animeId);
+            if (imdbId) {
+              log.info(() => `[Subtitles] Mapped Kitsu ${videoInfo.animeId} to ${imdbId}`);
+              videoInfo.imdbId = imdbId;
+            } else {
+              log.warn(() => `[Subtitles] Could not find IMDB mapping for Kitsu ${videoInfo.animeId}, subtitles may be limited`);
+            }
+          } catch (error) {
+            log.error(() => `[Subtitles] Error mapping Kitsu to IMDB: ${error.message}`);
+          }
+        } else {
+          log.debug(() => `[Subtitles] No IMDB mapping available for ${videoInfo.animeIdType} IDs yet, will search by anime metadata`);
+          // For mal/anilist IDs, we'll need to implement mapping services
+          // Continue anyway - subtitle providers will skip search if no IMDB ID
+        }
+      }
 
       // Check if this is a session token error - if so, return error entry immediately
       if (config.__sessionTokenError === true) {
@@ -2588,6 +2637,11 @@ module.exports = {
    * Check if a user can start a new translation without hitting the concurrency limit
    * Used by the 3-click reset safety check to prevent purging cache if re-translation would fail
    */
-  canUserStartTranslation
+  canUserStartTranslation,
+  /**
+   * In-flight translations tracker
+   * Used by the 3-click reset safety check to prevent purging cache during active translations
+   */
+  inFlightTranslations
 };
 

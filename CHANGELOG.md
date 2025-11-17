@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## SubMaker 1.2.4
+
+**New Features:**
+- Anime content support: Added AniDB and Kitsu ID mapping services to resolve anime IDs to IMDB for subtitle searching
+- Manifest now accepts anime content type and additional ID prefixes (anidb, kitsu, mal, anilist, tmdb)
+- Subtitle ID parser enhanced to handle anime-specific ID formats with platform detection
+- All subtitle services updated to support anime-episode content type (OpenSubtitles, OpenSubtitles V3, SubDL, SubSource)
+
+**UI Improvements:**
+- Configuration page now features three-state theme toggle: Light, Dark and True Dark with cycling icons
+
+**Bug Fixes:**
+- Fixed SafetyBlock error: `inFlightTranslations` now properly exported and imported for 3-click cache reset safety checks
+- Subtitle services now gracefully skip search when IMDB ID unavailable (prevents errors with unmapped anime content)
+- Fixed anime episode subtitle search: All providers (SubDL, SubSource, OpenSubtitles, OpenSubtitles V3) now default to season 1 for anime episodes without explicit season numbers
+- Improved error handling: API error responses now logged safely with proper try-catch to prevent obscure error messages
+
 ## SubMaker 1.2.3
 
 **New Features:**
