@@ -215,7 +215,15 @@ function postprocessVTT(vttContent) {
       cleaned = cleaned.replace(/\{\\[^}]*\}/g, '');
 
       // Remove any remaining braces that might be malformed tags
-      cleaned = cleaned.replace(/\{[^}]*\}/g, '');
+      // But preserve single characters that might be text (subsrt-ts bug workaround)
+      cleaned = cleaned.replace(/\{([^}]*)\}/g, (match, content) => {
+        // If the content is a single character (likely text, not a tag), keep it
+        if (content.length === 1) {
+          return content;
+        }
+        // Otherwise, remove the entire thing (it's likely a malformed tag)
+        return '';
+      });
 
       // Handle escaped characters
       cleaned = cleaned.replace(/\\h/g, ' '); // non-breaking space
