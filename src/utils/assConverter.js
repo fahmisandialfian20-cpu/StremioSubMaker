@@ -265,8 +265,31 @@ function postprocessVTT(vttContent) {
         }
       });
 
-      // Remove actual ASS tags with digits (e.g., \i1, \an8, \fs20, \1a, \2c)
-      cleaned = cleaned.replace(/\\[a-z]*\d+[a-z0-9]*\}/gi, '');
+      // ===== CRITICAL FIX FOR FIRST LETTER LOSS =====
+      // subsrt-ts produces malformed tags where the first letter of text gets captured inside the tag
+      // Example: \an8T}adah! where T is the first letter of "Tadah!"
+      // We must handle this BEFORE other tag removal to preserve the text letter
+
+      // Fix 1: Handle malformed tags with first letter inside
+      // Pattern: \[letters][digits][LETTER]} → preserve only the letter
+      // Examples: \an8T}adah! -> Tadah!, \i1I}t's -> It's, \b1Y}ou -> You
+      cleaned = cleaned.replace(/\\[a-z]*\d+([a-zA-Z])\}/gi, '$1');
+
+      // Fix 2: Remove normal orphaned ASS tags with digits (without captured letters)
+      // Pattern: \[letters][digits]} → remove entire tag
+      // Examples: \an8} -> (removed), \i1} -> (removed), \fs20} -> (removed)
+      // Note: Won't match \an8T} because Fix 1 already handled it
+      cleaned = cleaned.replace(/\\[a-z]*\d+\}/gi, '');
+
+      // Fix 3: Remove leftover tag prefixes from complex tags
+      // After removing \fscx92} from \an8\fscx92}text, we're left with \an8text
+      // This removes the orphaned \an8 at the start of lines
+      cleaned = cleaned.replace(/^\\[a-z]+\d+/gim, '');
+
+      // Fix 4: Remove color/alpha tags with digit-first format
+      // Pattern: \[digit][letter][optional hex]} → remove
+      // Examples: \1c} -> (removed), \2a&HFFFFFF&} -> (removed)
+      cleaned = cleaned.replace(/\\\d+[ac][^}]*\}/gi, '');
 
       // Remove nested tags (e.g., \tag\subtag)
       cleaned = cleaned.replace(/\\[a-z]+\\[a-z0-9\\]*\}/gi, '');
