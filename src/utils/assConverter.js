@@ -242,7 +242,34 @@ function postprocessVTT(vttContent) {
       // For single letters after \, preserve the letter (it's text, not a tag: \T}adah! -> Tadah!)
       // For actual tags, remove entirely (\i1}text -> text, \an8}text -> text)
       cleaned = cleaned.replace(/\\([a-z])(\})/gi, '$1'); // Single letter: keep it
-      cleaned = cleaned.replace(/\\(?:[a-z]*\d+[a-z0-9]*|[a-z]{2,}[0-9]*|[a-z]+\\[a-z0-9\\]*)\}/gi, ''); // Real tags: remove
+
+      // Handle multi-letter patterns that might be corrupted text (e.g., \Ta}dah! -> Tadah!)
+      // Check if the letters form a known ASS tag; if not, preserve them (likely text)
+      cleaned = cleaned.replace(/\\([a-z]{2,})\}/gi, (match, letters) => {
+        // Whitelist of known ASS tags that might appear without digits
+        const knownTags = ['fn', 'fe', 'an', 'fs', 'fscx', 'fscy', 'fsp', 'frx', 'fry', 'frz',
+                          'clip', 'iclip', 'pos', 'move', 'org', 'fad', 'fade',
+                          'blur', 'bord', 'xbord', 'ybord', 'shad', 'xshad', 'yshad',
+                          'alpha', 'pbo', 'q', 'be', 'kf', 'ko', 'k', 'kt'];
+
+        // Check if letters match or start with a known tag
+        const lowerLetters = letters.toLowerCase();
+        const isKnownTag = knownTags.some(tag => lowerLetters === tag || lowerLetters.startsWith(tag));
+
+        if (isKnownTag) {
+          // It's a known ASS tag, remove it entirely
+          return '';
+        } else {
+          // It's not a known tag, likely corrupted text - preserve the letters
+          return letters;
+        }
+      });
+
+      // Remove actual ASS tags with digits (e.g., \i1, \an8, \fs20, \1a, \2c)
+      cleaned = cleaned.replace(/\\[a-z]*\d+[a-z0-9]*\}/gi, '');
+
+      // Remove nested tags (e.g., \tag\subtag)
+      cleaned = cleaned.replace(/\\[a-z]+\\[a-z0-9\\]*\}/gi, '');
 
       return cleaned;
     }
