@@ -2080,13 +2080,79 @@ async function handleTranslation(sourceFileId, targetLanguage, config) {
       return createConcurrencyLimitSubtitle(MAX_CONCURRENT_TRANSLATIONS_PER_USER);
     }
 
+    // === PRE-FLIGHT VALIDATION ===
+    // Download and validate source subtitle BEFORE returning loading message
+    // This prevents users from being stuck at "TRANSLATION IN PROGRESS" if subtitle is corrupted
+    log.debug(() => `[Translation] Pre-flight validation: downloading source subtitle ${sourceFileId}`);
+
+    let sourceContent;
+    try {
+      // Check download cache first
+      sourceContent = getDownloadCached(sourceFileId);
+
+      if (!sourceContent) {
+        // Download from provider
+        log.debug(() => `[Translation] Pre-flight: downloading from provider`);
+
+        if (sourceFileId.startsWith('subdl_')) {
+          if (!config.subtitleProviders?.subdl?.enabled) {
+            throw new Error('SubDL provider is disabled');
+          }
+          const subdl = new SubDLService(config.subtitleProviders.subdl.apiKey);
+          sourceContent = await subdl.downloadSubtitle(sourceFileId);
+        } else if (sourceFileId.startsWith('subsource_')) {
+          if (!config.subtitleProviders?.subsource?.enabled) {
+            throw new Error('SubSource provider is disabled');
+          }
+          const subsource = new SubSourceService(config.subtitleProviders.subsource.apiKey);
+          sourceContent = await subsource.downloadSubtitle(sourceFileId);
+        } else if (sourceFileId.startsWith('v3_')) {
+          if (!config.subtitleProviders?.opensubtitles?.enabled) {
+            throw new Error('OpenSubtitles provider is disabled');
+          }
+          const opensubtitlesV3 = new OpenSubtitlesV3Service();
+          sourceContent = await opensubtitlesV3.downloadSubtitle(sourceFileId);
+        } else {
+          if (!config.subtitleProviders?.opensubtitles?.enabled) {
+            throw new Error('OpenSubtitles provider is disabled');
+          }
+          const opensubtitles = new OpenSubtitlesService(config.subtitleProviders.opensubtitles);
+          sourceContent = await opensubtitles.downloadSubtitle(sourceFileId);
+        }
+
+        // Save to download cache for subsequent operations
+        try {
+          saveDownloadCached(sourceFileId, sourceContent);
+        } catch (_) {}
+      } else {
+        log.debug(() => `[Translation] Pre-flight: using cached source (${sourceContent.length} bytes)`);
+      }
+
+      // Validate source size - same check as in performTranslation
+      const minSize = Number(config.minSubtitleSizeBytes) || 200;
+      if (!sourceContent || sourceContent.length < minSize) {
+        log.warn(() => `[Translation] Pre-flight validation failed: source too small (${sourceContent?.length || 0} bytes < ${minSize})`);
+        // Return corruption error immediately instead of loading message
+        return createInvalidSubtitleMessage('Selected subtitle seems invalid (too small).');
+      }
+
+      log.debug(() => `[Translation] Pre-flight validation passed: ${sourceContent.length} bytes`);
+
+    } catch (error) {
+      log.error(() => ['[Translation] Pre-flight validation failed:', error.message]);
+      // Return error message instead of loading message
+      return createInvalidSubtitleMessage(`Download failed: ${error.message}`);
+    }
+
+    // === START BACKGROUND TRANSLATION ===
     // Mark translation as in progress and start it in background
     log.debug(() => ['[Translation] Not cached and not in-progress; starting translation key=', cacheKey]);
     translationStatus.set(cacheKey, { inProgress: true, startedAt: Date.now(), userHash: effectiveUserHash });
     userTranslationCounts.set(effectiveUserHash, currentCount + 1);
 
     // Create a promise for this translation that all simultaneous requests will wait for
-    const translationPromise = performTranslation(sourceFileId, targetLanguage, config, cacheKey, effectiveUserHash);
+    // Pass the already-downloaded sourceContent to avoid re-downloading
+    const translationPromise = performTranslation(sourceFileId, targetLanguage, config, cacheKey, effectiveUserHash, sourceContent);
     inFlightTranslations.set(cacheKey, translationPromise);
 
     // Start translation in background (don't await here)
@@ -2120,15 +2186,25 @@ async function handleTranslation(sourceFileId, targetLanguage, config) {
  * @param {string} targetLanguage - Target language code
  * @param {Object} config - Addon configuration
  * @param {string} cacheKey - Cache key for storing result
+ * @param {string} userHash - User hash for concurrency tracking
+ * @param {string} preDownloadedContent - Optional pre-downloaded source content (from pre-flight validation)
  */
-async function performTranslation(sourceFileId, targetLanguage, config, cacheKey, userHash) {
+async function performTranslation(sourceFileId, targetLanguage, config, cacheKey, userHash, preDownloadedContent = null) {
   try {
     log.debug(() => `[Translation] Background translation started for ${sourceFileId} to ${targetLanguage}`);
     cacheMetrics.apiCalls++;
 
-    // Fetch subtitle content, preferring 10min download cache first
-    // This avoids re-downloading the same source when translating after a direct download
-    let sourceContent = getDownloadCached(sourceFileId);
+    let sourceContent;
+
+    // Use pre-downloaded content if provided (from pre-flight validation)
+    if (preDownloadedContent) {
+      log.debug(() => `[Translation] Using pre-downloaded source from pre-flight validation (${preDownloadedContent.length} bytes)`);
+      sourceContent = preDownloadedContent;
+      // Skip download and validation since it was already done in pre-flight
+    } else {
+      // Fallback: Fetch subtitle content, preferring 10min download cache first
+      // This avoids re-downloading the same source when translating after a direct download
+      sourceContent = getDownloadCached(sourceFileId);
     if (sourceContent) {
       log.debug(() => `[Translation] Using cached source subtitle for ${sourceFileId} (${sourceContent.length} bytes)`);
     } else {
@@ -2175,23 +2251,24 @@ async function performTranslation(sourceFileId, targetLanguage, config, cacheKey
       } catch (_) {}
     }
 
-    // Validate source size before translation
-    try {
-      const minSize = Number(config.minSubtitleSizeBytes) || 200;
-      if (!sourceContent || sourceContent.length < minSize) {
-        const msg = createInvalidSubtitleMessage('Selected subtitle seems invalid (too small).');
-        // Save short-lived cache to bypass storage so we never overwrite permanent translations
-        await saveToBypassStorage(cacheKey, {
-          content: msg,
-          // expire after 10 minutes so user can try again later
-          expiresAt: Date.now() + 10 * 60 * 1000,
-          configHash: userHash  // Include user hash for isolation
-        });
-        translationStatus.delete(cacheKey);
-        log.debug(() => '[Translation] Aborted due to invalid/corrupted source subtitle (too small).');
-        return;
-      }
-    } catch (_) {}
+      // Validate source size before translation (only if not pre-validated)
+      try {
+        const minSize = Number(config.minSubtitleSizeBytes) || 200;
+        if (!sourceContent || sourceContent.length < minSize) {
+          const msg = createInvalidSubtitleMessage('Selected subtitle seems invalid (too small).');
+          // Save short-lived cache to bypass storage so we never overwrite permanent translations
+          await saveToBypassStorage(cacheKey, {
+            content: msg,
+            // expire after 10 minutes so user can try again later
+            expiresAt: Date.now() + 10 * 60 * 1000,
+            configHash: userHash  // Include user hash for isolation
+          });
+          translationStatus.delete(cacheKey);
+          log.debug(() => '[Translation] Aborted due to invalid/corrupted source subtitle (too small).');
+          return;
+        }
+      } catch (_) {}
+    }
 
     // Convert VTT originals to SRT for translation
     try {
