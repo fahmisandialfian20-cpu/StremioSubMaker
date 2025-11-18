@@ -212,10 +212,18 @@ function postprocessVTT(vttContent) {
       let cleaned = line;
 
       // Remove ASS override tags: {\...}
-      cleaned = cleaned.replace(/\{\\[^}]*\}/g, '');
+      // But preserve single letters that subsrt-ts mistakenly wraps (e.g., {\T} -> T)
+      cleaned = cleaned.replace(/\{\\([^}]*)\}/g, (match, content) => {
+        // If it's a single letter (subsrt-ts bug), preserve it
+        if (content.length === 1 && /[a-zA-Z]/.test(content)) {
+          return content;
+        }
+        // Otherwise remove the tag (it's a real ASS tag like \i1, \b0, etc.)
+        return '';
+      });
 
       // Remove any remaining braces that might be malformed tags
-      // But preserve single characters that might be text (subsrt-ts bug workaround)
+      // But preserve single characters that might be text
       cleaned = cleaned.replace(/\{([^}]*)\}/g, (match, content) => {
         // If the content is a single character (likely text, not a tag), keep it
         if (content.length === 1) {
