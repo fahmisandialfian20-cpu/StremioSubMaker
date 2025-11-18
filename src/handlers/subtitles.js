@@ -2692,7 +2692,7 @@ module.exports = {
       if (bypass && bypassEnabled && userHash) {
         // Check bypass cache with user-scoped key
         const scopedKey = `${baseKey}__u_${userHash}`;
-        const cached = await readFromBypassCache(scopedKey);
+        const cached = await readFromBypassStorage(scopedKey);
         return !!(cached && ((cached.content && typeof cached.content === 'string' && cached.content.length > 0) || (typeof cached === 'string' && cached.length > 0)));
       } else {
         // Check permanent cache

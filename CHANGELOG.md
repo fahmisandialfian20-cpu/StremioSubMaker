@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 **Bug Fixes:**
 - Translation flow now validates source subtitle size before returning loading message to prevent users from waiting indefinitely for corrupted files
+- Fixed purge trigger failing to detect cached translations in bypass cache mode: `hasCachedTranslation` now correctly calls `readFromBypassStorage` instead of non-existent `readFromBypassCache`
 
 ## SubMaker 1.2.5
 
