@@ -263,7 +263,7 @@ const MODEL_SPECIFIC_DEFAULTS = {
     thinkingBudget: -1,     // Dynamic thinking for flash model
     temperature: 0.5        // Lower temperature for consistency
   },
-  'gemini-2.5-pro-preview-05-06': {
+  'gemini-2.5-pro': {
     thinkingBudget: -1,     // Dynamic thinking for pro model
     temperature: 0.5        // Lower temperature for consistency
   }
