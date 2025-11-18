@@ -168,6 +168,13 @@ class GeminiService {
       }
 
       log.debug(() => `[Gemini] Model: ${this.model}, Output limit: ${limits.outputTokenLimit}, Input limit: ${limits.inputTokenLimit || 'unlimited'}`);
+
+      // Log Gemini API configuration for debugging
+      const thinkingDisplay = this.thinkingBudget === -1 ? 'dynamic' :
+                             this.thinkingBudget === 0 ? 'disabled' :
+                             this.thinkingBudget;
+      log.debug(() => `[Gemini] API config: temperature=${this.temperature}, topK=${this.topK}, topP=${this.topP}, thinkingBudget=${thinkingDisplay}, maxOutputTokens=${this.maxOutputTokens}, timeout=${this.timeout / 1000}s, maxRetries=${this.maxRetries}`);
+
       this._modelLimits = limits;
       return limits;
     } catch (error) {
