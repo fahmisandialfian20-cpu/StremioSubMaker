@@ -5,7 +5,6 @@ All notable changes to this project will be documented in this file.
 ## SubMaker 1.2.6
 
 **Bug Fixes:**
-- Fixed translation UI stuck at "TRANSLATION IN PROGRESS" when source subtitle is corrupted: Added pre-flight validation that downloads and checks subtitle validity before starting translation, returning immediate corruption error message instead of loading screen
 - Translation flow now validates source subtitle size before returning loading message to prevent users from waiting indefinitely for corrupted files
 
 ## SubMaker 1.2.5
