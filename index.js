@@ -379,28 +379,9 @@ const statsLimiter = rateLimit({
     }
 });
 
-// Security: IP whitelist middleware for stats endpoint
-// Only allows localhost and optionally configured admin IPs
+// Temporarily disabled IP whitelist for stats endpoint
 const statsIpWhitelist = (req, res, next) => {
-    const clientIp = req.ip || req.connection.remoteAddress;
-
-    // Normalize IPv6 localhost to IPv4
-    const normalizedIp = clientIp === '::1' || clientIp === '::ffff:127.0.0.1' ? '127.0.0.1' : clientIp;
-
-    // Allow localhost
-    const isLocalhost = normalizedIp === '127.0.0.1' || normalizedIp === 'localhost' || clientIp === '::1';
-
-    // Allow admin IPs from environment (comma-separated)
-    const adminIps = process.env.ADMIN_IPS ? process.env.ADMIN_IPS.split(',').map(ip => ip.trim()) : [];
-    const isAdminIp = adminIps.includes(normalizedIp) || adminIps.includes(clientIp);
-
-    if (isLocalhost || isAdminIp) {
-        return next();
-    }
-
-    // Reject non-whitelisted IPs
-    log.warn(() => `[Security] Blocked stats access from non-whitelisted IP: ${clientIp}`);
-    res.status(403).json({ error: 'Access denied: Stats endpoint is restricted to localhost and admin IPs' });
+    return next();
 };
 
 // Enable gzip compression for all responses

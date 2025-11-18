@@ -2,55 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
-## SubMaker 1.3.1
-
-**Security & Reliability Improvements:**
-
-- Session creation rate limiting: Added per-IP rate limiting (10 sessions/hour) to prevent session flooding attacks and monopolization of the global session pool
-- Storage session limits: Implemented hard cap of 60,000 sessions in persistent storage (Redis/filesystem) with automatic purge of oldest-accessed sessions to prevent unbounded growth
-- Memory session cap reduction: Reduced in-memory session limit from 50,000 to 30,000 for better memory management while maintaining production scale
-- Session monitoring & alerting: Added comprehensive monitoring with alerts for storage utilization (warning at >80%, critical at ≥90%), abnormal session growth (>20%/hour), and eviction spikes (>3x average)
-- Automatic storage cleanup: Hourly cleanup process that purges 100 oldest-accessed sessions when storage utilization reaches 90%, targeting 85% utilization
-- Defense-in-depth session management: Dual limits on both memory (30k, LRU eviction) and storage (60k, oldest-accessed purge) for robust resource protection
-
-**Environment Variables:**
-
-- `SESSION_MAX_SESSIONS`: Updated default from 50,000 to 30,000 (in-memory limit)
-- `SESSION_STORAGE_MAX_SESSIONS`: New variable, default 60,000 (storage limit)
-- `SESSION_STORAGE_MAX_AGE`: New variable, default 90 days (storage retention period)
-
-**API Enhancements:**
-
-- Enhanced `/api/session-stats` endpoint with storage session count, utilization percentage, and eviction tracking
-- Session statistics now async to support storage-based counting
-
 ## SubMaker 1.3.0
-
-**Improvements:**
-
-- Model-specific default configurations: individual default settings for each model on the configuration page for different translation workflows
-- Model-specific thinking budget and temperature defaults
-- Dynamic batch sizing: Changed from static to model-based function (Flash: 250, Flash-Lite: 200)
-- Default translation model changed from Flash-Lite to Flash on configuration page
-- Translation engine now retries batch 1 time on MAX_TOKENS errors before failing to avoid discarding the whole translation
-- Enhanced debug logging: Comprehensive Gemini API configuration display showing all parameters (model, temperature, topK, topP, thinkingBudget, maxOutputTokens, timeout, maxRetries)
-- Updated config page beta warning: Changed from "Flash" to "2.5 Pro" to reflect current beta status
-- Improved Kitsu API reliability: Added retry logic (2 retries at 2s and 6s delays) for all Kitsu and Cinemeta API calls to handle temporary server errors (500) and network issues
-
-**Bug Fixes:**
-
-- Fixed ASS/SSA to VTT conversion losing first character in ~50% of subtitle entries: Removed dialogue text preprocessing that interfered with subsrt-ts parser, moved ASS tag cleanup to post-processing stage
-- Enhanced ASS/SSA to VTT conversion quality: Added comprehensive preprocessing and postprocessing to prevent text loss, missing first letters, and formatting issues
-  - New enhanced converter with BOM removal, malformed tag fixing, and smart override tag handling
-  - Updated subsrt-ts from 2.0.1 to 2.1.2 for improved conversion reliability
-  - Multi-layer fallback strategy: Enhanced converter → subsrt-ts → manual parser
-  - Fixes missing first letters, weird appendings, text loss from malformed tags, and empty output
-- Fixed .ass to .vtt conversion producing empty files (~23 bytes): Now validates converted VTT contains timing cues and falls back to manual ASS parser if library conversion produces invalid output
-- Removed unused advanced configs from install page
 
 **New Features:**
 
-- Gemini 2.5 Pro model support: Added Gemini 2.5 Pro (gemini-2.5-pro-preview-05-06) to translation model dropdown with optimized defaults (dynamic thinking, temperature 0.5)
+- Added Gemini 2.5 Pro to translation model dropdown with optimized defaults
 - Optional batch context feature: Include original surrounding entries and previous translations when processing batches for improved translation coherence across batch boundaries (disabled by default, can be enabled in Advanced Settings with configurable context size 1-10)
 - MicroDVD .sub format support: All subtitle providers now support MicroDVD .sub files with automatic conversion
 - Season pack subtitle support: SubSource and SubDL now automatically extract individual episodes from season pack ZIP archives
@@ -62,6 +18,38 @@ All notable changes to this project will be documented in this file.
   - Detects anime-specific patterns: "complete", "batch", "full series", episode ranges "01-12", "1~12"
   - Episode extraction using anime-friendly patterns: "01", "ep01", "[01]"
   - Avoids false matches with resolutions (1080p) and years (2023)
+
+**Improvements:**
+
+- Changed default translation model from Flash-Lite to Flash on configuration page
+- Updated config page beta warning: Changed from "Flash" to "2.5 Pro" to reflect current beta status
+- Model-specific default configurations: individual default settings for each model on the configuration page for different translation workflows
+- Model-specific thinking budget and temperature defaults
+- Dynamic batch sizing: Changed from static to model-based function
+- Translation engine now retries batch 1 time on MAX_TOKENS errors before failing to avoid discarding the whole translation
+- Enhanced debug logging: Comprehensive Gemini API configuration display showing all parameters (model, temperature, topK, topP, thinkingBudget, maxOutputTokens, timeout, maxRetries)
+- Improved Kitsu API reliability: Added retry logic (2 retries at 2s and 6s delays) for all Kitsu and Cinemeta API calls to handle temporary server errors (500) and network issues
+- Session statistics now async to support storage-based counting
+
+**Security & Reliability:**
+
+- Session creation rate limiting: Added per-IP rate limiting (10 sessions/hour) to prevent session flooding attacks and monopolization of the global session pool
+- Storage session limits: Implemented hard cap of 60,000 sessions in persistent storage (Redis/filesystem) with automatic purge of oldest-accessed sessions to prevent unbounded growth
+- Memory session cap reduction: Reduced in-memory session limit from 50,000 to 30,000 for better memory management while maintaining production scale
+- Session monitoring & alerting: Added comprehensive monitoring with alerts for storage utilization (warning at >80%, critical at ≥90%), abnormal session growth (>20%/hour), and eviction spikes (>3x average)
+- Automatic storage cleanup: Hourly cleanup process that purges 100 oldest-accessed sessions when storage utilization reaches 90%
+
+**Environment Variables:**
+
+- `SESSION_MAX_SESSIONS`: Updated default from 50,000 to 30,000 (in-memory limit)
+- `SESSION_STORAGE_MAX_SESSIONS`: New variable, default 60,000 (storage limit)
+- `SESSION_STORAGE_MAX_AGE`: New variable, default 90 days (storage retention period)
+
+**Bug Fixes:**
+
+- Fixed .ass to .vtt conversion producing empty files (~23 bytes): Now validates converted VTT contains timing cues and falls back to manual ASS parser if library conversion produces invalid output
+- Updated subsrt-ts from 2.0.1 to 2.1.2 for improved conversion reliability
+- Removed unused advanced configs from install page
 
 ## SubMaker 1.2.6
 

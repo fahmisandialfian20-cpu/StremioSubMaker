@@ -491,7 +491,6 @@ class SessionManager {
             storageUtilization: this.storageMaxSessions ? (storageCount / this.storageMaxSessions * 100).toFixed(2) + '%' : 'N/A',
             maxAge: this.maxAge,
             storageMaxAge: this.storageMaxAge,
-            persistencePath: this.persistencePath,
             storageType: storageType,
             lastEvictionCount: this.lastEvictionCount,
             // Note: In Redis mode with lazy loading, activeSessions is only in-memory count
