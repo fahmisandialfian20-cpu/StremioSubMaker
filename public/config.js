@@ -61,7 +61,7 @@ Translate to {target_language}.`;
             temperature: 0.5
         },
         'gemini-2.5-pro': {
-            thinkingBudget: -1,
+            thinkingBudget: 0,
             temperature: 0.5
         }
     };
@@ -1847,7 +1847,13 @@ Translate to {target_language}.`;
 
         // Load Gemini model
         const modelSelect = document.getElementById('geminiModel');
-        const modelToUse = currentConfig.geminiModel || 'gemini-2.5-flash-lite-preview-09-2025';
+        let modelToUse = currentConfig.geminiModel || 'gemini-2.5-flash-lite-preview-09-2025';
+
+        // Migrate old Pro preview model ID to new stable ID
+        if (modelToUse === 'gemini-2.5-pro-preview-05-06') {
+            modelToUse = 'gemini-2.5-pro';
+        }
+
         if (modelSelect) {
             modelSelect.value = modelToUse;
         }
