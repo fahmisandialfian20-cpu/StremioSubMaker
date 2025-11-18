@@ -12,6 +12,10 @@ All notable changes to this project will be documented in this file.
 - Default translation model changed from Flash-Lite to Flash on configuration page
 - Translation engine now retries batch 1 time on MAX_TOKENS errors before failing to avoid discarding the whole translation
 - Enhanced debug logging: Comprehensive Gemini API configuration display showing all parameters (model, temperature, topK, topP, thinkingBudget, maxOutputTokens, timeout, maxRetries)
+- Updated config page beta warning: Changed from "Flash" to "2.5 Pro" to reflect current beta status
+- Enhanced OpenSubtitles configuration UI:
+  - Added "(Recommended)" label to Auth implementation option
+  - Added warning message to V3 option: "V3 doesn't show all OpenSubtitles results. Auth is faster and less problematic."
 
 **Bug Fixes:**
 
