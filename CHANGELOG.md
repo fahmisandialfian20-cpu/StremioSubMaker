@@ -11,6 +11,7 @@ All notable changes to this project will be documented in this file.
 **Bug Fixes:**
 
 - Fixed Android subtitle display: Added `Content-Disposition: attachment` header to all translation responses (loading messages, partial results, bypass cache) to ensure Android/Stremio Android properly refreshes subtitle content and doesn't cache stale loading messages
+- Fixed SubSource API key validation timing out: endpoint now reuses `SubSourceService` client (proper headers, pooled agents, DNS cache) and performs a single lightweight validation request with clearer error messages
 
 ## SubMaker 1.3.1
 
@@ -339,4 +340,3 @@ All notable changes to this project will be documented in this file.
 **Bug Fixes:**
 - Fixed SRT integrity during partial loading: entries reindexed and tail message positioned after last translated timestamp
 - Fixed addon URL generation for private networks (192.168.x.x, 10.x.x.x, 172.16-31.x.x ranges now recognized as local, preventing forced HTTPS)
-
