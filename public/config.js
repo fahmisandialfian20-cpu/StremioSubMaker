@@ -2515,12 +2515,23 @@ Translate to {target_language}.`;
             mobileToggle.checked = currentConfig.mobileMode === true;
             mobileToggle.addEventListener('change', (e) => {
                 currentConfig.mobileMode = e.target.checked;
-            }, { once: true });
+            });
+        } else {
+            // If the toggle isn't present, preserve existing value in state
+            currentConfig.mobileMode = currentConfig.mobileMode === true;
         }
     }
 
     async function handleSubmit(e) {
         e.preventDefault();
+
+        // Sync mobile mode state into currentConfig before building payload
+        try {
+            const mobileToggle = document.getElementById('mobileMode');
+            if (mobileToggle) {
+                currentConfig.mobileMode = mobileToggle.checked;
+            }
+        } catch (_) {}
 
         const promptStyle = document.getElementById('promptStyle').value;
         let translationPrompt = '';

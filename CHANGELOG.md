@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## SubMaker 1.3.3
 
+**New Features:**
+- Learn Mode: Adds dual-language subtitles outputs ("Learn <Language>") with configurable order for language learning
+- Mobile Mode: Holds Stremio subtitles requests until the translation is finished before returning it
+
 **SubSource:**
 - Downloads: CDN-first with endpoint fallback. When available, we now fetch the provider's direct download link first (4s timeout) and fall back to the authenticated `/subtitles/{id}/download` endpoint with retries, then details?CDN as a final fallback. This significantly reduces user-facing timeouts on slow endpoints while preserving existing ZIP/VTT/SRT handling.
 - Latency tuning: Reduced primary `/subtitles/{id}/download` retry budget to ~7s and, on the first retryable failure, launch a parallel details>CDN fetch and return the first success. This caps worst-case latency and improves reliability on slow or flaky endpoints.
@@ -23,15 +27,10 @@ All notable changes to this project will be documented in this file.
 - Format awareness and file-upload translation: infer actual format for OpenSubtitles V3 results from filename/URL (no longer hardcoded SRT); convert uploaded VTT/ASS/SSA to SRT server-side before translation; and always download translated uploads as .srt.
 
 **Other Improvements:**
-- Learn Mode: Added dual-language WebVTT outputs ("Learn <Language>") with configurable order for language learning
 - Anime season-pack episode detection: match "- 01" and "01en/01eng" filenames inside ZIPs across SubSource, SubDL, and OpenSubtitles.
 - Docker: Make Redis AOF fsync settings explicit in `docker-compose.yaml` (`--appendfsync everysec`, `--no-appendfsync-on-rewrite no`) to improve durability and avoid increased risk during AOF rewrites.
- - Configuration: The per-language subtitles cap is now configurable via environment variable `MAX_SUBTITLES_PER_LANGUAGE` (default 12, max 50). This replaces the previously hardcoded limit and helps tune UI performance on large result sets.
-
-**Config Page:**
-- Dedicated Learn Mode controls: new languages card with search/quick-select chips plus order and placement options, with validation that blocks save unless learn targets are chosen.
-- Modal/help polish: replaced the floating info FAB with a persistent Help button, unified modal handlers, and added scrollbar-gutter/padding adjustments so opening overlays no longer shifts the page or leaves background scroll unlocked.
-- UI/performance tuning: lighter background (removed heavy blur/gradients), 3D-styled header/buttons, accessible SVG card icons, delegated language-grid handlers, and reduced console noise/service worker logging for a smoother experience.
+- Configuration: The per-language subtitles cap is now configurable via environment variable `MAX_SUBTITLES_PER_LANGUAGE` (default 12, max 50). This replaces the previously hardcoded limit and helps tune UI performance on large result sets.
+- Multiple changes to config page
 
 **Other Bug Fixes:**
 - Gemini safety handling: Fixed case where Gemini returned `promptFeedback.blockReason` with no candidates. These are now classified as `PROHIBITED_CONTENT`, enabling the correct error subtitle and retry behavior instead of a generic "No response candidates" error.

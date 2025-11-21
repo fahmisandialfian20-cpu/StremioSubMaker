@@ -1505,7 +1505,13 @@ app.get('/addon/:config/translate/:sourceFileId/:targetLang', searchLimiter, val
         const isAlreadyInFlight = inFlightRequests.has(dedupKey);
 
         if (isAlreadyInFlight && waitForFullTranslation) {
-            log.debug(() => `[Translation] Mobile mode duplicate request for ${sourceFileId} to ${targetLang} - waiting for final result`);
+            // Don't keep piling up long-held connections in mobile mode; the first request will deliver the final SRT
+            log.debug(() => `[Translation] Mobile mode duplicate request for ${sourceFileId} to ${targetLang} - short-circuiting with 202 while primary request is held`);
+            res.status(202);
+            res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+            res.setHeader('Pragma', 'no-cache');
+            res.setHeader('Retry-After', '3');
+            return res.send('Translation already in progress; waiting on primary request.');
         } else if (isAlreadyInFlight) {
             log.debug(() => `[Translation] Duplicate request detected for ${sourceFileId} to ${targetLang} - checking for partial results`);
 

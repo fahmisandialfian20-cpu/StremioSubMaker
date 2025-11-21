@@ -1833,12 +1833,12 @@
         }
 
         .version-badge-wrapper {
-            display: inline-flex;
+            display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 0.65rem;
+            gap: 0.35rem;
             margin-top: 0.5rem;
-            flex-wrap: wrap;
         }
 
         /* Prevent text selection on hero title, subtitle, and version badge */
@@ -2553,7 +2553,7 @@
                                     </div>
 
                                     <div class="validate-tile">
-                                        <div class="tile-eyebrow" style="text-align:center;">Run a quick ping before saving to spot typos instantly.</div>
+                                        <div class="tile-eyebrow" style="text-align:center;">Run a quick ping before saving to validate your credentials.</div>
                                         <button type="button" class="validate-api-btn" id="validateOpenSubtitles" title="Validate OpenSubtitles credentials">
                                             <span class="validate-icon">&#10003;</span>
                                             <span class="validate-text">Run Test</span>
@@ -2958,14 +2958,6 @@
 
                     <div class="form-group">
                         <label>
-                            <input type="checkbox" id="mobileMode">
-                            Mobile mode
-                            <span class="label-description">Holds translation requests and sends the final subtitle only when ready. Use this if you're watching on Android.</span>
-                        </label>
-                    </div>
-
-                    <div class="form-group">
-                        <label>
                             <input type="checkbox" id="cacheEnabled" checked>
                             Enable SubMaker Database
                             <span class="label-description">Reads and caches translated subtitles from/to our database. Avoids re-translating already-translated subtitles. Reduces API usage and improves performance.</span>
@@ -2983,7 +2975,7 @@
                     <div class="form-group">
                         <label>
                             <input type="checkbox" id="learnModeEnabled">
-                            Enable Learn Mode
+                            Learn Mode
                             <span class="label-description">Adds "Learn (Language)" entries that output dual-language WebVTT with source and translated lines for language learning.</span>
                         </label>
                     </div>
@@ -3003,6 +2995,14 @@
                                 Target Top • Source Bottom
                             </label>
                         </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="mobileMode">
+                            Mobile mode (beta)
+                            <span class="label-description">Holds translation requests and sends the final subtitle only when ready. Use this if you're watching on Android/iOS. No partial translations, no loading messages. Might freeze the stream until translation is ready. Flash-lite recommended.</span>
+                        </label>
                     </div>
 
                 </div>
