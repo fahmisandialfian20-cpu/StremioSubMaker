@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## SubMaker 1.3.4
+
+**Infrastructure & Deployment:**
+- Docker Hub Integration: Pre-built multi-platform images now available at [xtremexq/submaker](https://hub.docker.com/r/xtremexq/submaker)
+- GitHub Actions: Automated Docker image publishing workflow for AMD64 and ARM64 platforms on release
+- Docker Compose: Updated to use pre-built Docker Hub images by default for faster deployment
+- Redis Configuration: Enhanced with connection timeouts (300s) and TCP keepalive (60s) for improved reliability
+- Security: Improved .dockerignore to prevent encryption keys from being copied into Docker images
+- Documentation: Complete rewrite of Docker deployment guide with Docker Hub examples and multiple deployment options
+
 ## SubMaker 1.3.3
 
 **New Features:**
