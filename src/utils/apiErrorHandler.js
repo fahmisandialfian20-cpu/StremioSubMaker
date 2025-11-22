@@ -133,10 +133,19 @@ function logApiError(error, serviceName, operation, options = {}) {
   if (error.response && error.response.data && !options.skipResponseData) {
     // Only log response data for non-retryable errors or when explicitly requested
     if (!parsed.isRetryable || options.logResponseData) {
+      const truncateLimit = (() => {
+        if (typeof options.truncateResponseData === 'number' && options.truncateResponseData > 0) {
+          return Math.max(50, options.truncateResponseData); // enforce a sensible floor
+        }
+        return 500; // default limit
+      })();
+
       try {
         const data = error.response.data;
-        if (typeof data === 'string' && data.length > 500) {
-          log.error(() => [`${logPrefix} Response data (truncated):`, data.substring(0, 500) + '...']);
+        if (typeof data === 'string') {
+          const truncated = data.length > truncateLimit ? data.substring(0, truncateLimit) + '...' : data;
+          const suffix = data.length > truncateLimit ? ' (truncated)' : '';
+          log.error(() => [`${logPrefix} Response data${suffix}:`, truncated]);
         } else if (typeof data === 'object' && data !== null) {
           // Log only essential fields for objects
           const essentialData = {
@@ -145,9 +154,15 @@ function logApiError(error, serviceName, operation, options = {}) {
             code: data.code,
             status: data.status
           };
-          log.error(() => [`${logPrefix} Response data:`, JSON.stringify(essentialData)]);
+          const serialized = JSON.stringify(essentialData);
+          const truncated = serialized.length > truncateLimit ? serialized.substring(0, truncateLimit) + '...' : serialized;
+          const suffix = serialized.length > truncateLimit ? ' (truncated)' : '';
+          log.error(() => [`${logPrefix} Response data${suffix}:`, truncated]);
         } else {
-          log.error(() => [`${logPrefix} Response data:`, String(data)]);
+          const stringified = String(data);
+          const truncated = stringified.length > truncateLimit ? stringified.substring(0, truncateLimit) + '...' : stringified;
+          const suffix = stringified.length > truncateLimit ? ' (truncated)' : '';
+          log.error(() => [`${logPrefix} Response data${suffix}:`, truncated]);
         }
       } catch (logError) {
         // If logging the response data fails, log a safe error message

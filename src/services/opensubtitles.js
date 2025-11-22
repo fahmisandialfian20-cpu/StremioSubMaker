@@ -538,8 +538,8 @@ class OpenSubtitlesService {
       }
 
       // First, request download link
-      // Use the download client (no Api-Key) to avoid shared-key throttling
-      const downloadResponse = await this.downloadClient.post('/download', {
+      // Use the primary client so Api-Key is sent (required by OpenSubtitles for /download)
+      const downloadResponse = await this.client.post('/download', {
         file_id: parseInt(baseFileId)
       });
 
@@ -907,7 +907,7 @@ class OpenSubtitlesService {
       return text;
 
     } catch (error) {
-      handleDownloadError(error, 'OpenSubtitles');
+      handleDownloadError(error, 'OpenSubtitles', { logResponseData: true, truncateResponseData: 400 });
     }
   }
 

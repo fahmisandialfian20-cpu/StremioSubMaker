@@ -3,7 +3,7 @@ services:
   submaker:
     # Use pre-built image from Docker Hub (recommended)
     # image: xtremexq/submaker:latest
-    # Or build locally (comment out 'image' above and uncomment 'build' below)
+    # Or build locally
     build: .
     container_name: submaker-local
     ports:
