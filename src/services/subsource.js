@@ -710,6 +710,8 @@ class SubSourceService {
           const seasonEpisodePatterns = [
             new RegExp(`s0*${targetSeason}e0*${targetEpisode}(?![0-9])`, 'i'),        // S02E01, s02e01 (ensure not matching S02E011)
             new RegExp(`${targetSeason}x0*${targetEpisode}(?![0-9])`, 'i'),           // 2x01
+            new RegExp(`s0*${targetSeason}[\\s._-]*x[\\s._-]*e?0*${targetEpisode}(?![0-9])`, 'i'), // S02xE01, S02x1
+            new RegExp(`0*${targetSeason}[\\s._-]*x[\\s._-]*e?0*${targetEpisode}(?![0-9])`, 'i'),  // 2xE01, 02x01
             new RegExp(`s0*${targetSeason}\\.e0*${targetEpisode}(?![0-9])`, 'i'),     // S02.E01
             new RegExp(`season\\s*0*${targetSeason}.*episode\\s*0*${targetEpisode}(?![0-9])`, 'i')  // Season 2 Episode 1
           ];
@@ -965,6 +967,8 @@ class SubSourceService {
           const seasonEpisodePatterns = [
             new RegExp(`s0*${season}e0*${episode}(?![0-9])`, 'i'),        // S02E01, s02e01
             new RegExp(`${season}x0*${episode}(?![0-9])`, 'i'),           // 2x01
+            new RegExp(`s0*${season}[\\s._-]*x[\\s._-]*e?0*${episode}(?![0-9])`, 'i'), // S02xE01, S02x1
+            new RegExp(`0*${season}[\\s._-]*x[\\s._-]*e?0*${episode}(?![0-9])`, 'i'),  // 2xE01, 02x01
             new RegExp(`s0*${season}\\.e0*${episode}(?![0-9])`, 'i'),     // S02.E01
             new RegExp(`season[\\s._-]*0*${season}[\\s._-]*episode[\\s._-]*0*${episode}(?![0-9])`, 'i')  // Season 2 Episode 1
           ];

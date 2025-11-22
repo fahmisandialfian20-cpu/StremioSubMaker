@@ -4,9 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## SubMaker v1.3.5
 
-##Improvements:**
+**Improvements:**
 
 - Initial html/js/css refactoring of the configure.html page
+- Config: Coerce OpenSubtitles username/password to strings to prevent `trim()` type errors and manifest crashes when non-string values are saved
+- Subtitle episode matching: Accept `SxxxEyy` / `xx xEyy` season-pack naming (e.g., `S01xE01`) across SubSource, SubDL, and OpenSubtitles to avoid missing episodes inside ZIPs
 
 ## SubMaker v1.3.4
 

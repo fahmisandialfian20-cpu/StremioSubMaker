@@ -131,6 +131,8 @@ class OpenSubtitlesV3Service {
           const seasonEpisodePatterns = [
             new RegExp(`s0*${effectiveSeason}e0*${episode}\\b`, 'i'),           // S03E02, S3E2
             new RegExp(`${effectiveSeason}x0*${episode}\\b`, 'i'),              // 3x02
+            new RegExp(`s0*${effectiveSeason}[\\s._-]*x[\\s._-]*e?0*${episode}\\b`, 'i'), // S03xE02, S03x2
+            new RegExp(`0*${effectiveSeason}[\\s._-]*x[\\s._-]*e?0*${episode}\\b`, 'i'),  // 03xE02, 3xE02
             new RegExp(`s0*${effectiveSeason}\\.e0*${episode}\\b`, 'i'),        // S03.E02
             new RegExp(`season\\s*0*${effectiveSeason}.*episode\\s*0*${episode}\\b`, 'i')  // Season 3 Episode 2
           ];

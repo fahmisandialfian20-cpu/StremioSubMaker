@@ -288,6 +288,8 @@ class SubDLService {
             const seasonEpisodePatterns = [
               new RegExp(`s0*${season}e0*${episode}\\b`, 'i'),              // S02E03, s02e03
               new RegExp(`\\b${season}x0*${episode}\\b`, 'i'),              // 2x03
+              new RegExp(`s0*${season}[\\s._-]*x[\\s._-]*e?0*${episode}\\b`, 'i'), // S02xE03, S02x3
+              new RegExp(`\\b0*${season}[\\s._-]*x[\\s._-]*e?0*${episode}\\b`, 'i'), // 02xE03, 2xE03
               new RegExp(`s0*${season}\\.e0*${episode}\\b`, 'i'),           // S02.E03
               new RegExp(`season\\s*0*${season}.*episode\\s*0*${episode}\\b`, 'i')  // Season 2 Episode 3
             ];
@@ -443,6 +445,8 @@ class SubDLService {
         const seasonEpisodePatterns = [
           new RegExp(`s0*${season}e0*${episode}(?![0-9])`, 'i'),        // S02E01, s02e01
           new RegExp(`${season}x0*${episode}(?![0-9])`, 'i'),           // 2x01
+          new RegExp(`s0*${season}[\\s._-]*x[\\s._-]*e?0*${episode}(?![0-9])`, 'i'), // S02xE01, S02x1
+          new RegExp(`0*${season}[\\s._-]*x[\\s._-]*e?0*${episode}(?![0-9])`, 'i'),  // 02xE01, 2xE01
           new RegExp(`s0*${season}\\.e0*${episode}(?![0-9])`, 'i'),     // S02.E01
           new RegExp(`season[\\s._-]*0*${season}[\\s._-]*episode[\\s._-]*0*${episode}(?![0-9])`, 'i')  // Season 2 Episode 1
         ];

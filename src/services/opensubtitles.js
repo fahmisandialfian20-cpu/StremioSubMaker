@@ -448,6 +448,8 @@ class OpenSubtitlesService {
           const seasonEpisodePatterns = [
             new RegExp(`s0*${targetSeason}e0*${targetEpisode}(?![0-9])`, 'i'),
             new RegExp(`${targetSeason}x0*${targetEpisode}(?![0-9])`, 'i'),
+            new RegExp(`s0*${targetSeason}[\\s._-]*x[\\s._-]*e?0*${targetEpisode}(?![0-9])`, 'i'), // S01xE01, S01x1
+            new RegExp(`0*${targetSeason}[\\s._-]*x[\\s._-]*e?0*${targetEpisode}(?![0-9])`, 'i'),  // 01xE01, 1xE01
             new RegExp(`s0*${targetSeason}\\.e0*${targetEpisode}(?![0-9])`, 'i'),
             new RegExp(`season\\s*0*${targetSeason}.*episode\\s*0*${targetEpisode}(?![0-9])`, 'i')
           ];
@@ -577,6 +579,8 @@ class OpenSubtitlesService {
             const patterns = [
               new RegExp(`s0*${season}e0*${episode}(?:v\\d+)?`, 'i'),
               new RegExp(`${season}x0*${episode}(?:v\\d+)?`, 'i'),
+              new RegExp(`s0*${season}[\\s._-]*x[\\s._-]*e?0*${episode}(?:v\\d+)?`, 'i'),
+              new RegExp(`0*${season}[\\s._-]*x[\\s._-]*e?0*${episode}(?:v\\d+)?`, 'i'),
               new RegExp(`season\\s*0*${season}.*episode\\s*0*${episode}`, 'i'),
               new RegExp(`s0*${season}\\.e0*${episode}(?:v\\d+)?`, 'i')
             ];

@@ -242,8 +242,13 @@ function normalizeConfig(config) {
   // Guardrail: if OpenSubtitles Auth is selected without credentials, fall back to V3 to avoid runtime auth errors
   const openSubConfig = mergedConfig.subtitleProviders?.opensubtitles;
   if (openSubConfig) {
-    openSubConfig.username = (openSubConfig.username || '').trim();
-    openSubConfig.password = (openSubConfig.password || '').trim();
+    const normalizeCredential = (value) => {
+      if (value === undefined || value === null) return '';
+      // Accept non-string values but always coerce to string to prevent trim() type errors
+      return String(value).trim();
+    };
+    openSubConfig.username = normalizeCredential(openSubConfig.username);
+    openSubConfig.password = normalizeCredential(openSubConfig.password);
     const wantsAuth = openSubConfig.implementationType === 'auth';
     const missingCreds = !openSubConfig.username || !openSubConfig.password;
     if (wantsAuth && missingCreds) {
