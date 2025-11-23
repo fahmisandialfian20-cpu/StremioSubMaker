@@ -122,6 +122,7 @@ const fileTranslationBodySchema = Joi.object({
   content: subtitleContentSchema,
   targetLanguage: looseLanguageSchema,
   configStr: configStringSchema,
+  advancedSettings: Joi.object().unknown(true).optional(), // Allow advanced settings override
 });
 
 module.exports = {

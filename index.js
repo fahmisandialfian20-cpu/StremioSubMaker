@@ -1174,7 +1174,7 @@ app.get('/api/get-session/:token', async (req, res) => {
 // API endpoint to translate uploaded subtitle file
 app.post('/api/translate-file', fileTranslationLimiter, validateRequest(fileTranslationBodySchema, 'body'), async (req, res) => {
     try {
-        const { content, targetLanguage, configStr } = req.body;
+        const { content, targetLanguage, configStr, advancedSettings } = req.body;
 
         if (!content) {
             return res.status(400).send('Subtitle content is required');
@@ -1192,6 +1192,21 @@ app.post('/api/translate-file', fileTranslationLimiter, validateRequest(fileTran
 
         // Parse config
         const config = await resolveConfigAsync(configStr, req);
+
+        // Merge advanced settings if provided (allows overriding settings in file upload UI)
+        if (advancedSettings) {
+            config.advancedSettings = {
+                ...config.advancedSettings,
+                ...advancedSettings
+            };
+            // Also update top-level fields if they're in advanced settings
+            if (advancedSettings.geminiModel) {
+                config.geminiModel = advancedSettings.geminiModel;
+            }
+            if (advancedSettings.translationPrompt !== undefined) {
+                config.translationPrompt = advancedSettings.translationPrompt;
+            }
+        }
 
         // Get language name for better translation context
         const targetLangName = getLanguageName(targetLanguage) || targetLanguage;
@@ -1318,14 +1333,31 @@ function createAddonWithConfig(config, baseUrl = '') {
 async function resolveConfigAsync(configStr, req) {
     const localhost = isLocalhost(req);
     const isToken = /^[a-f0-9]{32}$/.test(configStr);
+
+    // Detect Stremio Kai
+    const userAgent = (req.headers['user-agent'] || '').toLowerCase();
+    const isStremioKai = userAgent.includes('stremio') && (userAgent.includes('kai') || userAgent.includes('kaios'));
+
+    if (isStremioKai) {
+        log.debug(() => `[Stremio Kai] Detected Stremio Kai request - User-Agent: ${userAgent}`);
+    }
+
     if (!isToken) {
         return await parseConfig(configStr, { isLocalhost: localhost });
     }
     // Token path: getSession now automatically checks cache first, then storage
     const cfg = await sessionManager.getSession(configStr);
     if (cfg) {
+        if (isStremioKai) {
+            log.debug(() => `[Stremio Kai] Successfully resolved session token for config`);
+        }
         return normalizeConfig(cfg);
     }
+
+    if (isStremioKai) {
+        log.warn(() => `[Stremio Kai] Session token not found: ${configStr.substring(0, 8)}...`);
+    }
+
     const defaultConfig = getDefaultConfig();
     defaultConfig.__sessionTokenError = true;
     return defaultConfig;
@@ -4086,6 +4118,10 @@ function generateFileTranslationPage(videoId, configStr, config) {
                 // Build config with advanced settings
                 const baseConfig = ${JSON.stringify(config)};
 
+                // Get the original config string (session token) from the URL
+                const urlParams = new URLSearchParams(window.location.search);
+                const originalConfigStr = urlParams.get('config') || '';
+
                 // Apply advanced settings if any are changed from defaults
                 const selectedModel = advancedModel.value;
                 const selectedPrompt = customPrompt.value.trim();
@@ -4095,7 +4131,6 @@ function generateFileTranslationPage(videoId, configStr, config) {
                 const topK = parseInt(advancedTopK.value);
                 const maxTokens = parseInt(advancedMaxTokens.value);
                 const timeout = parseInt(advancedTimeout.value);
-                
 
                 // Create modified config with advanced settings
                 const modifiedConfig = { ...baseConfig };
@@ -4122,8 +4157,16 @@ function generateFileTranslationPage(videoId, configStr, config) {
                     translationTimeout: timeout
                 };
 
-                // Serialize config (proper UTF-8 to base64 encoding)
-                const configStr = btoa(unescape(encodeURIComponent(JSON.stringify(modifiedConfig))));
+                // Use original session token if available, otherwise fall back to base64 (for localhost)
+                let configStr;
+                if (originalConfigStr && /^[a-f0-9]{32}$/.test(originalConfigStr)) {
+                    // Use session token and include advanced settings separately
+                    configStr = originalConfigStr;
+                    // Note: We'll need to modify the API to accept advanced settings
+                } else {
+                    // Fallback: Serialize config (proper UTF-8 to base64 encoding) for localhost
+                    configStr = btoa(unescape(encodeURIComponent(JSON.stringify(modifiedConfig))));
+                }
 
                 // Send to translation API
                 const response = await fetch('/api/translate-file', {
@@ -4134,7 +4177,8 @@ function generateFileTranslationPage(videoId, configStr, config) {
                     body: JSON.stringify({
                         content: fileContent,
                         targetLanguage: targetLang.value,
-                        configStr: configStr
+                        configStr: configStr,
+                        advancedSettings: modifiedConfig.advancedSettings
                     })
                 });
 
