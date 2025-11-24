@@ -13,12 +13,14 @@ const { toISO6391, toISO6392 } = require('../utils/languages');
 const { handleSearchError, handleDownloadError, logApiError } = require('../utils/apiErrorHandler');
 const { httpAgent, httpsAgent, dnsLookup } = require('../utils/httpAgents');
 const { detectAndConvertEncoding } = require('../utils/encodingDetector');
+const { appendHiddenInformationalNote } = require('../utils/subtitle');
 const zlib = require('zlib');
 const log = require('../utils/logger');
 
 const SUBSOURCE_API_URL = 'https://api.subsource.net/api/v1';
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 const MAX_LINK_CACHE = 2000; // in-memory direct-link cache size
+const MAX_ZIP_BYTES = 25 * 1024 * 1024; // hard cap for ZIP downloads (~25MB) to avoid huge packs
 
 /**
  * Create an informative SRT subtitle when an episode is not found in a season pack
@@ -33,20 +35,52 @@ function createEpisodeNotFoundSubtitle(episode, season, availableFiles = []) {
   // Try to extract episode numbers from available files to help user
   const foundEpisodes = availableFiles
     .map(filename => {
-      // Match common episode patterns
-      const match = filename.match(/(?:episode|ep|e|oad|ova)\s*(\d+)/i);
-      return match ? parseInt(match[1]) : null;
+      // Match explicit episode labels (Episode 12, Ep12, Cap 12, etc.)
+      const labeled = filename.match(/(?:episode|episodio|capitulo|cap|ep|e|ova|oad)\s*(\d{1,4})/i);
+      if (labeled && labeled[1]) return parseInt(labeled[1], 10);
+
+      // Fallback: any standalone 1-4 digit number not obviously a resolution/year
+      const generic = filename.match(/(?:^|[^0-9])(\d{1,4})(?=[^0-9]|$)/);
+      if (generic && generic[1]) {
+        const n = parseInt(generic[1], 10);
+        if (Number.isNaN(n)) return null;
+        // Skip common resolutions/years
+        if ([480, 720, 1080, 2160].includes(n)) return null;
+        if (n >= 1900 && n <= 2099) return null;
+        return n;
+      }
+      return null;
     })
-    .filter(ep => ep !== null)
+    .filter(ep => ep !== null && ep < 4000)
     .sort((a, b) => a - b);
 
-  const availableInfo = foundEpisodes.length > 0
-    ? `\nAvailable: Episodes ${foundEpisodes.join(', ')}`
-    : '';
+  const uniqueEpisodes = [...new Set(foundEpisodes)];
+  const availableInfo = uniqueEpisodes.length > 0
+    ? `Pack contains ~${uniqueEpisodes.length} files, episodes ${uniqueEpisodes[0]}-${uniqueEpisodes[uniqueEpisodes.length - 1]}`
+    : 'No episode numbers detected in pack.';
 
-  return `1
+  const message = `1
 00:00:00,000 --> 04:00:00,000
-Episode ${seasonEpisodeStr} not found in this subtitle pack.${availableInfo}`;
+Episode ${seasonEpisodeStr} not found in this subtitle pack.
+${availableInfo}
+Try another subtitle or a different provider.`;
+
+  return appendHiddenInformationalNote(message);
+}
+
+// Create a concise SRT when a ZIP is too large to process
+function createZipTooLargeSubtitle(limitBytes, actualBytes) {
+  const toMb = (bytes) => Math.round((bytes / (1024 * 1024)) * 10) / 10;
+  const limitMb = toMb(limitBytes);
+  const actualMb = toMb(actualBytes);
+
+  const message = `1
+00:00:00,000 --> 04:00:00,000
+Subtitle pack is too large to process.
+Size: ${actualMb} MB (limit: ${limitMb} MB).
+Please pick another subtitle or provider.`;
+
+  return appendHiddenInformationalNote(message);
 }
 
 class SubSourceService {
@@ -955,10 +989,29 @@ class SubSourceService {
 
       if (isZipByMagicBytes || contentType.includes('application/zip') ||
           contentType.includes('application/x-zip')) {
+        // Guard against huge ZIPs before attempting to parse
+        const zipSize = responseBuffer.length;
+        if (zipSize > MAX_ZIP_BYTES) {
+          log.warn(() => `[SubSource] ZIP too large (${zipSize} bytes > ${MAX_ZIP_BYTES}); returning info subtitle instead of parsing`);
+          return createZipTooLargeSubtitle(MAX_ZIP_BYTES, zipSize);
+        }
+
+        // Validate ZIP signature before parsing
+        if (!isZipByMagicBytes) {
+          log.error(() => '[SubSource] Response declared as ZIP but missing PK signature');
+          throw new Error('Invalid ZIP file from SubSource (missing ZIP header)');
+        }
+
         // Handle ZIP file
         const JSZip = require('jszip');
         log.debug(() => '[SubSource] Detected ZIP file format (checking contents)');
-        const zip = await JSZip.loadAsync(responseBuffer, { base64: false });
+        let zip;
+        try {
+          zip = await JSZip.loadAsync(responseBuffer, { base64: false });
+        } catch (zipErr) {
+          log.error(() => ['[SubSource] Failed to parse ZIP from SubSource:', zipErr.message]);
+          throw new Error('Invalid ZIP file from SubSource (corrupted or incomplete)');
+        }
 
         const entries = Object.keys(zip.files);
 

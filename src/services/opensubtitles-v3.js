@@ -4,10 +4,27 @@ const { handleSearchError, handleDownloadError } = require('../utils/apiErrorHan
 const { httpAgent, httpsAgent, dnsLookup } = require('../utils/httpAgents');
 const { detectAndConvertEncoding } = require('../utils/encodingDetector');
 const { version } = require('../utils/version');
+const { appendHiddenInformationalNote } = require('../utils/subtitle');
 const log = require('../utils/logger');
 
 const OPENSUBTITLES_V3_BASE_URL = 'https://opensubtitles-v3.strem.io/subtitles/';
 const USER_AGENT = `SubMaker v${version}`;
+const MAX_ZIP_BYTES = 25 * 1024 * 1024; // hard cap for ZIP downloads (~25MB) to avoid huge packs
+
+// Create a concise SRT when a ZIP is too large to process
+function createZipTooLargeSubtitle(limitBytes, actualBytes) {
+  const toMb = (bytes) => Math.round((bytes / (1024 * 1024)) * 10) / 10;
+  const limitMb = toMb(limitBytes);
+  const actualMb = toMb(actualBytes);
+
+  const message = `1
+00:00:00,000 --> 04:00:00,000
+Subtitle pack is too large to process.
+Size: ${actualMb} MB (limit: ${limitMb} MB).
+Please pick another subtitle or provider.`;
+
+  return appendHiddenInformationalNote(message);
+}
 
 /**
  * OpenSubtitles V3 Service - Uses official Stremio OpenSubtitles V3 addon
@@ -358,6 +375,11 @@ class OpenSubtitlesV3Service {
         const isZip = buf.length > 4 && buf[0] === 0x50 && buf[1] === 0x4B && buf[2] === 0x03 && buf[3] === 0x04;
 
         if (isZip) {
+          if (buf.length > MAX_ZIP_BYTES) {
+            log.warn(() => `[OpenSubtitles V3] ZIP too large (${buf.length} bytes > ${MAX_ZIP_BYTES}); returning info subtitle instead of parsing`);
+            return createZipTooLargeSubtitle(MAX_ZIP_BYTES, buf.length);
+          }
+
           const JSZip = require('jszip');
           const zip = await JSZip.loadAsync(buf, { base64: false });
           const entries = Object.keys(zip.files);

@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## SubMaker v1.4.1
+
+**Bug Fixes:**
+- Provider downloads that return 404 or corrupted ZIPs now surface as user-facing subtitles (SubDL, SubSource, OpenSubtitles, OpenSubtitles V3).
+- Season-pack "episode not found" subtitles are now padded and include detected episode ranges so they bypass min-size rejection and give clearer guidance.
+- Min-size guard now allows internal informational subtitles to surface instead of being replaced by generic corruption errors.
+- Added 25 MB ZIP size caps for SubSource, SubDL, OpenSubtitles, and OpenSubtitles V3; oversized packs return a user-facing subtitle instead of being parsed.
+- Hidden informational notes are now emitted (as >4h cues) to keep addon-generated subtitles above Stremio’s minimum-size heuristics while keeping the note off-screen.
+
 ## SubMaker v1.4.0
 
 **New Features:**

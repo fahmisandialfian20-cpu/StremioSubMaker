@@ -5,10 +5,12 @@ const { handleSearchError, handleDownloadError, handleAuthError, parseApiError }
 const { httpAgent, httpsAgent, dnsLookup } = require('../utils/httpAgents');
 const { detectAndConvertEncoding } = require('../utils/encodingDetector');
 const { version } = require('../utils/version');
+const { appendHiddenInformationalNote } = require('../utils/subtitle');
 const log = require('../utils/logger');
 
 const OPENSUBTITLES_API_URL = 'https://api.opensubtitles.com/api/v1';
 const USER_AGENT = `SubMaker v${version}`;
+const MAX_ZIP_BYTES = 25 * 1024 * 1024; // hard cap for ZIP downloads (~25MB) to avoid huge packs
 
 const AUTH_FAILURE_TTL_MS = 5 * 60 * 1000; // Keep invalid credentials blocked for 5 minutes
 const credentialFailureCache = new Map();
@@ -87,20 +89,58 @@ function createEpisodeNotFoundSubtitle(episode, season, availableFiles = []) {
 
     const foundEpisodes = (availableFiles || [])
       .map(filename => {
-        const match = String(filename || '').match(/(?:episode|ep|e|oad|ova)\s*(\d+)/i);
-        return match ? parseInt(match[1], 10) : null;
+        // Match explicit episode labels (Episode 12, Ep12, Cap 12, etc.)
+        const labeled = String(filename || '').match(/(?:episode|episodio|capitulo|cap|ep|e|ova|oad)\s*(\d{1,4})/i);
+        if (labeled && labeled[1]) return parseInt(labeled[1], 10);
+
+        // Fallback: any standalone 1-4 digit number not obviously a resolution/year
+        const generic = String(filename || '').match(/(?:^|[^0-9])(\d{1,4})(?=[^0-9]|$)/);
+        if (generic && generic[1]) {
+          const n = parseInt(generic[1], 10);
+          if (Number.isNaN(n)) return null;
+          if ([480, 720, 1080, 2160].includes(n)) return null;
+          if (n >= 1900 && n <= 2099) return null;
+          return n;
+        }
+        return null;
       })
-      .filter(ep => ep !== null)
+      .filter(ep => ep !== null && ep < 4000)
       .sort((a, b) => a - b);
 
-    const availableInfo = foundEpisodes.length > 0
-      ? `\nAvailable: Episodes ${foundEpisodes.join(', ')}`
-      : '';
+    const uniqueEpisodes = [...new Set(foundEpisodes)];
+    const availableInfo = uniqueEpisodes.length > 0
+      ? `Pack contains ~${uniqueEpisodes.length} files, episodes ${uniqueEpisodes[0]}-${uniqueEpisodes[uniqueEpisodes.length - 1]}`
+      : 'No episode numbers detected in pack.';
 
-    return `1\n00:00:00,000 --> 04:00:00,000\nEpisode ${seasonEpisodeStr} not found in this subtitle pack.${availableInfo}`;
+    const message = `1
+00:00:00,000 --> 04:00:00,000
+Episode ${seasonEpisodeStr} not found in this subtitle pack.
+${availableInfo}
+Try another subtitle or a different provider.`;
+
+    return appendHiddenInformationalNote(message);
   } catch (_) {
-    return `1\n00:00:00,000 --> 00:00:10,000\nEpisode not found in this subtitle pack.`;
+    const fallback = `1
+00:00:00,000 --> 04:00:00,000
+Episode not found in this subtitle pack.
+`;
+    return appendHiddenInformationalNote(fallback);
   }
+}
+
+// Create a concise SRT when a ZIP is too large to process
+function createZipTooLargeSubtitle(limitBytes, actualBytes) {
+  const toMb = (bytes) => Math.round((bytes / (1024 * 1024)) * 10) / 10;
+  const limitMb = toMb(limitBytes);
+  const actualMb = toMb(actualBytes);
+
+  const message = `1
+00:00:00,000 --> 04:00:00,000
+Subtitle pack is too large to process.
+Size: ${actualMb} MB (limit: ${limitMb} MB).
+Please pick another subtitle or provider.`;
+
+  return appendHiddenInformationalNote(message);
 }
 
 /**
@@ -567,6 +607,11 @@ class OpenSubtitlesService {
       const isZip = buf.length > 4 && buf[0] === 0x50 && buf[1] === 0x4B && buf[2] === 0x03 && buf[3] === 0x04;
 
       if (isZip) {
+        if (buf.length > MAX_ZIP_BYTES) {
+          log.warn(() => `[OpenSubtitles] ZIP too large (${buf.length} bytes > ${MAX_ZIP_BYTES}); returning info subtitle instead of parsing`);
+          return createZipTooLargeSubtitle(MAX_ZIP_BYTES, buf.length);
+        }
+
         const JSZip = require('jszip');
         const zip = await JSZip.loadAsync(buf, { base64: false });
         const entries = Object.keys(zip.files);

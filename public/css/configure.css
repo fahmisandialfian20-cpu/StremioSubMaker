@@ -2290,6 +2290,10 @@
             animation: warningPulse 2s ease-in-out infinite;
             user-select: none;
             -webkit-tap-highlight-color: transparent;
+            font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", "Twemoji Mozilla", sans-serif;
+            line-height: 1;
+            display: inline-flex;
+            align-items: center;
         }
 
         .v3-warning-tooltip .tooltip-bubble {
@@ -2305,7 +2309,7 @@
             overflow-wrap: anywhere;
             opacity: 0;
             visibility: hidden;
-            display: none;
+            display: none !important;
             pointer-events: none;
             transition: opacity 0.2s ease, transform 0.2s ease;
             z-index: 10000;
@@ -2335,7 +2339,7 @@
         /* Show tooltip on hover/focus */
         .v3-warning-tooltip:hover .tooltip-bubble,
         .v3-warning-tooltip .warning-icon:focus + .tooltip-bubble {
-            display: block;
+            display: block !important;
             opacity: 1;
             visibility: visible;
             pointer-events: auto;
@@ -2365,6 +2369,7 @@
 
             .v3-warning-tooltip:hover .tooltip-bubble,
             .v3-warning-tooltip .warning-icon:focus + .tooltip-bubble {
+                display: block !important;
                 transform: translateY(-50%) translateX(0);
             }
         }
