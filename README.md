@@ -4,7 +4,7 @@
 
 Watch any content in your language!
 
-SubMaker fetches subtitles from multiple sources and allows you to translate them instantly using Google's Gemini AI—or alternative providers like DeepL, OpenAI, Anthropic, XAI, DeepSeek, Mistral, OpenRouter, or Cloudflare Workers—all without leaving your player.
+SubMaker fetches subtitles from multiple sources and allows you to translate them instantly using Google's Gemini AI (or alternative providers like DeepL, OpenAI, Anthropic, XAI, DeepSeek, Mistral, OpenRouter, or Cloudflare Workers), all without leaving your player.
 
 No-Translation mode: simply fetch selected languages from OpenSubtitles, SubSource and SubDL.
 
