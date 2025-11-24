@@ -2,6 +2,46 @@
 
 All notable changes to this project will be documented in this file.
 
+## SubMaker v1.4.2
+
+**Critical Bug Fix - Comprehensive Cache Prevention:**
+
+- **Fixed critical incomplete cache fix**: The fix for cross-user configuration contamination only added cache prevention headers to `/api/get-session/:token` endpoint. Problems kept occurring.
+
+**Complete fix includes:**
+  1. **Early middleware**: `/addon` path already in `noStorePaths` array to catch all addon routes at the earliest middleware layer
+  2. **Disabled ETags globally**: `app.set('etag', false)` prevents any conditional caching mechanisms
+  3. **Explicit cache headers on all user-specific routes** (defense-in-depth):
+     - **Configuration pages**: `/`, `/configure`, `/file-upload`, `/subtitle-sync` - Aggressive no-store headers to prevent config leakage
+     - **Addon routes**:
+       - `/addon/:config` - Base addon path redirect
+       - `/addon/:config/manifest.json` - Primary manifest endpoint that Stremio uses
+       - `/addon/:config/configure` - Addon configuration redirect
+       - `/addon/:config/subtitle/*` - Custom subtitle download routes
+       - `/addon/:config/translate/*` - Custom translation routes
+       - `/addon/:config/translate-selector/*` - Translation selector routes
+       - `/addon/:config/learn/*` - Learn mode dual-language routes
+       - `/addon/:config/error-subtitle/*` - Error subtitle routes
+       - `/addon/:config/file-translate/*` - File translation routes
+       - `/addon/:config/sync-subtitles/*` - Subtitle sync routes
+       - `/addon/:config/xsync/*` - Synced subtitle download routes
+     - **Session API routes**:
+       - `/api/create-session` - Session creation endpoint
+       - `/api/update-session/:token` - Session update endpoint
+       - `/api/get-session/:token` - Session retrieval (already had headers from v1.4.0)
+     - **Translation & File API routes**:
+       - `/api/translate-file` - File translation endpoint with user config
+       - `/api/save-synced-subtitle` - Synced subtitle storage with user config
+     - **Model Discovery & Validation API routes**:
+       - `/api/gemini-models` - Gemini model discovery with user credentials
+       - `/api/models/:provider` - Generic provider model discovery with user credentials
+       - `/api/validate-gemini` - Gemini API key validation
+       - `/api/validate-subsource` - SubSource API key validation
+       - `/api/validate-subdl` - SubDL API key validation
+       - `/api/validate-opensubtitles` - OpenSubtitles credentials validation
+
+**Impact**: This fix ensures complete isolation between users by preventing browsers, proxies, and CDNs from caching any user-specific data (configurations, credentials, session tokens, or API responses). All 26+ user-specific routes now have aggressive `no-store, no-cache, must-revalidate, private, max-age=0` headers with defense-in-depth protection.
+
 ## SubMaker v1.4.1
 
 **Bug Fixes:**
