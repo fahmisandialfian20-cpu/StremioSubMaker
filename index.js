@@ -172,6 +172,8 @@ async function deduplicate(key, fn) {
 // Create Express app
 const app = express();
 app.set('trust proxy', 1)
+// CRITICAL: Disable ETags globally to prevent conditional caching that could leak user configs
+app.set('etag', false)
 
 // Helper: compute a short hash for a config string (used to scope bypass cache per user/config)
 function computeConfigHash(configStr) {
@@ -558,9 +560,22 @@ app.use(express.json({ limit: '1mb' }));
 
 // Custom caching middleware for different file types
 app.use((req, res, next) => {
-    // config.js and configure.html should never be cached aggressively
-    if (req.path === '/config.js' || req.path === '/configure.html') {
-        res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+    // CRITICAL: Paths that must NEVER be cached (contain user-specific data)
+    const noStorePaths = [
+        '/config.js',
+        '/configure.html',
+        '/addon',  // Catch all addon routes at earliest middleware layer
+        '/api/get-session'  // User session data
+    ];
+
+    // Check if current path matches any no-store path
+    const shouldPreventCache = noStorePaths.some(path =>
+        req.path === path || req.path.startsWith(path + '/')
+    );
+
+    if (shouldPreventCache) {
+        // Aggressive no-cache headers to prevent any form of caching
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
         res.setHeader('Pragma', 'no-cache');
         res.setHeader('Expires', '0');
     }
@@ -620,16 +635,17 @@ if (process.env.FORCE_SESSION_READY !== 'false') {
 }
 
 // Serve configuration page with no-cache to ensure users always get latest version
-// Browser will revalidate with server on each visit, but can use 304 Not Modified if unchanged
+// CRITICAL: Prevent caching to avoid cross-user config contamination
 app.get('/', (req, res) => {
-    res.setHeader('Cache-Control', 'no-cache, must-revalidate'); // Always revalidate with server
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
     res.sendFile(path.join(__dirname, 'public', 'configure.html'));
 });
 
 app.get('/configure', (req, res) => {
-    res.setHeader('Cache-Control', 'no-cache, must-revalidate'); // Always revalidate with server
+    // CRITICAL: Prevent caching to avoid cross-user config contamination (can receive config via query params)
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
     res.sendFile(path.join(__dirname, 'public', 'configure.html'));
@@ -769,6 +785,11 @@ app.get('/api/test-opensubtitles', async (req, res) => {
 
 // API endpoint to fetch Gemini models
 app.post('/api/gemini-models', async (req, res) => {
+    // CRITICAL: Prevent caching to avoid cross-user config contamination (user credentials in request body)
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     try {
         const { apiKey, configStr } = req.body || {};
         let resolvedConfig = null;
@@ -809,6 +830,11 @@ app.post('/api/gemini-models', async (req, res) => {
 
 // Generic model discovery endpoint for alternative providers
 app.post('/api/models/:provider', async (req, res) => {
+    // CRITICAL: Prevent caching to avoid cross-user config contamination (user-specific config in request body)
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     try {
         const providerKey = String(req.params.provider || '').toLowerCase();
         const { apiKey, configStr } = req.body || {};
@@ -907,6 +933,11 @@ app.post('/api/models/:provider', async (req, res) => {
 });
 
 app.post('/api/validate-subsource', async (req, res) => {
+    // CRITICAL: Prevent caching to avoid cross-user config contamination (user credentials in request body)
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     try {
         const { apiKey } = req.body || {};
 
@@ -967,6 +998,11 @@ app.post('/api/validate-subsource', async (req, res) => {
 
 // API endpoint to validate SubDL API key
 app.post('/api/validate-subdl', async (req, res) => {
+    // CRITICAL: Prevent caching to avoid cross-user config contamination (user credentials in request body)
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     try {
         const { apiKey } = req.body;
 
@@ -1050,6 +1086,11 @@ app.post('/api/validate-subdl', async (req, res) => {
 
 // API endpoint to validate OpenSubtitles credentials
 app.post('/api/validate-opensubtitles', async (req, res) => {
+    // CRITICAL: Prevent caching to avoid cross-user config contamination (user credentials in request body)
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     try {
         const { username, password } = req.body;
 
@@ -1133,6 +1174,11 @@ app.post('/api/validate-opensubtitles', async (req, res) => {
 
 // API endpoint to validate Gemini API key
 app.post('/api/validate-gemini', async (req, res) => {
+    // CRITICAL: Prevent caching to avoid cross-user config contamination (user credentials in request body)
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     try {
         const { apiKey } = req.body || {};
 
@@ -1210,6 +1256,11 @@ app.post('/api/validate-gemini', async (req, res) => {
 // API endpoint to create a session (production mode)
 // Apply rate limiting to prevent session flooding attacks
 app.post('/api/create-session', sessionCreationLimiter, async (req, res) => {
+    // CRITICAL: Prevent caching to avoid cross-user config contamination (user-specific session data)
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     try {
         const config = req.body;
 
@@ -1252,6 +1303,11 @@ app.post('/api/create-session', sessionCreationLimiter, async (req, res) => {
 // API endpoint to update an existing session
 // Apply rate limiting to prevent session flooding attacks (update can create new sessions)
 app.post('/api/update-session/:token', sessionCreationLimiter, async (req, res) => {
+    // CRITICAL: Prevent caching to avoid cross-user config contamination (user-specific session data)
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     try {
         const { token } = req.params;
         const config = req.body;
@@ -1362,6 +1418,11 @@ app.get('/api/get-session/:token', async (req, res) => {
 
 // API endpoint to translate uploaded subtitle file
 app.post('/api/translate-file', fileTranslationLimiter, validateRequest(fileTranslationBodySchema, 'body'), async (req, res) => {
+    // CRITICAL: Prevent caching to avoid cross-user config contamination (user-specific config in request body)
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     try {
         const { content, targetLanguage, configStr, advancedSettings, overrides } = req.body;
 
@@ -1665,6 +1726,11 @@ async function resolveConfigAsync(configStr, req) {
 
 // Custom route: Download subtitle (BEFORE SDK router to take precedence)
 app.get('/addon/:config/subtitle/:fileId/:language.srt', searchLimiter, validateRequest(subtitleParamsSchema, 'params'), async (req, res) => {
+    // CRITICAL: Prevent caching to avoid cross-user config contamination (defense-in-depth)
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     try {
         const { config: configStr, fileId, language } = req.params;
         const config = await resolveConfigAsync(configStr, req);
@@ -1742,6 +1808,11 @@ app.get('/addon/:config/subtitle/:fileId/:language.srt', searchLimiter, validate
 
 // Custom route: Serve error subtitles for config errors (BEFORE SDK router to take precedence)
 app.get('/addon/:config/error-subtitle/:errorType.srt', (req, res) => {
+    // CRITICAL: Prevent caching to avoid cross-user config contamination (defense-in-depth)
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     try {
         const { errorType } = req.params;
 
@@ -1775,6 +1846,11 @@ app.get('/addon/:config/error-subtitle/:errorType.srt', (req, res) => {
 
 // Custom route: Translation selector page (BEFORE SDK router to take precedence)
 app.get('/addon/:config/translate-selector/:videoId/:targetLang', searchLimiter, validateRequest(translationSelectorParamsSchema, 'params'), async (req, res) => {
+    // CRITICAL: Prevent caching to avoid cross-user config contamination (defense-in-depth)
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     try {
         const { config: configStr, videoId, targetLang } = req.params;
         const config = await resolveConfigAsync(configStr, req);
@@ -1811,6 +1887,11 @@ app.get('/addon/:config/translate-selector/:videoId/:targetLang', searchLimiter,
 
 // Custom route: Perform translation (BEFORE SDK router to take precedence)
 app.get('/addon/:config/translate/:sourceFileId/:targetLang', searchLimiter, validateRequest(translationParamsSchema, 'params'), async (req, res) => {
+    // CRITICAL: Prevent caching to avoid cross-user config contamination (defense-in-depth)
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     try {
         const { config: configStr, sourceFileId, targetLang } = req.params;
         const config = await resolveConfigAsync(configStr, req);
@@ -1960,6 +2041,11 @@ app.get('/addon/:config/translate/:sourceFileId/:targetLang', searchLimiter, val
 
 // Custom route: Learn Mode (dual-language VTT)
 app.get('/addon/:config/learn/:sourceFileId/:targetLang', searchLimiter, validateRequest(translationParamsSchema, 'params'), async (req, res) => {
+    // CRITICAL: Prevent caching to avoid cross-user config contamination (defense-in-depth)
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     try {
         const { config: configStr, sourceFileId, targetLang } = req.params;
         const baseConfig = await resolveConfigAsync(configStr, req);
@@ -2074,6 +2160,11 @@ app.get('/addon/:config/learn/:sourceFileId/:targetLang', searchLimiter, validat
 
 // Custom route: File translation page (BEFORE SDK router to take precedence)
 app.get('/addon/:config/file-translate/:videoId', async (req, res) => {
+    // CRITICAL: Prevent caching to avoid cross-user config contamination (defense-in-depth)
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     try {
         const { config: configStr, videoId } = req.params;
         const config = await resolveConfigAsync(configStr, req);
@@ -2092,6 +2183,11 @@ app.get('/addon/:config/file-translate/:videoId', async (req, res) => {
 
 // Actual file translation upload page (standalone, not under /addon route)
 app.get('/file-upload', async (req, res) => {
+    // CRITICAL: Prevent caching to avoid cross-user config contamination (user-specific config in query params)
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     try {
         const { config: configStr, videoId } = req.query;
 
@@ -2119,6 +2215,11 @@ app.get('/file-upload', async (req, res) => {
 // Custom route: Addon configuration page (BEFORE SDK router to take precedence)
 // This handles both /addon/:config/configure and /addon/:config (base path)
 app.get('/addon/:config/configure', (req, res) => {
+    // CRITICAL: Prevent caching to avoid cross-user config contamination (defense-in-depth)
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     try {
         const { config: configStr } = req.params;
         log.debug(() => `[Configure] Redirecting to configure page with config`);
@@ -2132,6 +2233,11 @@ app.get('/addon/:config/configure', (req, res) => {
 
 // Custom route: Sync subtitles page (BEFORE SDK router to take precedence)
 app.get('/addon/:config/sync-subtitles/:videoId', async (req, res) => {
+    // CRITICAL: Prevent caching to avoid cross-user config contamination (defense-in-depth)
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     try {
         const { config: configStr, videoId } = req.params;
         const { filename } = req.query;
@@ -2150,6 +2256,11 @@ app.get('/addon/:config/sync-subtitles/:videoId', async (req, res) => {
 
 // Actual subtitle sync page (standalone, not under /addon route)
 app.get('/subtitle-sync', async (req, res) => {
+    // CRITICAL: Prevent caching to avoid cross-user config contamination (user-specific config in query params)
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     try {
         const { config: configStr, videoId, filename } = req.query;
 
@@ -2182,6 +2293,11 @@ app.get('/subtitle-sync', async (req, res) => {
 
 // API endpoint: Download xSync subtitle
 app.get('/addon/:config/xsync/:videoHash/:lang/:sourceSubId', async (req, res) => {
+    // CRITICAL: Prevent caching to avoid cross-user config contamination (defense-in-depth)
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     try {
         const { config: configStr, videoHash, lang, sourceSubId } = req.params;
         const config = await resolveConfigAsync(configStr, req);
@@ -2210,6 +2326,11 @@ app.get('/addon/:config/xsync/:videoHash/:lang/:sourceSubId', async (req, res) =
 
 // API endpoint: Save synced subtitle to cache
 app.post('/api/save-synced-subtitle', async (req, res) => {
+    // CRITICAL: Prevent caching to avoid cross-user config contamination (user-specific config in request body)
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     try {
         const { configStr, videoHash, languageCode, sourceSubId, content, originalSubId, metadata } = req.body;
 
@@ -4715,6 +4836,11 @@ function generateFileTranslationPage(videoId, configStr, config) {
 // Middleware to replace {{ADDON_URL}} placeholder in responses
 // This is CRITICAL because Stremio SDK uses res.end() not res.json()
 app.use('/addon/:config', (req, res, next) => {
+    // CRITICAL: Prevent caching to avoid cross-user config contamination
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     const config = req.params.config;
 
     // Construct base URL from request (same logic as manifest route)
@@ -4772,6 +4898,11 @@ app.use('/addon/:config', (req, res, next) => {
 
 // Stremio addon manifest route (AFTER middleware so URLs get replaced)
 app.get('/addon/:config/manifest.json', async (req, res) => {
+    // CRITICAL: Prevent caching to avoid cross-user config contamination
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     try {
         log.debug(() => `[Manifest] Parsing config for manifest request`);
         const config = await resolveConfigAsync(req.params.config, req);
@@ -4801,6 +4932,11 @@ app.get('/addon/:config/manifest.json', async (req, res) => {
 // This route handles /addon/:config (with no trailing path) and redirects to configure
 // It must be placed AFTER all specific routes but BEFORE the SDK router
 app.get('/addon/:config', (req, res, next) => {
+    // CRITICAL: Prevent caching to avoid cross-user config contamination (defense-in-depth)
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     try {
         const { config: configStr } = req.params;
         log.debug(() => `[Addon Base] Request to base addon path, redirecting to configure page`);
