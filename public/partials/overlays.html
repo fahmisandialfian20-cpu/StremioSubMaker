@@ -12,11 +12,11 @@
     <div class="modal-overlay" id="instructionsModal">
         <div class="modal">
             <div class="modal-header">
-                <h2>ℹ️ How to Use SubMaker</h2>
-                <div class="modal-close" id="closeInstructionsBtn">×</div>
+                <h2>How to Use SubMaker</h2>
+                <div class="modal-close" id="closeInstructionsBtn">&times;</div>
             </div>
             <div class="modal-content">
-                <h3>🚀 Usage Instructions:</h3>
+                <h3>Usage Instructions:</h3>
                 <ol>
                     <li>Add desired API keys to <strong>"Subtitles Sources"</strong> section.</li>
                     <li>Add a Gemini API Key to <strong>AI section</strong>.</li>
@@ -25,22 +25,22 @@
                     <li><strong>Install on Stremio</strong>.</li>
                 </ol>
 
-                <h3>🎬 Stremio will:</h3>
+                <h3>Stremio will:</h3>
                 <p>1. Fetch all Source and Target languages subtitles from sources.<br>
                 2. Create <strong>"Make [Target Language]"</strong> buttons within the subtitles list.<br>
-		3. All "Make" translation lists are in the same order of the Source language list.</p>
+                3. All "Make" translation lists are in the same order of the Source language list.</p>
 
-                <h3>⚡ When you click a subtitle:</h3>
+                <h3>When you click a subtitle:</h3>
                 <p>When a subtitle is clicked within the "Make" translation lists, it'll start translation.<br>
-		After 20-30 seconds, reload the same subtitle entry.<br>
+                After 20-30 seconds, reload the same subtitle entry.<br>
                 It'll load <strong>translated</strong>!</p>
                 <div class="highlight-box" style="margin-top: 0.75rem; text-align: left;">
                     <strong>Quick Tip:</strong> If a translation looks off, broken, or out of sync, quickly triple-click that subtitle in the list to force a fresh re-translation.
                 </div>
 
                 <p style="margin-top: 0.75rem;">
-		<b>PS:</b>
-		Partial translation is delivered in batches so you can start watching almost instantly.<br>
+                <b>PS:</b>
+                Partial translation is delivered in batches so you can start watching almost instantly.<br>
                 Complete translation may take from <strong>30 seconds-5 minutes</strong> depending on movie/episode length.</p>
 
                 <div class="highlight-box">
@@ -60,30 +60,36 @@
         </div>
     </div>
 
-    <!-- Translate SRT Instructions Modal -->
-    <div class="modal-overlay" id="fileTranslationModal">
+    <!-- Sub Toolbox Instructions Modal -->
+    <div class="modal-overlay" id="subToolboxModal">
         <div class="modal">
             <div class="modal-header">
-                <h2>📁 Translate SRT Instructions</h2>
-                <div class="modal-close" id="closeFileTranslationBtn">×</div>
+                <h2>🧰 Sub Toolbox Instructions</h2>
+                <div class="modal-close" id="closeSubToolboxBtn">&times;</div>
             </div>
             <div class="modal-content">
-                <h3>📤 How to Use "Translate SRT":</h3>
+                <div class="highlight-box" style="background: linear-gradient(135deg, rgba(255, 193, 7, 0.15), rgba(255, 152, 0, 0.15)); border-left: 4px solid #ffc107; margin-bottom: 1.5rem;">
+                    <p style="margin: 0.5rem 0 0 0; color: var(--text-secondary); font-size: 0.95em;">
+                        BETA: New toolbox features are coming soon.<br>For now, enjoy seamless batch SRT file translations with all your configured AI providers and settings.
+                    </p>
+                </div>
+
+                <h3>🚀 How to use Sub Toolbox:</h3>
                 <ol>
-                    <li>Enable it on the config page before installing.</li>
-                    <li>Click <strong>"Translate SRT"</strong> in the subtitles list when streaming.</li>
-                    <li>Right-click the stream or select the three-dots menu and click <strong>"Download Subtitles"</strong></li>
-                    <li>A webpage will open on your browser.</li>
-                    <li>Upload the .srt file you'd like to translate. It will use your Gemini API key.</li>
-                    <li>When it's done, download the translated subtitles and drag it to Stremio.</li>
+                    <li>Enable <strong>"Sub Toolbox"</strong> on the config page before installing.</li>
+                    <li>In Stremio, open the subtitles list and click <strong>"Sub Toolbox"</strong>.</li>
+                    <li>Right-click the playing stream/video in Stremio and choose <strong>"Download Subtitles"</strong> to launch the toolbox in your browser.</li>
+                    <li>Pick a tool: Extract & translate embedded subs, Translate subtitle files, Synchronize subtitles, or Automatic subtitles.</li>
+                    <li>Each tool opens in your browser using your saved SubMaker session and AI provider settings.</li>
+                    <li>Follow the on-screen steps, then drag the result back into Stremio if needed.</li>
                 </ol>
             </div>
             <div class="modal-footer">
                 <label class="modal-checkbox">
-                    <input type="checkbox" id="dontShowFileTranslation">
+                    <input type="checkbox" id="dontShowSubToolbox">
                     Don't show this again
                 </label>
-                <button type="button" class="btn btn-primary" id="gotItFileTranslationBtn">
+                <button type="button" class="btn btn-primary" id="gotItSubToolboxBtn">
                     Got it!
                 </button>
             </div>
@@ -94,8 +100,8 @@
     <div class="modal-overlay" id="resetConfirmModal">
         <div class="modal" role="dialog" aria-modal="true" aria-labelledby="resetConfirmTitle">
             <div class="modal-header">
-                <h2 id="resetConfirmTitle">🧹 Reset All Settings</h2>
-                <div class="modal-close" id="closeResetConfirmBtn">×</div>
+                <h2 id="resetConfirmTitle">Reset All Settings</h2>
+                <div class="modal-close" id="closeResetConfirmBtn">&times;</div>
             </div>
             <div class="modal-content">
                 <p><strong>This will reset literally everything for this site:</strong></p>

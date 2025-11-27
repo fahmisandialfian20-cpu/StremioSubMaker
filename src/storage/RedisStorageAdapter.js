@@ -1,6 +1,7 @@
 const log = require('../utils/logger');
 const StorageAdapter = require('./StorageAdapter');
 const Redis = require('ioredis');
+const crypto = require('crypto');
 
 /**
  * Redis Storage Adapter
@@ -71,13 +72,48 @@ class RedisStorageAdapter extends StorageAdapter {
   }
 
   /**
+   * Sanitize a cache key to prevent NoSQL injection attacks
+   * @private
+   * @param {string} key - The cache key to sanitize
+   * @returns {string} - Sanitized key safe for Redis operations
+   */
+  _sanitizeKey(key) {
+    // Validate input type
+    if (!key || typeof key !== 'string') {
+      throw new Error('Cache key must be a non-empty string');
+    }
+
+    // Remove potentially dangerous Redis wildcard and special characters
+    // Replace: * ? [ ] \ with underscores to prevent pattern matching attacks
+    let sanitized = key.replace(/[\*\?\[\]\\]/g, '_');
+
+    // Also sanitize newlines, carriage returns, and null bytes that could cause issues
+    sanitized = sanitized.replace(/[\r\n\0]/g, '_');
+
+    // Limit key length to prevent DoS via extremely long keys
+    const MAX_KEY_LENGTH = 250;
+    if (sanitized.length > MAX_KEY_LENGTH) {
+      // For very long keys, use a hash to ensure consistent length
+      const hash = crypto.createHash('sha256').update(key).digest('hex');
+      // Keep first 200 chars + underscore + 16 char hash
+      sanitized = sanitized.substring(0, 200) + '_' + hash.substring(0, 16);
+      log.debug(() => `[RedisStorage] Long key truncated and hashed: ${key.substring(0, 50)}...`);
+    }
+
+    return sanitized;
+  }
+
+  /**
    * Get the full Redis key for a cache entry
    * @private
    */
   _getKey(key, cacheType) {
+    // Sanitize the key to prevent NoSQL injection attacks
+    const sanitizedKey = this._sanitizeKey(key);
+
     // Note: ioredis already applies `keyPrefix` to all command keys.
     // Do NOT include the prefix here to avoid double-prefixing.
-    return `${cacheType}:${key}`;
+    return `${cacheType}:${sanitizedKey}`;
   }
 
   /**

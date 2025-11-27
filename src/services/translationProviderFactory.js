@@ -2,8 +2,11 @@ const GeminiService = require('./gemini');
 const OpenAICompatibleProvider = require('./providers/openaiCompatible');
 const AnthropicProvider = require('./providers/anthropic');
 const DeepLProvider = require('./providers/deepl');
+const GoogleTranslateProvider = require('./providers/googleTranslate');
 const log = require('../utils/logger');
 const { getDefaultProviderParameters, mergeProviderParameters } = require('../utils/config');
+
+const KEY_OPTIONAL_PROVIDERS = new Set(['googletranslate']);
 
 class FallbackTranslationProvider {
   constructor(primaryProvider, fallbackProvider, meta = {}) {
@@ -216,6 +219,12 @@ function createProviderInstance(providerKey, providerConfig = {}, providerParams
         translationTimeout: providerParams.translationTimeout,
         maxRetries: providerParams.maxRetries
       });
+    case 'googletranslate':
+      return new GoogleTranslateProvider({
+        providerName: 'googletranslate',
+        translationTimeout: providerParams.translationTimeout,
+        maxRetries: providerParams.maxRetries
+      });
     case 'mistral':
       return new OpenAICompatibleProvider({
         apiKey: providerConfig.apiKey,
@@ -317,6 +326,14 @@ function createTranslationProvider(config) {
     const matchKey = Object.keys(providersConfig || {}).find(k => String(k).toLowerCase() === normalized);
     return matchKey ? providersConfig[matchKey] : null;
   };
+  const isConfigured = (cfg, key) => {
+    if (!cfg || cfg.enabled !== true) return false;
+    const keyOptional = KEY_OPTIONAL_PROVIDERS.has(String(key || '').toLowerCase());
+    if (keyOptional) {
+      return !!cfg.model; // no API key required
+    }
+    return !!(cfg.apiKey && cfg.model);
+  };
 
   const buildGeminiProvider = () => ({
     providerName: 'gemini',
@@ -369,7 +386,7 @@ function createTranslationProvider(config) {
   }
 
   const selectedConfig = findProviderConfig(mainProvider) || {};
-  if (!selectedConfig.enabled || !selectedConfig.apiKey || !selectedConfig.model) {
+  if (!isConfigured(selectedConfig, mainProvider)) {
     log.warn(() => `[Providers] Missing configuration for main provider '${mainProvider}', falling back to Gemini`);
     return {
       providerName: 'gemini',
@@ -403,7 +420,7 @@ function createTranslationProvider(config) {
 
   if (secondaryEnabled && secondaryProviderKey && secondaryProviderKey !== mainProvider) {
     const secondaryConfig = findSecondaryConfig(secondaryProviderKey);
-    if (secondaryConfig && secondaryConfig.enabled !== false && secondaryConfig.apiKey && secondaryConfig.model) {
+    if (isConfigured(secondaryConfig, secondaryProviderKey)) {
       if (secondaryProviderKey === 'gemini') {
         fallbackProvider = new GeminiService(
           secondaryConfig.apiKey,

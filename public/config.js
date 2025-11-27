@@ -28,6 +28,7 @@
         maxTargetLanguages: 6,
         maxNoTranslationLanguages: 9
     };
+    const KEY_OPTIONAL_PROVIDERS = new Set(['googletranslate']);
 
     function parseLimit(value, fallback, min = 1, max = 50) {
         const parsed = parseInt(value, 10);
@@ -51,6 +52,7 @@
         mistral: { label: 'Mistral' },
         cfworkers: { label: 'Cloudflare Workers AI' },
         openrouter: { label: 'OpenRouter' },
+        googletranslate: { label: 'Google Translate (unofficial)' },
         gemini: { label: 'Gemini' }
     };
 
@@ -112,6 +114,13 @@
         openrouter: {
             temperature: 0.4,
             topP: 0.95,
+            maxOutputTokens: 32768,
+            translationTimeout: 60,
+            maxRetries: 2
+        },
+        googletranslate: {
+            temperature: 0,
+            topP: 1,
             maxOutputTokens: 32768,
             translationTimeout: 60,
             maxRetries: 2
@@ -218,10 +227,16 @@ Translate to {target_language}.`;
                 translationTimeout: sanitizeNumber(raw?.translationTimeout, defaults.translationTimeout, 5, 600),
                 maxRetries: Math.max(0, Math.min(5, parseInt(raw?.maxRetries) || defaults.maxRetries || 0)),
                 reasoningEffort: sanitizeReasoningEffort(raw?.reasoningEffort, defaults.reasoningEffort),
-                thinkingBudget: Math.max(
-                    0,
-                    Math.min(200000, parseInt(raw?.thinkingBudget) || parseInt(defaults.thinkingBudget) || 0)
-                ),
+                thinkingBudget: (() => {
+                    const requested = Number.isFinite(parseInt(raw?.thinkingBudget, 10))
+                        ? parseInt(raw.thinkingBudget, 10)
+                        : NaN;
+                    const fallback = Number.isFinite(parseInt(defaults.thinkingBudget, 10))
+                        ? parseInt(defaults.thinkingBudget, 10)
+                        : 0;
+                    const chosen = Number.isFinite(requested) ? requested : fallback;
+                    return Math.max(-1, Math.min(200000, chosen));
+                })(),
                 formality: typeof raw?.formality === 'string'
                     ? raw.formality
                     : (typeof defaults.formality === 'string' ? defaults.formality : 'default'),
@@ -252,6 +267,7 @@ Translate to {target_language}.`;
             geminiApiKey: DEFAULT_API_KEYS.GEMINI,
             geminiModel: modelName,
             betaModeEnabled: false,
+            devMode: false,
             multiProviderEnabled: false,
             mainProvider: 'gemini',
             secondaryProviderEnabled: false,
@@ -264,7 +280,8 @@ Translate to {target_language}.`;
                 deepl: { enabled: false, apiKey: '', model: '' },
                 mistral: { enabled: false, apiKey: '', model: '' },
                 cfworkers: { enabled: false, apiKey: '', model: '' },
-                openrouter: { enabled: false, apiKey: '', model: '' }
+                openrouter: { enabled: false, apiKey: '', model: '' },
+                googletranslate: { enabled: false, apiKey: '', model: 'web' }
             },
             providerParameters: getDefaultProviderParameters(),
             promptStyle: 'strict', // 'natural' or 'strict'
@@ -299,8 +316,9 @@ Translate to {target_language}.`;
                 enabled: true,
                 duration: 12
             },
-            fileTranslationEnabled: false, // enable file upload translation feature
-            syncSubtitlesEnabled: false, // enable 'Sync Subtitles' action in subtitles list
+            subToolboxEnabled: false, // unified toolbox entry for translate/sync/auto tools
+            fileTranslationEnabled: false, // legacy flag (mirrors subToolboxEnabled)
+            syncSubtitlesEnabled: false, // legacy flag (mirrors subToolboxEnabled)
             mobileMode: false, // On Android: wait for full translation before responding
             singleBatchMode: false, // Try translating whole file at once
             advancedSettings: {
@@ -355,6 +373,7 @@ Translate to {target_language}.`;
     // Visual state cache keys (these should be cleared on version changes)
     const VISUAL_STATE_KEYS = [
         'submaker_dont_show_instructions',
+        'submaker_dont_show_sub_toolbox',
         'submaker_dont_show_file_translation',
         'submaker_collapsed_sections',
         'submaker_scroll_position'
@@ -371,12 +390,34 @@ Translate to {target_language}.`;
     }
 
     /**
+     * Validate legacy/base64 tokens (used for localhost configs)
+     * @param {string} token - Token to validate
+     * @returns {boolean} - True if token is a plausible base64/base64url string
+     */
+    function isValidBase64Token(token) {
+        return token &&
+            typeof token === 'string' &&
+            token.length > 0 &&
+            token.length <= 12000 &&
+            /^[A-Za-z0-9+/_-]+=*$/.test(token);
+    }
+
+    /**
+     * Validate any supported config token (session hex or base64/base64url)
+     * @param {string} token
+     * @returns {boolean}
+     */
+    function isValidConfigToken(token) {
+        return isValidSessionToken(token) || isValidBase64Token(token);
+    }
+
+    /**
      * FIXED: Clear invalid token from storage
      * @param {string} reason - Reason for clearing (for logging)
      */
     function clearInvalidToken(reason = 'unknown') {
         const token = localStorage.getItem(TOKEN_KEY);
-        if (token && !isValidSessionToken(token)) {
+        if (token && !isValidConfigToken(token)) {
             localStorage.removeItem(TOKEN_KEY);
             return true;
         }
@@ -535,6 +576,7 @@ Translate to {target_language}.`;
 
         setupEventListeners();
         loadConfigToForm();
+        updateToolboxLauncherVisibility();
         setupKeyboardShortcuts();
         showKeyboardHint();
 
@@ -834,28 +876,86 @@ Translate to {target_language}.`;
         fab.classList.remove('show');
     }
 
-    window.closeFileTranslationModal = function() {
-        const dontShowEl = document.getElementById('dontShowFileTranslation');
+    function getActiveConfigRef() {
+        try {
+            const stored = localStorage.getItem(TOKEN_KEY);
+            if (stored && isValidConfigToken(stored)) return stored;
+        } catch (_) {}
+
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const raw = params.get('config');
+            if (raw && isValidConfigToken(raw)) return raw;
+        } catch (_) {}
+        return '';
+    }
+
+    function isMobileViewport() {
+        try {
+            if (window.matchMedia && window.matchMedia('(max-width: 768px)').matches) return true;
+            const ua = navigator.userAgent || '';
+            return /Mobi|Android|iPhone|iPad|iPod/i.test(ua);
+        } catch (_) {
+            return false;
+        }
+    }
+
+    function buildToolboxUrl(configRef) {
+        const cfg = configRef && isValidConfigToken(configRef) ? configRef : getActiveConfigRef();
+        if (!cfg) return '';
+        const fallbackVideoId = 'Stream and Refresh';
+        const fallbackFilename = 'Stream and Refresh';
+        return `/sub-toolbox?config=${encodeURIComponent(cfg)}&videoId=${encodeURIComponent(fallbackVideoId)}&filename=${encodeURIComponent(fallbackFilename)}`;
+    }
+
+    function updateToolboxLauncherVisibility(configOverride) {
+        const btn = document.getElementById('subToolboxLauncher');
+        if (!btn) return;
+        if (isMobileViewport()) {
+            btn.style.display = 'none';
+            btn.dataset.configRef = '';
+            btn.classList.remove('show');
+            return;
+        }
+        const cfgRef = configOverride || getActiveConfigRef();
+        const hasConfigLoaded = !!currentConfig && (!isFirstRun || !!cfgRef);
+        const shouldShow = !!cfgRef && hasConfigLoaded;
+        if (shouldShow) {
+            btn.style.display = 'flex';
+            btn.dataset.configRef = cfgRef;
+            btn.classList.add('show');
+        } else {
+            btn.style.display = 'none';
+            btn.dataset.configRef = '';
+            btn.classList.remove('show');
+        }
+    }
+
+    window.closeSubToolboxModal = function() {
+        const dontShowEl = document.getElementById('dontShowSubToolbox');
         const dontShow = dontShowEl ? dontShowEl.checked : false;
         if (dontShow) {
+            localStorage.setItem('submaker_dont_show_sub_toolbox', 'true');
+            // Preserve legacy key so older caches also stay hidden
             localStorage.setItem('submaker_dont_show_file_translation', 'true');
         }
-        const modal = document.getElementById('fileTranslationModal');
+        const modal = document.getElementById('subToolboxModal');
         if (modal) {
             modal.classList.remove('show');
             modal.style.display = 'none';
         }
     };
 
-    function showFileTranslationModal() {
+    function showSubToolboxModal() {
         try {
-            const raw = localStorage.getItem('submaker_dont_show_file_translation');
-            const suppressed = (raw === 'true');
+            const newKey = localStorage.getItem('submaker_dont_show_sub_toolbox');
+            const legacyKey = localStorage.getItem('submaker_dont_show_file_translation');
+            const suppressed = (newKey === 'true') || (legacyKey === 'true');
             if (!suppressed) {
-                openModalById('fileTranslationModal');
+                openModalById('subToolboxModal');
             }
         } catch (_) {
-            openModalById('fileTranslationModal');
+            openModalById('subToolboxModal');
         }
     }
 
@@ -870,8 +970,8 @@ Translate to {target_language}.`;
             if (overlay.id === 'instructionsModal') {
                 closeInstructionsModal();
                 return;
-            } else if (overlay.id === 'fileTranslationModal') {
-                closeFileTranslationModal();
+            } else if (overlay.id === 'subToolboxModal') {
+                closeSubToolboxModal();
                 return;
             } else if (overlay.id === 'resetConfirmModal') {
                 const modal = document.getElementById('resetConfirmModal');
@@ -881,15 +981,15 @@ Translate to {target_language}.`;
         }
 
         const actionEl = target && target.closest
-            ? target.closest('#closeInstructionsBtn, #gotItInstructionsBtn, #closeFileTranslationBtn, #gotItFileTranslationBtn, .modal-close')
+            ? target.closest('#closeInstructionsBtn, #gotItInstructionsBtn, #closeSubToolboxBtn, #gotItSubToolboxBtn, .modal-close')
             : null;
         if (actionEl) {
             if (actionEl.id === 'closeInstructionsBtn' || actionEl.id === 'gotItInstructionsBtn' || (actionEl.classList.contains('modal-close') && actionEl.closest('#instructionsModal'))) {
                 window.closeInstructionsModal();
                 return;
             }
-            if (actionEl.id === 'closeFileTranslationBtn' || actionEl.id === 'gotItFileTranslationBtn' || (actionEl.classList.contains('modal-close') && actionEl.closest('#fileTranslationModal'))) {
-                window.closeFileTranslationModal();
+            if (actionEl.id === 'closeSubToolboxBtn' || actionEl.id === 'gotItSubToolboxBtn' || (actionEl.classList.contains('modal-close') && actionEl.closest('#subToolboxModal'))) {
+                window.closeSubToolboxModal();
                 return;
             }
         }
@@ -906,17 +1006,17 @@ Translate to {target_language}.`;
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             const instructionsModal = document.getElementById('instructionsModal');
-            const fileTranslationModal = document.getElementById('fileTranslationModal');
+            const subToolboxModal = document.getElementById('subToolboxModal');
             const resetConfirmModal = document.getElementById('resetConfirmModal');
 
             if (instructionsModal && instructionsModal.classList.contains('show')) {
                 e.preventDefault();
                 e.stopPropagation();
                 closeInstructionsModal();
-            } else if (fileTranslationModal && fileTranslationModal.classList.contains('show')) {
+            } else if (subToolboxModal && subToolboxModal.classList.contains('show')) {
                 e.preventDefault();
                 e.stopPropagation();
-                closeFileTranslationModal();
+                closeSubToolboxModal();
             } else if (resetConfirmModal && resetConfirmModal.classList.contains('show')) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -978,32 +1078,41 @@ Translate to {target_language}.`;
     }
 
     /**
-     * Update bypass cache state based on advanced settings, multi-provider mode, or forced modes (e.g. single-batch)
+     * Update database mode dropdown state based on advanced settings, multi-provider mode, or forced modes (e.g. single-batch)
      */
     function updateBypassCacheForAdvancedSettings() {
-        const bypassEl = document.getElementById('bypassCache');
-        const cacheEl = document.getElementById('cacheEnabled');
+        const databaseModeEl = document.getElementById('databaseMode');
+        const noteEl = document.getElementById('databaseModeNote');
+        const reasonEl = document.getElementById('databaseModeReason');
         const singleBatchEl = document.getElementById('singleBatchMode');
-        if (!bypassEl || !cacheEl) return;
+
+        if (!databaseModeEl) return;
 
         const isModified = areAdvancedSettingsModified();
-        const singleBatchEnabled = singleBatchEl ? singleBatchEl.checked === true : false;
+        const singleBatchEnabled = singleBatchEl ? singleBatchEl.value === 'single' : false;
         const multiProvidersActive = isMultiProviderActiveInForm();
-        const forceBypass = isModified || singleBatchEnabled || multiProvidersActive;
+
+        const reasons = [];
+        if (isModified) reasons.push('Advanced Settings are modified');
+        if (singleBatchEnabled) reasons.push('Single-Batch mode is enabled');
+        if (multiProvidersActive) reasons.push('Multiple Providers mode is active');
+
+        const forceBypass = reasons.length > 0;
 
         if (forceBypass) {
-            // Advanced settings or single-batch mode enabled: force and lock bypass cache
-            // 1) Turn OFF main cache so mutual exclusivity logic can set bypass ON
-            cacheEl.checked = false;
-            // 2) Refresh mutual exclusivity UI
-            updateCacheToggles();
-            // 3) Explicitly check + lock bypass
-            bypassEl.checked = true;
-            bypassEl.disabled = true;
+            // Lock dropdown to bypass mode and show explanation
+            databaseModeEl.value = 'bypass';
+            databaseModeEl.disabled = true;
+            if (noteEl) {
+                noteEl.style.display = 'block';
+                if (reasonEl) {
+                    reasonEl.textContent = reasons.join(', ') + '. These settings require bypass mode to avoid polluting the shared database with experimental translations.';
+                }
+            }
         } else {
-            // Advanced settings at defaults: unlock bypass cache and refresh UI
-            bypassEl.disabled = false;
-            updateCacheToggles();
+            // Unlock dropdown and hide explanation
+            databaseModeEl.disabled = false;
+            if (noteEl) noteEl.style.display = 'none';
         }
     }
 
@@ -1402,13 +1511,10 @@ Translate to {target_language}.`;
             });
         }
 
-        // Cache UI toggle - handles mutual exclusivity
-        document.getElementById('cacheEnabled').addEventListener('change', handleCacheEnabledToggle);
-
-        // Bypass UI toggle - handles mutual exclusivity
-        const bypassToggle = document.getElementById('bypassCache');
-        if (bypassToggle) {
-            bypassToggle.addEventListener('change', handleBypassToggle);
+        // Database mode dropdown - handles cache/bypass selection
+        const databaseModeEl = document.getElementById('databaseMode');
+        if (databaseModeEl) {
+            databaseModeEl.addEventListener('change', handleDatabaseModeChange);
         }
 
         document.getElementById('enableSubDL').addEventListener('change', (e) => {
@@ -1422,6 +1528,19 @@ Translate to {target_language}.`;
         // Install and copy buttons
         document.getElementById('installBtn').addEventListener('click', installAddon);
         document.getElementById('copyBtn').addEventListener('click', copyInstallUrl);
+        const toolboxLauncher = document.getElementById('subToolboxLauncher');
+        if (toolboxLauncher) {
+            toolboxLauncher.addEventListener('click', () => {
+                const configRef = toolboxLauncher.dataset.configRef || getActiveConfigRef();
+                const url = buildToolboxUrl(configRef);
+                if (!url) {
+                    showAlert('Save your config first to open Sub Toolbox.', 'warning');
+                    return;
+                }
+                window.open(url, '_blank', 'noopener,noreferrer');
+            });
+        }
+        window.addEventListener('resize', debounce(() => updateToolboxLauncherVisibility(), 150));
 
         // Card collapse behavior
         // 1) Header click toggles (and stops propagation)
@@ -1607,11 +1726,14 @@ Translate to {target_language}.`;
         document.getElementById('validateGemini').addEventListener('click', () => validateApiKey('gemini'));
 
         // File translation toggle - show modal when enabled
-        document.getElementById('fileTranslationEnabled').addEventListener('change', (e) => {
-            if (e.target.checked) {
-                showFileTranslationModal();
-            }
-        });
+        const toolboxToggle = document.getElementById('subToolboxEnabled');
+        if (toolboxToggle) {
+            toolboxToggle.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    showSubToolboxModal();
+                }
+            });
+        }
 
         // Advanced Settings - Auto-enable bypass cache when any setting is modified
         const advModelEl = document.getElementById('advancedModel');
@@ -1698,47 +1820,12 @@ Translate to {target_language}.`;
     }
 
     /**
-     * Update cache/bypass toggle UI - enforces mutual exclusivity
-     * Cache and bypass are mutually exclusive:
-     * - When cache is ON, bypass must be OFF and disabled
-     * - When cache is OFF, bypass must be ON and enabled
+     * Handle database mode dropdown changes
+     * Maps dropdown values to cache flags:
+     * - "use" → cacheEnabled=true, bypassCache=false (permanent database)
+     * - "bypass" → cacheEnabled=false, bypassCache=true (temporary 12h cache)
      */
-    function updateCacheToggles() {
-        const cacheInput = document.getElementById('cacheEnabled');
-        const bypassInput = document.getElementById('bypassCache');
-        const bypassGroup = document.getElementById('bypassCacheGroup');
-
-        if (!cacheInput || !bypassInput) return;
-
-        const cacheEnabled = cacheInput.checked;
-
-        // Enforce mutual exclusivity
-        if (cacheEnabled) {
-            bypassInput.checked = false;
-            bypassInput.disabled = true;
-            if (bypassGroup) bypassGroup.style.opacity = '0.6';
-        } else {
-            bypassInput.checked = true;
-            bypassInput.disabled = false;
-            if (bypassGroup) bypassGroup.style.opacity = '1';
-        }
-
-        // Always show bypass group
-        if (bypassGroup) bypassGroup.style.display = 'block';
-    }
-
-    function handleCacheEnabledToggle(e) {
-        updateCacheToggles();
-        updateBypassCacheForAdvancedSettings();
-    }
-
-    function handleBypassToggle(e) {
-        // Bypass toggle clicks should flip the cache toggle instead
-        const cacheInput = document.getElementById('cacheEnabled');
-        if (cacheInput) {
-            cacheInput.checked = !e.target.checked;
-        }
-        updateCacheToggles();
+    function handleDatabaseModeChange(e) {
         updateBypassCacheForAdvancedSettings();
     }
 
@@ -1941,6 +2028,26 @@ Translate to {target_language}.`;
         }
     }
 
+    function syncSelectOptions(select, desiredOptions) {
+        if (!select) return;
+        for (let i = 0; i < desiredOptions.length; i++) {
+            const desired = desiredOptions[i];
+            const existing = select.options[i];
+            if (existing) {
+                if (existing.value !== desired.value) existing.value = desired.value;
+                if (existing.textContent !== desired.text) existing.textContent = desired.text;
+            } else {
+                const option = document.createElement('option');
+                option.value = desired.value;
+                option.textContent = desired.text;
+                select.appendChild(option);
+            }
+        }
+        while (select.options.length > desiredOptions.length) {
+            select.remove(select.options.length - 1);
+        }
+    }
+
     function updateMainProviderOptions(selectedKey = 'gemini') {
         const select = document.getElementById('mainProviderSelect');
         if (!select) return;
@@ -1950,15 +2057,16 @@ Translate to {target_language}.`;
             const cfg = currentConfig.providers?.[key];
             if (cfg && cfg.enabled) opts.push(key);
         });
-        select.innerHTML = '';
-        opts.forEach(key => {
-            const option = document.createElement('option');
-            option.value = key;
-            option.textContent = PROVIDERS[key]?.label || key;
-            select.appendChild(option);
-        });
+        const prevValue = select.value;
+        const desiredOptions = opts.map(key => ({
+            value: key,
+            text: PROVIDERS[key]?.label || key
+        }));
+        syncSelectOptions(select, desiredOptions);
         if (opts.includes(selectedKey)) {
             select.value = selectedKey;
+        } else if (prevValue && opts.includes(prevValue)) {
+            select.value = prevValue;
         } else {
             select.value = opts[0] || 'gemini';
         }
@@ -1977,14 +2085,10 @@ Translate to {target_language}.`;
             if (cfg && cfg.enabled && key !== mainKey) opts.push(key);
         });
         const filtered = opts.filter(key => key !== mainKey);
-        select.innerHTML = '';
 
         if (filtered.length === 0) {
             toggle.disabled = true;
-            const option = document.createElement('option');
-            option.value = '';
-            option.textContent = 'No fallback providers available';
-            select.appendChild(option);
+            syncSelectOptions(select, [{ value: '', text: 'No fallback providers available' }]);
             select.disabled = true;
             toggle.checked = false;
             currentConfig.secondaryProviderEnabled = false;
@@ -1994,15 +2098,16 @@ Translate to {target_language}.`;
         }
 
         toggle.disabled = false;
-        filtered.forEach(key => {
-            const option = document.createElement('option');
-            option.value = key;
-            option.textContent = PROVIDERS[key]?.label || key;
-            select.appendChild(option);
-        });
+        const desiredOptions = filtered.map(key => ({
+            value: key,
+            text: PROVIDERS[key]?.label || key
+        }));
+        syncSelectOptions(select, desiredOptions);
 
         if (selectedKey && filtered.includes(selectedKey)) {
             select.value = selectedKey;
+        } else if (select.value && filtered.includes(select.value)) {
+            // keep current selection
         } else {
             select.value = filtered[0];
         }
@@ -2102,7 +2207,14 @@ Translate to {target_language}.`;
                     const normalized = typeof val === 'string' ? val.trim().toLowerCase() : '';
                     return allowed.includes(normalized) ? normalized : baseDefaults.reasoningEffort;
                 })(),
-                thinkingBudget: Math.max(0, Math.min(200000, parseInt(thinkingEl ? thinkingEl.value : defaults[key].thinkingBudget || 0) || defaults[key].thinkingBudget || 0))
+                thinkingBudget: (() => {
+                    const rawVal = thinkingEl ? parseInt(thinkingEl.value, 10) : NaN;
+                    const baseVal = Number.isFinite(parseInt(defaults[key].thinkingBudget, 10))
+                        ? parseInt(defaults[key].thinkingBudget, 10)
+                        : 0;
+                    const chosen = Number.isFinite(rawVal) ? rawVal : baseVal;
+                    return Math.max(-1, Math.min(200000, chosen));
+                })()
             };
             if (formalityEl || baseDefaults.formality !== undefined) {
                 params[key].formality = formalityEl ? formalityEl.value : (baseDefaults.formality ?? 'default');
@@ -2521,6 +2633,8 @@ Translate to {target_language}.`;
     }
 
     function setupKeyboardShortcuts() {
+        let devModeRevealed = false;
+
         document.addEventListener('keydown', (e) => {
             // Ctrl/Cmd + S to save
             if ((e.ctrlKey || e.metaKey) && e.key === 's') {
@@ -2556,16 +2670,15 @@ Translate to {target_language}.`;
                 toggleAllSections();
             }
 
-            // Ctrl/Cmd + Alt + D to reveal Dev panel
-            if ((e.ctrlKey || e.metaKey) && e.altKey && (e.key === 'd' || e.key === 'D')) {
+            // Ctrl + Alt + D to reveal Dev Mode checkbox
+            const isDevKey = e.code === 'KeyD' || (typeof e.key === 'string' && e.key.toLowerCase() === 'd');
+            const devComboPressed = e.altKey && (e.ctrlKey || e.metaKey) && isDevKey;
+            if (devComboPressed && !devModeRevealed) {
                 e.preventDefault();
-                const devCard = document.getElementById('devSettingsCard');
-                if (devCard && devCard.style.display === 'none') {
-                    devCard.style.display = 'block';
-                    try { showAlert('🧪 Dev Panel Unlocked', 'success'); } catch (_) {}
-                    setTimeout(() => {
-                        devCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                    }, 300);
+                devModeRevealed = true;
+                const devModeGroup = document.getElementById('devModeGroup');
+                if (devModeGroup && devModeGroup.style.display === 'none') {
+                    devModeGroup.style.display = 'block';
                 }
             }
         });
@@ -2636,17 +2749,14 @@ Translate to {target_language}.`;
         const groupsToHide = [
             document.getElementById('mainProviderGroup'),
             document.getElementById('secondaryProviderGroup'),
-            document.getElementById('bypassCacheGroup'),
             document.getElementById('learnOrderGroup'),
             document.getElementById('learnPlacementGroup')
         ];
 
-        ['sendTimestampsToAI', 'cacheEnabled', 'learnModeEnabled', 'mobileMode', 'singleBatchMode', 'betaMode'].forEach(id => {
+        ['sendTimestampsToAI', 'databaseMode', 'learnModeEnabled', 'mobileMode', 'singleBatchMode', 'betaMode'].forEach(id => {
             const group = document.getElementById(id)?.closest('.form-group');
             if (group) groupsToHide.push(group);
         });
-
-        const translateFileGroup = document.getElementById('fileTranslationEnabled')?.closest('.form-group');
 
         if (enabled) {
             groupsToHide.forEach(group => {
@@ -2654,15 +2764,10 @@ Translate to {target_language}.`;
                 group.dataset.originalDisplay = group.style.display || '';
                 group.style.display = 'none';
             });
-            if (translateFileGroup) {
-                translateFileGroup.dataset.originalDisplay = translateFileGroup.style.display || '';
-                translateFileGroup.style.display = '';
-            }
             return;
         }
 
-        const hasStoredState = groupsToHide.some(group => group && group.dataset.originalDisplay !== undefined) ||
-            (translateFileGroup && translateFileGroup.dataset.originalDisplay !== undefined);
+        const hasStoredState = groupsToHide.some(group => group && group.dataset.originalDisplay !== undefined);
         if (!hasStoredState) return;
 
         groupsToHide.forEach(group => {
@@ -2670,11 +2775,6 @@ Translate to {target_language}.`;
             const restoreValue = group.dataset.originalDisplay !== undefined ? group.dataset.originalDisplay : '';
             group.style.display = restoreValue;
         });
-
-        if (translateFileGroup) {
-            const restoreValue = translateFileGroup.dataset.originalDisplay !== undefined ? translateFileGroup.dataset.originalDisplay : '';
-            translateFileGroup.style.display = restoreValue;
-        }
     }
 
     function toggleNoTranslationMode(enabled) {
@@ -2683,6 +2783,7 @@ Translate to {target_language}.`;
         const sourceCard = document.getElementById('sourceCard');
         const targetCard = document.getElementById('targetCard');
         const geminiCard = document.getElementById('geminiCard');
+        const translationSettingsCard = document.getElementById('translationSettingsCard');
         const betaToggle = document.getElementById('betaMode');
         const learnTargetsCard = document.getElementById('learnTargetsCard');
         const learnModeCheckbox = document.getElementById('learnModeEnabled');
@@ -2702,11 +2803,12 @@ Translate to {target_language}.`;
                 betaToggle.checked = false;
                 betaToggle.disabled = true;
             }
-            // Show no-translation card, hide source, target, and gemini cards
+            // Show no-translation card, hide source, target, gemini, and translation settings cards
             if (noTranslationCard) noTranslationCard.style.display = 'block';
             if (sourceCard) sourceCard.style.display = 'none';
             if (targetCard) targetCard.style.display = 'none';
             if (geminiCard) geminiCard.style.display = 'none';
+            if (translationSettingsCard) translationSettingsCard.style.display = 'none';
 
             // Hide learn mode UI elements in just-fetch mode
             if (learnTargetsCard) learnTargetsCard.style.display = 'none';
@@ -2803,11 +2905,12 @@ Translate to {target_language}.`;
                 toggleBetaModeUI(isBetaModeEnabled());
             }
             betaModeLastState = null;
-            // Hide no-translation card, show source, target, and gemini cards
+            // Hide no-translation card, show source, target, gemini, and translation settings cards
             if (noTranslationCard) noTranslationCard.style.display = 'none';
             if (sourceCard) sourceCard.style.display = 'block';
             if (targetCard) targetCard.style.display = 'block';
             if (geminiCard) geminiCard.style.display = 'block';
+            if (translationSettingsCard) translationSettingsCard.style.display = 'block';
 
             // Show learn mode checkbox in translation mode
             if (learnModeCheckbox) {
@@ -3123,9 +3226,15 @@ Translate to {target_language}.`;
      */
     async function getCurrentAppVersion() {
         try {
-            const response = await fetch('/api/session-stats', { cache: 'no-store' });
-            const data = await response.json();
-            return data.version || 'unknown';
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 6000);
+            try {
+                const response = await fetch('/api/session-stats', { cache: 'no-store', signal: controller.signal });
+                const data = await response.json();
+                return data.version || 'unknown';
+            } finally {
+                clearTimeout(timeout);
+            }
         } catch (error) { return 'unknown'; }
     }
 
@@ -3181,7 +3290,7 @@ Translate to {target_language}.`;
      * Build a migrated config for a new version, preserving only whitelisted fields.
      * - Resets selected model and ALL advanced settings to defaults
      * - Preserves: Gemini API key, subtitle sources enabled/disabled, provider API keys (if provider still exists),
-     *   source/target languages, and Other Settings checkboxes (fileTranslationEnabled, cacheEnabled, bypassCache)
+     *   source/target languages, and Other Settings checkboxes (Sub Toolbox, cacheEnabled, bypassCache)
      */
     function migrateConfigForNewVersion(oldConfig) {
         const defaults = getDefaultConfig();
@@ -3251,8 +3360,13 @@ Translate to {target_language}.`;
             newConfig.targetLanguages = Array.isArray(oldConfig.targetLanguages) ? [...oldConfig.targetLanguages] : defaults.targetLanguages;
 
             // Preserve Other Settings checkboxes
-            // - fileTranslationEnabled
-            newConfig.fileTranslationEnabled = oldConfig.fileTranslationEnabled === true;
+            // - unified Sub Toolbox toggle (mirrors legacy file translation/sync flags)
+            const legacyToolboxEnabled = oldConfig.subToolboxEnabled === true
+                || oldConfig.fileTranslationEnabled === true
+                || oldConfig.syncSubtitlesEnabled === true;
+            newConfig.subToolboxEnabled = legacyToolboxEnabled;
+            newConfig.fileTranslationEnabled = legacyToolboxEnabled;
+            newConfig.syncSubtitlesEnabled = legacyToolboxEnabled;
             // - translation cache enabled
             if (!newConfig.translationCache) newConfig.translationCache = { enabled: true, duration: 0, persistent: true };
             const oldCacheEnabled = !!(oldConfig.translationCache ? oldConfig.translationCache.enabled !== false : true);
@@ -3372,6 +3486,20 @@ Translate to {target_language}.`;
         }
         toggleBetaModeUI(betaEnabled, { silent: true });
 
+        // Load Dev Mode (hidden checkbox revealed by Ctrl+Alt+D)
+        const devModeToggle = document.getElementById('devMode');
+        const devModeEnabled = currentConfig.devMode === true;
+        if (devModeToggle) {
+            devModeToggle.checked = devModeEnabled;
+        }
+        // If dev mode is enabled, ensure the group is visible
+        if (devModeEnabled) {
+            const devModeGroup = document.getElementById('devModeGroup');
+            if (devModeGroup) {
+                devModeGroup.style.display = 'block';
+            }
+        }
+
         ensureProviderParametersInState();
         const multiToggle = document.getElementById('enableMultiProviders');
         if (multiToggle) {
@@ -3426,25 +3554,30 @@ Translate to {target_language}.`;
             currentConfig.subtitleProviders?.subsource?.apiKey || DEFAULT_API_KEYS.SUBSOURCE;
         toggleProviderConfig('subsourceConfig', subsourceEnabled);
 
-        // Load file translation setting
-        document.getElementById('fileTranslationEnabled').checked = currentConfig.fileTranslationEnabled === true;
-
-        // Load Dev: Sync Subtitles setting (if panel exists)
-        const syncEl = document.getElementById('syncSubtitlesEnabled');
-        if (syncEl) syncEl.checked = currentConfig.syncSubtitlesEnabled === true;
+        // Load Sub Toolbox setting (unifies file translation and sync actions)
+        const toolboxEnabled = currentConfig.subToolboxEnabled === true
+            || currentConfig.fileTranslationEnabled === true
+            || currentConfig.syncSubtitlesEnabled === true;
+        currentConfig.subToolboxEnabled = toolboxEnabled;
+        const toolboxToggle = document.getElementById('subToolboxEnabled');
+        if (toolboxToggle) toolboxToggle.checked = toolboxEnabled;
         const mobileModeEl = document.getElementById('mobileMode');
         if (mobileModeEl) mobileModeEl.checked = currentConfig.mobileMode === true;
         const singleBatchEl = document.getElementById('singleBatchMode');
-        if (singleBatchEl) singleBatchEl.checked = currentConfig.singleBatchMode === true;
+        if (singleBatchEl) singleBatchEl.value = (currentConfig.singleBatchMode === true) ? 'single' : 'multiple';
 
         // Load translation cache settings
         if (!currentConfig.translationCache) {
             currentConfig.translationCache = getDefaultConfig().translationCache;
         }
-        document.getElementById('cacheEnabled').checked = currentConfig.translationCache?.enabled !== false;
-        const bypassEl = document.getElementById('bypassCache');
-        if (bypassEl) bypassEl.checked = currentConfig.bypassCache === true;
-        updateCacheToggles();
+
+        // Set database mode dropdown based on bypass flag
+        // If bypass is true → show "bypass", otherwise → show "use"
+        const databaseModeEl = document.getElementById('databaseMode');
+        if (databaseModeEl) {
+            const bypassEnabled = currentConfig.bypassCache === true || currentConfig.translationCache?.enabled === false;
+            databaseModeEl.value = bypassEnabled ? 'bypass' : 'use';
+        }
 
         // Load advanced settings
         if (!currentConfig.advancedSettings) {
@@ -3486,7 +3619,7 @@ Translate to {target_language}.`;
         }
         if (contextSizeEl) contextSizeEl.value = currentConfig.advancedSettings?.contextSize || 3;
         const sendTimestampsEl = document.getElementById('sendTimestampsToAI');
-        if (sendTimestampsEl) sendTimestampsEl.checked = currentConfig.advancedSettings?.sendTimestampsToAI === true;
+        if (sendTimestampsEl) sendTimestampsEl.value = (currentConfig.advancedSettings?.sendTimestampsToAI === true) ? 'ai' : 'original';
 
         // Check if advanced settings are modified and update bypass cache accordingly
         updateBypassCacheForAdvancedSettings();
@@ -3523,7 +3656,7 @@ Translate to {target_language}.`;
         const singleBatchToggle = document.getElementById('singleBatchMode');
         if (singleBatchToggle) {
             singleBatchToggle.addEventListener('change', (e) => {
-                currentConfig.singleBatchMode = e.target.checked;
+                currentConfig.singleBatchMode = e.target.value === 'single';
                 updateBypassCacheForAdvancedSettings();
             });
         }
@@ -3545,7 +3678,7 @@ Translate to {target_language}.`;
         let translationPrompt = '';
         const singleBatchEnabled = (function(){
             const el = document.getElementById('singleBatchMode');
-            if (el) return el.checked;
+            if (el) return el.value === 'single';
             return currentConfig?.singleBatchMode === true;
         })();
         const hasActiveMultiProvider = isMultiProviderActiveInForm();
@@ -3553,9 +3686,9 @@ Translate to {target_language}.`;
 
         const isBypassRequested = () => {
             const advSettingsModified = areAdvancedSettingsModified();
-            const cacheDisabled = !document.getElementById('cacheEnabled').checked;
-            const bypassChecked = document.getElementById('bypassCache')?.checked || false;
-            return advSettingsModified || cacheDisabled || bypassChecked || singleBatchEnabled || hasActiveMultiProvider;
+            const databaseModeEl = document.getElementById('databaseMode');
+            const userSelectedBypass = databaseModeEl ? databaseModeEl.value === 'bypass' : false;
+            return advSettingsModified || userSelectedBypass || singleBatchEnabled || hasActiveMultiProvider;
         };
 
         // Determine the translation prompt based on style
@@ -3576,6 +3709,7 @@ Translate to {target_language}.`;
             promptStyle: promptStyle,
             translationPrompt: translationPrompt,
             betaModeEnabled: isBetaModeEnabled(),
+            devMode: (function(){ const el = document.getElementById('devMode'); return el ? el.checked : false; })(),
             sourceLanguages: currentConfig.sourceLanguages,
             targetLanguages: currentConfig.targetLanguages,
             learnMode: currentConfig.learnMode === true,
@@ -3605,7 +3739,7 @@ Translate to {target_language}.`;
                 }
             },
             translationCache: {
-                enabled: document.getElementById('cacheEnabled').checked,
+                enabled: !isBypassRequested(), // Enabled when NOT in bypass mode
                 duration: 0,
                 persistent: true
             },
@@ -3618,8 +3752,9 @@ Translate to {target_language}.`;
                 enabled: isBypassRequested(),
                 duration: 12
             },
-            fileTranslationEnabled: document.getElementById('fileTranslationEnabled').checked,
-            syncSubtitlesEnabled: (function(){ const el = document.getElementById('syncSubtitlesEnabled'); return el ? el.checked : false; })(),
+            subToolboxEnabled: (function(){ const el = document.getElementById('subToolboxEnabled'); return el ? el.checked : (currentConfig?.subToolboxEnabled === true); })(),
+            fileTranslationEnabled: (function(){ const el = document.getElementById('subToolboxEnabled'); return el ? el.checked : (currentConfig?.fileTranslationEnabled === true); })(),
+            syncSubtitlesEnabled: (function(){ const el = document.getElementById('subToolboxEnabled'); return el ? el.checked : (currentConfig?.syncSubtitlesEnabled === true); })(),
             mobileMode: (function(){
                 const el = document.getElementById('mobileMode');
                 if (el) return el.checked;
@@ -3635,7 +3770,7 @@ Translate to {target_language}.`;
                 topK: 40, // Keep default topK
                 enableBatchContext: (function(){ const el = document.getElementById('enableBatchContext'); return el ? el.checked : false; })(),
                 contextSize: (function(){ const el = document.getElementById('contextSize'); return el ? parseInt(el.value) : 3; })(),
-                sendTimestampsToAI: (function(){ const el = document.getElementById('sendTimestampsToAI'); return el ? el.checked : false; })()
+                sendTimestampsToAI: (function(){ const el = document.getElementById('sendTimestampsToAI'); return el ? el.value === 'ai' : false; })()
             }
         };
         config.multiProviderEnabled = config.betaModeEnabled && multiProviderToggleChecked;
@@ -3659,13 +3794,8 @@ Translate to {target_language}.`;
         }
         
 
-        // Validate that at least one of cache options is enabled
-        const cacheEnabled = document.getElementById('cacheEnabled').checked;
-        const bypassCache = document.getElementById('bypassCache')?.checked || false;
-        
-        if (!cacheEnabled && !bypassCache) {
-            errors.push('⚠️ At least one cache option must be enabled: either "Enable SubMaker Database" or "Bypass SubMaker Database Cache"');
-        }
+        // Database mode dropdown validation (always valid - dropdown must have a value)
+        // No need to validate since dropdown always has a selected value
 
         // Validate enabled subtitle sources have API keys (where required)
         if (config.subtitleProviders.subdl?.enabled && !config.subtitleProviders.subdl.apiKey?.trim()) {
@@ -3677,7 +3807,8 @@ Translate to {target_language}.`;
 
         // Validate that every enabled AI provider has an API key
         Object.entries(config.providers || {}).forEach(([providerKey, providerCfg]) => {
-            if (providerCfg?.enabled && !providerCfg.apiKey?.trim()) {
+            const optionalKey = KEY_OPTIONAL_PROVIDERS.has(String(providerKey).toLowerCase());
+            if (providerCfg?.enabled && !optionalKey && !providerCfg.apiKey?.trim()) {
                 const label = PROVIDERS[providerKey]?.label || providerKey;
                 errors.push(`Warning: ${label} is enabled but API key is missing`);
             }
@@ -3696,7 +3827,12 @@ Translate to {target_language}.`;
             const mainProvider = config.mainProvider || 'gemini';
             const providerIsConfigured = (key) => {
                 const cfg = config.providers?.[key];
-                return !!(cfg && cfg.enabled && cfg.apiKey && cfg.apiKey.trim() !== '' && cfg.model);
+                if (!cfg || cfg.enabled !== true) return false;
+                const keyOptional = KEY_OPTIONAL_PROVIDERS.has(String(key).toLowerCase());
+                if (keyOptional) {
+                    return !!cfg.model;
+                }
+                return !!(cfg.apiKey && cfg.apiKey.trim() !== '' && cfg.model);
             };
             const geminiConfigured = !!(config.geminiApiKey && config.geminiApiKey.trim() !== '' && config.geminiModel && config.geminiModel.trim() !== '');
             const configuredProviders = new Set();
@@ -3722,7 +3858,8 @@ Translate to {target_language}.`;
                 if (!providerCfg || !providerCfg.enabled) {
                     errors.push(`⚠️ Enable ${PROVIDERS[mainProvider]?.label || mainProvider} to use it as Main Provider`);
                 }
-                if (!providerCfg || !providerCfg.apiKey?.trim()) {
+                const keyOptional = KEY_OPTIONAL_PROVIDERS.has(String(mainProvider).toLowerCase());
+                if (!keyOptional && (!providerCfg || !providerCfg.apiKey?.trim())) {
                     errors.push(`⚠️ API key required for ${PROVIDERS[mainProvider]?.label || mainProvider}`);
                 }
                 if (!providerCfg || !providerCfg.model) {
@@ -3751,7 +3888,8 @@ Translate to {target_language}.`;
                     if (!secondaryCfg || !secondaryCfg.enabled) {
                         errors.push(`⚠️ Enable ${PROVIDERS[secondaryKey]?.label || secondaryKey} to use it as Secondary Provider`);
                     }
-                    if (!secondaryCfg || !secondaryCfg.apiKey) {
+                    const keyOptional = KEY_OPTIONAL_PROVIDERS.has(String(secondaryKey).toLowerCase());
+                    if (!keyOptional && (!secondaryCfg || !secondaryCfg.apiKey)) {
                         errors.push(`⚠️ API key required for ${PROVIDERS[secondaryKey]?.label || secondaryKey} (Secondary Provider)`);
                     }
                     if (!secondaryCfg || !secondaryCfg.model) {
@@ -3761,11 +3899,11 @@ Translate to {target_language}.`;
             }
 
             if (configuredProviders.size === 0) {
-                errors.push('⚠️ Add at least one AI provider with an API key and enable it');
+                errors.push('⚠️ Add at least one AI provider and enable it (API key required unless provider is keyless)');
             }
 
             if (config.secondaryProviderEnabled && configuredProviders.size < 2) {
-                errors.push('⚠️ Secondary Provider requires two configured AI API keys (main and fallback)');
+                errors.push('⚠️ Secondary Provider requires two configured AI providers (main and fallback)');
             }
 
             if (!validateLanguageSelection('source')) {
@@ -3837,21 +3975,22 @@ Translate to {target_language}.`;
         
 
         try {
-            if (existingToken) {
-                // FIXED: Validate token format before attempting update
-                // Session tokens should be 32-character hex strings
-                const isValidTokenFormat = /^[a-f0-9]{32}$/.test(existingToken);
-                
+                if (existingToken) {
+                    // FIXED: Validate token format before attempting update
+                    // Support both session tokens (hex) and URL-safe base64 tokens for localhost
+                    const isValidTokenFormat = isValidConfigToken(existingToken);
 
-                if (!isValidTokenFormat) {
-                    
-                    localStorage.removeItem(TOKEN_KEY);
-                    existingToken = null;
+
+                    if (!isValidTokenFormat) {
+                        
+                        localStorage.removeItem(TOKEN_KEY);
+                        existingToken = null;
                 } else {
                     // Try to update existing session first
                     
                     try {
-                        const updateResponse = await fetch(`/api/update-session/${existingToken}`, {
+                        const encodedToken = encodeURIComponent(existingToken);
+                        const updateResponse = await fetch(`/api/update-session/${encodedToken}`, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json'
@@ -3899,7 +4038,7 @@ Translate to {target_language}.`;
 
             // If we don't have a valid token, create new session
             if (!existingToken) {
-                
+
                 try {
                     const createResponse = await fetch('/api/create-session', {
                         method: 'POST',
@@ -3946,13 +4085,15 @@ Translate to {target_language}.`;
         // Use current origin if in production, otherwise use localhost
         const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
         const baseUrl = isLocalhost ? 'http://localhost:7001' : window.location.origin;
-        const installUrl = `${baseUrl}/addon/${configToken}/manifest.json`;
+        const encodedToken = encodeURIComponent(configToken);
+        const installUrl = `${baseUrl}/addon/${encodedToken}/manifest.json`;
 
         // Save to current config
         currentConfig = config;
 
         // Cache the configuration to localStorage
         saveConfigToCache(config);
+        updateToolboxLauncherVisibility(configToken);
 
         // Enable install and copy buttons
         document.getElementById('installBtn').disabled = false;
@@ -3981,11 +4122,9 @@ Translate to {target_language}.`;
 
     function installAddon() {
         if (window.installUrl) {
-            // Extract the config and path from the install URL
-            // The installUrl is in format: http://localhost:7001/{config}/manifest.json
-            // Stremio protocol format: stremio://localhost:7001/{config}/manifest.json
-            const url = new URL(window.installUrl);
-            const stremioUrl = `stremio://${url.host}${url.pathname}`;
+            // installUrl is in format: http(s)://host/addon/{config}/manifest.json
+            // Preserve any percent-encoding so Stremio receives a URL-safe config token
+            const stremioUrl = window.installUrl.replace(/^https?:\/\//i, 'stremio://');
             window.location.href = stremioUrl;
             showAlert('Opening Stremio...', 'info');
         }

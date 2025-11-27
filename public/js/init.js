@@ -9,7 +9,10 @@
         const src = el.getAttribute('data-include');
         if (!src) return Promise.resolve();
 
-        return fetch(src, { cache: 'no-store' })
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 10000);
+
+        return fetch(src, { cache: 'no-store', signal: controller.signal })
             .then(function(res) {
                 if (!res.ok) {
                     throw new Error('Failed to load partial: ' + src + ' (' + res.status + ')');
@@ -23,6 +26,9 @@
             .catch(function(err) {
                 console.error(err);
                 el.innerHTML = '<div style=\"padding:1rem; color:#ef4444;\">Failed to load ' + src + '</div>';
+            })
+            .finally(function() {
+                clearTimeout(timeout);
             });
     }
 

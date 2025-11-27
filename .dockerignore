@@ -59,3 +59,9 @@ build/
 temp/
 temp
 .temp
+
+# Build/tooling assets not needed in runtime image
+.github
+tools
+scripts
+docs

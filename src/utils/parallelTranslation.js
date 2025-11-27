@@ -186,7 +186,7 @@ function _stripTimecodes(text) {
  * @param {number} totalChunks - Total number of chunks
  * @returns {Promise<Array<Object>>} - Translated entries (without context entries)
  */
-async function translateChunk(chunk, translationService, targetLanguage, customPrompt, chunkNumber, totalChunks) {
+async function translateChunk(chunk, translationService, sourceLanguage, targetLanguage, customPrompt, chunkNumber, totalChunks) {
   const { entries, startIdx, endIdx } = chunk;
 
   // Build SRT content for this chunk
@@ -198,7 +198,7 @@ async function translateChunk(chunk, translationService, targetLanguage, customP
     // Translate using the service
     const translatedSRT = await translationService.translateSubtitle(
       chunkSRT,
-      'detected source language',
+      sourceLanguage || 'detected source language',
       targetLanguage,
       customPrompt
     );
@@ -298,6 +298,7 @@ async function translateWithConcurrency(tasks, maxConcurrency, onProgress = null
  */
 async function translateInParallel(srtContent, translationService, targetLanguage, options = {}) {
   const {
+    sourceLanguage = 'detected source language',
     customPrompt = null,
     maxConcurrency = 3,
     targetChunkTokens = 12000,
@@ -330,7 +331,7 @@ async function translateInParallel(srtContent, translationService, targetLanguag
     if (onProgress) onProgress(0, 1);
     const result = await translationService.translateSubtitle(
       srtContent,
-      'detected source language',
+      sourceLanguage || 'detected source language',
       targetLanguage,
       customPrompt
     );
@@ -343,6 +344,7 @@ async function translateInParallel(srtContent, translationService, targetLanguag
     return () => translateChunk(
       chunk,
       translationService,
+      sourceLanguage,
       targetLanguage,
       customPrompt,
       index + 1,

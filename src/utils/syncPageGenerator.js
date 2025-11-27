@@ -9,7 +9,12 @@
  * 6. Download results
  */
 
-const { getLanguageName } = require('./languages');
+const axios = require('axios');
+const { getLanguageName, getAllLanguages } = require('./languages');
+const { deriveVideoHash } = require('./videoHash');
+const { parseStremioId } = require('./subtitle');
+const { version: appVersion } = require('../../package.json');
+const { quickNavStyles, quickNavScript, renderQuickNav, renderRefreshBadge } = require('./quickNav');
 
 function escapeHtml(text) {
     if (!text) return '';
@@ -21,17 +26,338 @@ function escapeHtml(text) {
         .replace(/'/g, '&#039;');
 }
 
-function generateSubtitleSyncPage(subtitles, videoId, streamFilename, configStr, config) {
-    const crypto = require('crypto');
-    const videoHash = streamFilename ? crypto.createHash('md5').update(streamFilename).digest('hex').substring(0, 16) : '';
+/**
+ * Safely serialize JavaScript object for embedding in <script> tags
+ * Prevents XSS by escaping HTML special characters that could break out of script context
+ * Uses double-encoding to ensure JSON.parse() can safely reconstruct the object
+ * @param {*} obj - Object to serialize
+ * @returns {string} - Safe JavaScript code to parse the object
+ */
+function safeJsonSerialize(obj) {
+    // First JSON.stringify to get JSON string
+    const jsonString = JSON.stringify(obj);
+    // Second JSON.stringify to escape it for embedding in JavaScript
+    // This prevents </script> tag injection and other escaping issues
+    const doubleEncoded = JSON.stringify(jsonString);
+    return `JSON.parse(${doubleEncoded})`;
+}
+
+function themeToggleMarkup() {
+    return `
+    <button class="theme-toggle mario" id="themeToggle" aria-label="Toggle theme">
+        <span class="theme-toggle-icon sun" aria-hidden="true">
+            <svg viewBox="0 0 64 64" width="28" height="28" role="img">
+                <defs>
+                    <radialGradient id="gSun" cx="50%" cy="50%" r="60%">
+                        <stop offset="0%" stop-color="#fff4b0"/>
+                        <stop offset="60%" stop-color="#f7d13e"/>
+                        <stop offset="100%" stop-color="#e0a81e"/>
+                    </radialGradient>
+                </defs>
+                <g fill="none" stroke="#8a5a00" stroke-linecap="round">
+                    <circle cx="32" cy="32" r="13" fill="url(#gSun)" stroke-width="3"/>
+                    <g stroke-width="3">
+                        <line x1="32" y1="6" x2="32" y2="14"/>
+                        <line x1="32" y1="50" x2="32" y2="58"/>
+                        <line x1="6" y1="32" x2="14" y2="32"/>
+                        <line x1="50" y1="32" x2="58" y2="32"/>
+                        <line x1="13" y1="13" x2="19" y2="19"/>
+                        <line x1="45" y1="45" x2="51" y2="51"/>
+                        <line x1="13" y1="51" x2="19" y2="45"/>
+                        <line x1="45" y1="19" x2="51" y2="13"/>
+                    </g>
+                </g>
+            </svg>
+        </span>
+        <span class="theme-toggle-icon moon" aria-hidden="true">
+            <svg viewBox="0 0 64 64" width="28" height="28" role="img">
+                <defs>
+                    <radialGradient id="gMoon" cx="40%" cy="35%" r="65%">
+                        <stop offset="0%" stop-color="#fff7cc"/>
+                        <stop offset="70%" stop-color="#f1c93b"/>
+                        <stop offset="100%" stop-color="#d19b16"/>
+                    </radialGradient>
+                    <mask id="mMoon">
+                        <rect width="100%" height="100%" fill="#ffffff"/>
+                        <circle cx="44" cy="22" r="18" fill="#000000"/>
+                    </mask>
+                </defs>
+                <g fill="none" stroke="#8a5a00">
+                    <circle cx="32" cy="32" r="22" fill="url(#gMoon)" stroke-width="3" mask="url(#mMoon)"/>
+                </g>
+            </svg>
+        </span>
+        <span class="theme-toggle-icon blackhole" aria-hidden="true">
+            <svg viewBox="0 0 64 64" width="28" height="28" role="img">
+                <defs>
+                    <radialGradient id="gRing" cx="50%" cy="50%" r="50%">
+                        <stop offset="0%" stop-color="#6b65ff"/>
+                        <stop offset="60%" stop-color="#4b2ed6"/>
+                        <stop offset="100%" stop-color="#1a103a"/>
+                    </radialGradient>
+                </defs>
+                <circle cx="32" cy="32" r="12" fill="#000"/>
+                <circle cx="32" cy="32" r="20" fill="none" stroke="url(#gRing)" stroke-width="6"/>
+            </svg>
+        </span>
+    </button>`;
+}
+
+function formatEpisodeTag(parsed) {
+    if (!parsed) return '';
+    if (parsed.type === 'episode' || parsed.type === 'anime-episode') {
+        const season = Number.isFinite(parsed.season) ? `S${String(parsed.season).padStart(2, '0')}` : '';
+        const episode = Number.isFinite(parsed.episode) ? `E${String(parsed.episode).padStart(2, '0')}` : '';
+        return season || episode ? `${season}${episode}` : '';
+    }
+    return '';
+}
+
+function cleanDisplayName(raw) {
+    if (!raw) return '';
+    const lastSegment = String(raw).split(/[/\\]/).pop() || '';
+    const withoutExt = lastSegment.replace(/\.[^.]+$/, '');
+    const spaced = withoutExt.replace(/[_\\.]+/g, ' ').replace(/\s+/g, ' ').trim();
+    return spaced || withoutExt || lastSegment;
+}
+
+async function fetchLinkedTitleServer(videoId) {
+    const parsed = parseStremioId(videoId);
+    if (!parsed || !parsed.imdbId) return null;
+    const metaType = parsed.type === 'episode' ? 'series' : 'movie';
+    const url = `https://v3-cinemeta.strem.io/meta/${metaType}/${encodeURIComponent(parsed.imdbId)}.json`;
+    try {
+        const resp = await axios.get(url, { timeout: 3500 });
+        const meta = resp.data && resp.data.meta;
+        return meta?.name || meta?.english_name || (meta?.nameTranslated && meta.nameTranslated.en) || null;
+    } catch (_) {
+        return null;
+    }
+}
+
+function themeToggleStyles() {
+    return `
+        /* Theme Toggle Button (configure copy) */
+        .theme-toggle {
+            position: fixed;
+            top: 2rem;
+            right: 2rem;
+            width: 48px;
+            height: 48px;
+            background: rgba(255, 255, 255, 0.9);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 9999;
+            box-shadow: 0 4px 12px var(--shadow);
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        [data-theme="dark"] .theme-toggle {
+            background: rgba(20, 25, 49, 0.9);
+            border-color: var(--border);
+        }
+
+        [data-theme="true-dark"] .theme-toggle {
+            background: rgba(10, 10, 10, 0.92);
+            border-color: var(--border);
+            box-shadow: 0 8px 20px var(--shadow);
+        }
+
+        .theme-toggle:focus,
+        .theme-toggle:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(8, 164, 213, 0.35), 0 8px 20px var(--shadow);
+        }
+
+        .theme-toggle:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 8px 20px var(--shadow);
+            border-color: var(--primary);
+        }
+
+        .theme-toggle:active {
+            transform: translateY(0) scale(0.98);
+        }
+
+        .theme-toggle-icon {
+            font-size: 1.5rem;
+            transition: all 0.3s ease;
+            user-select: none;
+            -webkit-user-drag: none;
+            pointer-events: none;
+        }
+
+        .theme-toggle-icon.sun { display: block; }
+        .theme-toggle-icon.moon { display: none; }
+        .theme-toggle-icon.blackhole { display: none; }
+        [data-theme="dark"] .theme-toggle-icon.sun { display: none; }
+        [data-theme="dark"] .theme-toggle-icon.moon { display: block; }
+        [data-theme="true-dark"] .theme-toggle-icon.sun { display: none; }
+        [data-theme="true-dark"] .theme-toggle-icon.moon { display: none; }
+        [data-theme="true-dark"] .theme-toggle-icon.blackhole { display: block; }
+
+        .theme-toggle.mario {
+            background: linear-gradient(180deg, #f7d13e 0%, #e6b526 60%, #d49c1d 100%);
+            border-color: #8a5a00;
+            box-shadow:
+                inset 0 2px 0 #fff3b0,
+                inset 0 -3px 0 #b47a11,
+                0 6px 0 #7a4d00,
+                0 10px 16px rgba(0,0,0,0.35);
+        }
+        .theme-toggle.mario::before {
+            content: '';
+            position: absolute;
+            width: 5px; height: 5px; border-radius: 50%;
+            background: #b47a11;
+            top: 6px; left: 6px;
+            box-shadow:
+                calc(100% - 12px) 0 0 #b47a11,
+                0 calc(100% - 12px) 0 #b47a11,
+                calc(100% - 12px) calc(100% - 12px) 0 #b47a11;
+            opacity: .9;
+        }
+        .theme-toggle.mario:active { transform: translateY(2px) scale(0.98); box-shadow:
+            inset 0 1px 0 #fff3b0,
+            inset 0 -1px 0 #b47a11,
+            0 4px 0 #7a4d00,
+            0 8px 14px rgba(0,0,0,0.3);
+        }
+        .theme-toggle-icon svg {
+            display: block;
+            filter: drop-shadow(0 2px 0 rgba(0,0,0,0.2));
+            pointer-events: none;
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+        .coin { position: fixed; left: 0; top: 0; width: 22px; height: 22px; pointer-events: none; z-index: 10000; transform: translate(-50%, -50%); will-change: transform, opacity; contain: layout paint style; }
+        .coin::before { content: ''; display: block; width: 100%; height: 100%; border-radius: 50%;
+            background:
+                linear-gradient(90deg, rgba(0,0,0,0) 45%, rgba(0,0,0,0.2) 55%) ,
+                radial-gradient(40% 40% at 35% 30%, #fff6bf 0%, rgba(255,255,255,0) 70%),
+                linear-gradient(180deg, #ffd24a 0%, #ffc125 50%, #e2a415 100%);
+            border: 2px solid #8a5a00; box-shadow: 0 2px 0 #7a4d00, inset 0 1px 0 #fff8c6;
+        }
+        @keyframes coin-pop {
+            0% { opacity: 0; transform: translate(-50%, -50%) translateY(0) scale(0.9) rotateY(0deg); }
+            10% { opacity: 1; }
+            60% { transform: translate(-50%, -50%) translateY(-52px) scale(1.0) rotateY(360deg); }
+            100% { opacity: 0; transform: translate(-50%, -50%) translateY(-70px) scale(0.95) rotateY(540deg); }
+        }
+        .coin.animate { animation: coin-pop 0.7s cubic-bezier(.2,.8,.2,1) forwards; }
+        @media (prefers-reduced-motion: reduce) { .coin.animate { animation: none; opacity: 0; } }
+
+        [data-theme="light"] .theme-toggle.mario {
+            background: linear-gradient(180deg, #f7d13e 0%, #e6b526 60%, #d49c1d 100%);
+            border-color: #8a5a00;
+            box-shadow:
+                inset 0 2px 0 #fff3b0,
+                inset 0 -3px 0 #b47a11,
+                0 6px 0 #7a4d00,
+                0 10px 16px rgba(0,0,0,0.35);
+        }
+        [data-theme="light"] .theme-toggle.mario::before {
+            background: #b47a11;
+            box-shadow:
+                calc(100% - 12px) 0 0 #b47a11,
+                0 calc(100% - 12px) 0 #b47a11,
+                calc(100% - 12px) calc(100% - 12px) 0 #b47a11;
+        }
+
+        [data-theme="dark"] .theme-toggle.mario {
+            background: linear-gradient(180deg, #4c6fff 0%, #2f4ed1 60%, #1e2f8a 100%);
+            border-color: #1b2a78;
+            box-shadow:
+                inset 0 2px 0 #b3c4ff,
+                inset 0 -3px 0 #213a9a,
+                0 6px 0 #16246a,
+                0 10px 16px rgba(20,25,49,0.6);
+        }
+        [data-theme="dark"] .theme-toggle.mario::before {
+            background: #213a9a;
+            box-shadow:
+                calc(100% - 12px) 0 0 #213a9a,
+                0 calc(100% - 12px) 0 #213a9a,
+                calc(100% - 12px) calc(100% - 12px) 0 #213a9a;
+        }
+
+        [data-theme="true-dark"] .theme-toggle.mario {
+            background: linear-gradient(180deg, #1b1029 0%, #110b1a 60%, #0b0711 100%);
+            border-color: #3b2a5d;
+            box-shadow:
+                inset 0 2px 0 #6b65ff33,
+                inset 0 -3px 0 #2b2044,
+                0 6px 0 #2a1e43,
+                0 0 18px rgba(107,101,255,0.35);
+        }
+        [data-theme="true-dark"] .theme-toggle.mario::before {
+            background: #2b2044;
+            box-shadow:
+                calc(100% - 12px) 0 0 #2b2044,
+                0 calc(100% - 12px) 0 #2b2044,
+                calc(100% - 12px) calc(100% - 12px) 0 #2b2044;
+        }
+    `;
+}
+
+function buildLinkedVideoLabel(videoId, streamFilename, resolvedTitle) {
+    const parsed = parseStremioId(videoId);
+    const cleanedFilename = streamFilename ? cleanDisplayName(streamFilename) : '';
+
+    const movieTitle = resolvedTitle || cleanedFilename || parsed?.imdbId || parsed?.animeId || streamFilename;
+
+    if (parsed && (parsed.type === 'episode' || parsed.type === 'anime-episode')) {
+        const baseTitle = movieTitle || 'linked stream';
+        const suffix = formatEpisodeTag(parsed) || 'Episode';
+        return `${baseTitle} - ${suffix}`;
+    }
+
+    return movieTitle || 'linked stream';
+}
+
+async function generateSubtitleSyncPage(subtitles, videoId, streamFilename, configStr, config) {
+    const videoHash = deriveVideoHash(streamFilename, videoId);
+    const parsedVideoId = parseStremioId(videoId);
+    const episodeTag = formatEpisodeTag(parsedVideoId);
+    const linkedTitle = await fetchLinkedTitleServer(videoId);
+    const linkedVideoLabel = escapeHtml(buildLinkedVideoLabel(videoId, streamFilename, linkedTitle));
+    const initialVideoTitle = escapeHtml(linkedTitle || buildLinkedVideoLabel(videoId, streamFilename));
+    const subtitleDetails = [];
+    if (linkedTitle) {
+        subtitleDetails.push(`Title: ${linkedTitle}`);
+    } else if (videoId) {
+        subtitleDetails.push(`Video ID: ${videoId}`);
+    }
+    if (episodeTag) subtitleDetails.push(`Episode: ${episodeTag}`);
+    if (streamFilename) subtitleDetails.push(`File: ${cleanDisplayName(streamFilename)}`);
+    const initialVideoSubtitle = escapeHtml(subtitleDetails.join(' • ') || 'Video ID unavailable');
+    const links = {
+        translateFiles: `/file-upload?config=${encodeURIComponent(configStr || '')}&videoId=${encodeURIComponent(videoId || '')}`,
+        syncSubtitles: `/subtitle-sync?config=${encodeURIComponent(configStr || '')}&videoId=${encodeURIComponent(videoId || '')}&filename=${encodeURIComponent(streamFilename || '')}`,
+        embeddedSubs: `/embedded-subtitles?config=${encodeURIComponent(configStr || '')}&videoId=${encodeURIComponent(videoId || '')}&filename=${encodeURIComponent(streamFilename || '')}`,
+        automaticSubs: `/auto-subtitles?config=${encodeURIComponent(configStr || '')}&videoId=${encodeURIComponent(videoId || '')}&filename=${encodeURIComponent(streamFilename || '')}`,
+        subToolbox: `/sub-toolbox?config=${encodeURIComponent(configStr || '')}&videoId=${encodeURIComponent(videoId || '')}&filename=${encodeURIComponent(streamFilename || '')}`,
+        configure: `/configure?config=${encodeURIComponent(configStr || '')}`
+    };
+    const devMode = (config || {}).devMode === true;
 
     // Filter out action buttons and xSync entries to show only fetchable subtitles
-    const fetchableSubtitles = subtitles.filter(sub =>
-        sub.id !== 'sync_subtitles' &&
-        sub.id !== 'file_upload' &&
-        !sub.id.startsWith('translate_') &&
-        !sub.id.startsWith('xsync_')
-    );
+    // Filter out action buttons (legacy and new Sub Toolbox) so only real subtitles are selectable
+    const fetchableSubtitles = subtitles.filter(sub => {
+        const id = sub?.id || '';
+        return id !== 'sync_subtitles' &&
+               id !== 'file_upload' &&
+               id !== 'sub_toolbox' &&
+               !id.startsWith('translate_') &&
+               !id.startsWith('xsync_');
+    });
 
     // Group subtitles by language
     const subtitlesByLang = {};
@@ -44,7 +370,7 @@ function generateSubtitleSyncPage(subtitles, videoId, streamFilename, configStr,
     }
 
     // Generate subtitle options HTML
-    let subtitleOptionsHTML = '';
+    let subtitleOptionsHTML = '<option value="" disabled selected>Choose a subtitle</option>';
     for (const [lang, subs] of Object.entries(subtitlesByLang)) {
         subtitleOptionsHTML += `
             <optgroup label="${escapeHtml(lang)}">`;
@@ -58,15 +384,17 @@ function generateSubtitleSyncPage(subtitles, videoId, streamFilename, configStr,
             </optgroup>`;
     }
 
-    // Generate language options for source and target
-    const sourceLanguages = config.sourceLanguages || ['eng'];
-    const targetLanguages = config.targetLanguages || ['spa', 'fra', 'por'];
-
-    let sourceLangOptionsHTML = '';
-    for (const lang of sourceLanguages) {
-        const langName = getLanguageName(lang);
-        sourceLangOptionsHTML += `<option value="${escapeHtml(lang)}">${escapeHtml(langName)}</option>`;
+    // Generate language options for source (ALL languages for file upload case)
+    const allAvailableLanguages = getAllLanguages();
+    let allLangOptionsHTML = '';
+    for (const { code, name } of allAvailableLanguages) {
+        allLangOptionsHTML += `<option value="${escapeHtml(code)}">${escapeHtml(name)}</option>`;
     }
+
+    // Generate language options for target
+    const sourceLanguages = config.sourceLanguages || ['eng'];
+    // Include source languages in target list so "same language" sync is always available
+    const targetLanguages = [...new Set([...(config.targetLanguages || ['spa', 'fra', 'por']), ...sourceLanguages])];
 
     let targetLangOptionsHTML = '';
     for (const lang of targetLanguages) {
@@ -74,17 +402,40 @@ function generateSubtitleSyncPage(subtitles, videoId, streamFilename, configStr,
         targetLangOptionsHTML += `<option value="${escapeHtml(lang)}">${escapeHtml(langName)}</option>`;
     }
 
+    // Preserve backslashes when embedding regex literals inside the generated page script
+    const pathSplitRegex = String.raw`/[\\/]/`;
+    const extStripRegex = String.raw`/\.[a-z0-9]{2,4}$/i`;
+
     return `
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sync Subtitles - SubMaker</title>
+    <title>Subtitles Sync Studio - SubMaker</title>
     <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-    <link rel="shortcut icon" href="/favicon.svg">
-    <link rel="apple-touch-icon" href="/favicon.svg">
+    <link rel="icon" type="image/svg+xml" href="/favicon-toolbox.svg">
+    <link rel="shortcut icon" href="/favicon-toolbox.svg">
+    <link rel="apple-touch-icon" href="/favicon-toolbox.svg">
+    <link rel="stylesheet" href="/css/combobox.css">
+    <script>
+      (function() {
+        var html = document.documentElement;
+        var theme = 'light';
+        try {
+          var saved = localStorage.getItem('theme');
+          if (saved) {
+            theme = saved;
+          } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            theme = 'dark';
+          }
+        } catch (_) {}
+        html.setAttribute('data-theme', theme);
+      })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -94,6 +445,7 @@ function generateSubtitleSyncPage(subtitles, videoId, streamFilename, configStr,
 
         html {
             scroll-behavior: smooth;
+            color-scheme: light;
         }
 
         :root {
@@ -107,20 +459,80 @@ function generateSubtitleSyncPage(subtitles, videoId, streamFilename, configStr,
             --bg-primary: #f7fafc;
             --surface: #ffffff;
             --surface-light: #f3f7fb;
+            --surface-2: #f4f7fc;
             --text-primary: #0f172a;
             --text-secondary: #475569;
+            --text: #0f172a;
+            --muted: #475569;
             --border: #dbe3ea;
             --shadow: rgba(0, 0, 0, 0.08);
             --glow: rgba(8, 164, 213, 0.25);
         }
 
+        [data-theme="dark"] {
+            color-scheme: dark;
+            --primary: #08A4D5;
+            --primary-light: #33B9E1;
+            --primary-dark: #068DB7;
+            --secondary: #33B9E1;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg-primary: #0A0E27;
+            --surface: #141931;
+            --surface-light: #1E2539;
+            --surface-2: #1e2539;
+            --text-primary: #E8EAED;
+            --text-secondary: #9AA0A6;
+            --text: #E8EAED;
+            --muted: #9AA0A6;
+            --border: #2A3247;
+            --shadow: rgba(0, 0, 0, 0.3);
+            --glow: rgba(8, 164, 213, 0.35);
+        }
+
+        /* True Dark mode (Blackhole) color scheme */
+        [data-theme="true-dark"] {
+            color-scheme: dark;
+            --primary: #08A4D5;
+            --primary-light: #33B9E1;
+            --primary-dark: #068DB7;
+            --secondary: #33B9E1;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg-primary: #000000;
+            --surface: #0a0a0a;
+            --surface-light: #151515;
+            --surface-2: #151515;
+            --text-primary: #E8EAED;
+            --text-secondary: #8A8A8A;
+            --text: #E8EAED;
+            --muted: #8A8A8A;
+            --border: #1a1a1a;
+            --shadow: rgba(0, 0, 0, 0.8);
+            --glow: rgba(8, 164, 213, 0.45);
+        }
+
+        /* Removed forced color-scheme override - let theme cascade handle it naturally */
+
+        ${quickNavStyles()}
+
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-family: 'Inter', 'Space Grotesk', -apple-system, 'Segoe UI', sans-serif;
             background: linear-gradient(135deg, var(--bg-primary) 0%, #ffffff 60%, var(--bg-primary) 100%);
             color: var(--text-primary);
             min-height: 100vh;
             overflow-x: hidden;
             position: relative;
+        }
+
+        [data-theme="dark"] body {
+            background: linear-gradient(135deg, var(--bg-primary) 0%, #141931 60%, var(--bg-primary) 100%);
+        }
+
+        [data-theme="true-dark"] body {
+            background: linear-gradient(135deg, var(--bg-primary) 0%, #0a0a0a 60%, var(--bg-primary) 100%);
         }
 
         body::before {
@@ -137,6 +549,266 @@ function generateSubtitleSyncPage(subtitles, videoId, streamFilename, configStr,
             z-index: 0;
         }
 
+        [data-theme="dark"] body::before {
+            background:
+                radial-gradient(circle at 20% 50%, rgba(8, 164, 213, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 50%, rgba(51, 185, 225, 0.15) 0%, transparent 50%);
+        }
+
+        [data-theme="true-dark"] body::before {
+            background:
+                radial-gradient(circle at 20% 50%, rgba(8, 164, 213, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 80% 50%, rgba(51, 185, 225, 0.08) 0%, transparent 50%);
+        }
+
+        body.modal-open {
+            overflow: hidden;
+        }
+
+        .help-button {
+            position: fixed;
+            bottom: 1.75rem;
+            right: 1.75rem;
+            width: 56px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            cursor: pointer;
+            z-index: 12010;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            border: 2px solid #8a5a00;
+            background: linear-gradient(180deg, #f7d13e 0%, #e6b526 60%, #d49c1d 100%);
+            color: #3b2a00;
+            border-radius: 14px;
+            box-shadow:
+                inset 0 2px 0 #fff3b0,
+                inset 0 -3px 0 #b47a11,
+                0 6px 0 #7a4d00,
+                0 10px 16px rgba(0,0,0,0.35);
+            text-shadow: 0 1px 0 rgba(255,255,255,0.6);
+        }
+
+        .help-button.mario::before {
+            content: '';
+            position: absolute;
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            opacity: .9;
+            background: #b47a11;
+            top: 6px;
+            left: 6px;
+            box-shadow: calc(100% - 12px) 0 0 #b47a11;
+        }
+
+        .help-button:hover { transform: translateY(-2px); }
+
+        [data-theme="dark"] .help-button {
+            border-color: #1b2a78;
+            background: linear-gradient(180deg, #4c6fff 0%, #2f4ed1 60%, #1e2f8a 100%);
+            color: #0f1a4a;
+            box-shadow:
+                inset 0 2px 0 #b3c4ff,
+                inset 0 -3px 0 #213a9a,
+                0 6px 0 #16246a,
+                0 10px 16px rgba(20,25,49,0.6);
+        }
+
+        [data-theme="dark"] .help-button.mario::before {
+            background: #213a9a;
+            box-shadow: calc(100% - 12px) 0 0 #213a9a;
+        }
+
+        [data-theme="true-dark"] .help-button {
+            border-color: #3b2a5d;
+            background: linear-gradient(180deg, #1b1029 0%, #110b1a 60%, #0b0711 100%);
+            color: #bdb4ff;
+            box-shadow:
+                inset 0 2px 0 #6b65ff33,
+                inset 0 -3px 0 #2b2044,
+                0 6px 0 #2a1e43,
+                0 0 18px rgba(107,101,255,0.35);
+        }
+
+        [data-theme="true-dark"] .help-button.mario::before {
+            background: #2b2044;
+            box-shadow: calc(100% - 12px) 0 0 #2b2044;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.85);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 12000;
+            animation: fadeIn 0.3s ease;
+        }
+
+        [data-theme="dark"] .modal-overlay,
+        [data-theme="true-dark"] .modal-overlay {
+            background: rgba(10, 14, 39, 0.85);
+        }
+
+        .modal-overlay.show { display: flex; }
+
+        .modal {
+            background:
+                linear-gradient(180deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.82) 100%),
+                var(--surface);
+            border-radius: 20px;
+            max-width: 560px;
+            width: 94%;
+            max-height: 88vh;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            box-shadow: 0 24px 72px var(--shadow), 0 0 0 1px rgba(8, 164, 213, 0.14);
+            animation: modalSlideIn 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        [data-theme="dark"] .modal {
+            background:
+                linear-gradient(180deg, rgba(20,25,49,0.9) 0%, rgba(20,25,49,0.8) 100%),
+                var(--surface);
+        }
+
+        [data-theme="true-dark"] .modal {
+            background:
+                linear-gradient(180deg, rgba(11,7,17,0.92) 0%, rgba(11,7,17,0.82) 100%),
+                var(--surface);
+        }
+
+        .modal-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            background: linear-gradient(135deg, rgba(8, 164, 213, 0.08) 0%, rgba(51, 185, 225, 0.08) 100%);
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            text-align: center;
+        }
+
+        .modal-header h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 1.25rem;
+            right: 1.25rem;
+            width: 36px;
+            height: 36px;
+            background: var(--surface-light);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+        }
+
+        .modal-close:hover {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: var(--danger);
+            color: var(--danger);
+            transform: rotate(90deg);
+        }
+
+        .modal-content {
+            padding: 1.5rem;
+            text-align: center;
+            overflow: auto;
+            -webkit-overflow-scrolling: touch;
+            flex: 1 1 auto;
+            scrollbar-gutter: stable both-edges;
+        }
+
+        .modal-content h3 {
+            color: var(--primary);
+            font-size: 1.125rem;
+            font-weight: 700;
+            margin: 0 0 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .modal-content ol {
+            margin: 0.5rem auto 1rem;
+            padding-left: 1rem;
+            color: var(--text-primary);
+            line-height: 1.7;
+            display: inline-block;
+            text-align: left;
+        }
+
+        .modal-content li { margin: 0.35rem 0; }
+
+        .modal-content p {
+            color: var(--text-secondary);
+            line-height: 1.7;
+            margin: 0.75rem 0;
+        }
+
+        .modal-footer {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            align-items: center;
+            background: var(--surface);
+            position: sticky;
+            bottom: 0;
+            flex-wrap: wrap;
+        }
+
+        .modal-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .modal-checkbox input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes modalSlideIn {
+            from { opacity: 0; transform: translateY(-30px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
         .container {
             max-width: 1000px;
             margin: 0 auto;
@@ -150,6 +822,69 @@ function generateSubtitleSyncPage(subtitles, videoId, streamFilename, configStr,
             margin-bottom: 3rem;
             animation: fadeInDown 0.6s cubic-bezier(0.16, 1, 0.3, 1);
         }
+
+        .episode-toast {
+            position: fixed;
+            right: 18px;
+            bottom: 18px;
+            width: min(360px, calc(100% - 32px));
+            padding: 14px 16px;
+            border-radius: 12px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            box-shadow: 0 14px 38px var(--glow, rgba(0,0,0,0.18));
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            z-index: 12000;
+            transform: translateY(16px);
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.25s ease;
+        }
+        .episode-toast.show { transform: translateY(0); opacity: 1; pointer-events: auto; }
+        .episode-toast .icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-weight: 700;
+            box-shadow: 0 10px 24px var(--glow);
+            flex-shrink: 0;
+        }
+        .episode-toast .content { flex: 1; min-width: 0; }
+        .episode-toast .title { margin: 0 0 4px; font-weight: 700; color: var(--text-primary, var(--text)); }
+        .episode-toast .meta { margin: 0; color: var(--muted); font-size: 0.9rem; word-break: break-word; }
+        .episode-toast .close {
+            background: none;
+            border: none;
+            color: var(--muted);
+            font-weight: 800;
+            cursor: pointer;
+            padding: 4px;
+            line-height: 1;
+            border-radius: 6px;
+            transition: color 0.2s ease, background 0.2s ease;
+        }
+        .episode-toast .close:hover { color: var(--text); background: var(--surface-2); }
+        .episode-toast button.action {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 8px 18px var(--glow);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            margin-left: 6px;
+            flex-shrink: 0;
+        }
+        .episode-toast button.action:hover { transform: translateY(-1px); box-shadow: 0 12px 24px var(--glow); }
 
         .logo-icon {
             width: 80px;
@@ -181,6 +916,46 @@ function generateSubtitleSyncPage(subtitles, videoId, streamFilename, configStr,
             }
         }
 
+        @media (max-width: 768px) {
+            .mobile-menu-toggle { display: inline-flex; }
+
+            .quick-nav {
+                position: fixed;
+                top: 0;
+                left: 0;
+                height: 100vh;
+                width: 80vw;
+                max-width: 300px;
+                margin: 0;
+                border-radius: 0 14px 14px 0;
+                box-shadow: 0 24px 64px rgba(0,0,0,0.38);
+                transform: translateX(-110%);
+                transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+                flex-direction: column;
+                align-items: flex-start;
+                justify-content: flex-start;
+                gap: 1.25rem;
+                padding: 1.5rem 1.25rem 2rem;
+                overflow-y: auto;
+            }
+
+            .quick-nav.open { transform: translateX(0); }
+
+            .quick-nav-links {
+                width: 100%;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 0.5rem;
+            }
+
+            .quick-nav-link {
+                width: 100%;
+                justify-content: flex-start;
+            }
+
+            .quick-nav-hero { width: 100%; }
+        }
+
         @keyframes fadeInUp {
             from {
                 opacity: 0;
@@ -192,25 +967,87 @@ function generateSubtitleSyncPage(subtitles, videoId, streamFilename, configStr,
             }
         }
 
-        .header h1 {
-            font-size: 2.5rem;
-            font-weight: 800;
-            background: linear-gradient(135deg, var(--primary-light) 0%, var(--secondary) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-bottom: 0.5rem;
-            letter-spacing: -0.02em;
+        .page { max-width: 1200px; margin: 0 auto; padding: 24px 18px 0; }
+        .masthead {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+            text-align: center;
         }
-
-        .header p {
-            color: var(--text-secondary);
-            font-size: 1.125rem;
-            font-weight: 500;
+        .page-hero {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            padding: 18px 14px 4px;
+        }
+        .page-icon {
+            width: 70px;
+            height: 70px;
+            display: grid;
+            place-items: center;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            border-radius: 18px;
+            box-shadow: 0 18px 42px var(--glow);
+            font-size: 32px;
+            animation: floaty 3s ease-in-out infinite;
+        }
+        @keyframes floaty {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+        .page-heading {
+            margin: 0;
+            font-size: 30px;
+            letter-spacing: -0.02em;
+            font-weight: 700;
+            color: var(--text-primary);
+            text-align: center;
+        }
+        .page-subtitle {
+            margin: 0;
+            color: var(--muted);
+            font-weight: 600;
+            text-align: center;
+        }
+        .badge-row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 4px; }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, rgba(8,164,213,0.14), rgba(255,255,255,0.08));
+            border: 1px solid rgba(8,164,213,0.25);
+            box-shadow: 0 12px 30px rgba(8,164,213,0.16);
+        }
+        .status-labels { display: flex; flex-direction: column; line-height: 1.15; }
+        .label-eyebrow { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+        .status-badge strong { font-size: 14px; }
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 999px;
+            box-shadow: 0 0 0 0 rgba(8, 164, 213, 0.0);
+        }
+        .status-dot.ok { background: linear-gradient(135deg, #4ade80, #22c55e); }
+        .status-dot.warn { background: linear-gradient(135deg, #fbbf24, #f59e0b); }
+        .status-dot.bad { background: linear-gradient(135deg, #f43f5e, #dc2626); }
+        .status-dot.pulse { animation: pulse 1.15s ease-in-out infinite; }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(8, 164, 213, 0.22); }
+            70% { box-shadow: 0 0 0 10px rgba(8, 164, 213, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(8, 164, 213, 0); }
         }
 
         .section {
-            background: rgba(255, 255, 255, 0.85);
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.82) 100%),
+                var(--surface);
             backdrop-filter: blur(12px);
             border-radius: 20px;
             padding: 2rem;
@@ -219,6 +1056,20 @@ function generateSubtitleSyncPage(subtitles, videoId, streamFilename, configStr,
             box-shadow: 0 8px 24px var(--shadow);
             transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
             animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+        }
+
+        [data-theme="dark"] .section {
+            background:
+                linear-gradient(180deg, rgba(20, 25, 49, 0.9) 0%, rgba(20, 25, 49, 0.82) 100%),
+                var(--surface);
+            box-shadow: 0 12px 34px var(--shadow), 0 0 0 1px rgba(8, 164, 213, 0.1);
+        }
+
+        [data-theme="true-dark"] .section {
+            background:
+                linear-gradient(180deg, rgba(10, 10, 10, 0.94) 0%, rgba(10, 10, 10, 0.86) 100%),
+                var(--surface);
+            box-shadow: 0 14px 40px var(--shadow), 0 0 0 1px rgba(8, 164, 213, 0.12);
         }
 
         .section:hover {
@@ -238,6 +1089,15 @@ function generateSubtitleSyncPage(subtitles, videoId, streamFilename, configStr,
             letter-spacing: -0.02em;
         }
 
+        .section h2.section-heading {
+            width: 100%;
+        }
+
+        .section h2.section-centered {
+            justify-content: center;
+            text-align: center;
+        }
+
         .section-number {
             display: inline-flex;
             align-items: center;
@@ -252,6 +1112,96 @@ function generateSubtitleSyncPage(subtitles, videoId, streamFilename, configStr,
             box-shadow: 0 4px 12px var(--glow);
         }
 
+        .step-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 1rem;
+        }
+
+        @media (min-width: 960px) {
+            .step-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        .step-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 1.25rem;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            height: 100%;
+            transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
+        }
+
+        [data-theme="dark"] .step-card,
+        [data-theme="true-dark"] .step-card {
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+            background: linear-gradient(180deg, rgba(20,25,49,0.18) 0%, rgba(20,25,49,0.06) 100%), var(--surface);
+        }
+
+        [data-theme="true-dark"] .step-card {
+            background: linear-gradient(180deg, rgba(12,12,12,0.28) 0%, rgba(12,12,12,0.12) 100%), var(--surface);
+        }
+
+        .step-card:hover {
+            border-color: var(--primary);
+            box-shadow: 0 6px 18px var(--shadow);
+            transform: translateY(-2px);
+        }
+
+        .step3-wrapper {
+            margin-top: 1rem;
+            display: flex;
+            justify-content: center;
+        }
+
+        .step3-section {
+            max-width: 880px;
+            margin-left: auto;
+            margin-right: auto;
+            padding-left: 1.5rem;
+            padding-right: 1.5rem;
+        }
+
+        .step3-wrapper .step-card {
+            width: 100%;
+            max-width: 760px;
+        }
+
+        .step3-standalone {
+            margin-top: 0;
+        }
+
+        .step-title {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.75rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .step-title > span:last-child {
+            width: 100%;
+            text-align: center;
+        }
+
+        .step-chip {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.35rem 0.75rem;
+            border-radius: 999px;
+            background: rgba(8, 164, 213, 0.12);
+            color: var(--primary);
+            font-weight: 700;
+            font-size: 0.85rem;
+        }
+
         .form-group {
             margin-bottom: 1.5rem;
         }
@@ -262,6 +1212,7 @@ function generateSubtitleSyncPage(subtitles, videoId, streamFilename, configStr,
             color: var(--text-primary);
             font-size: 0.95rem;
             font-weight: 600;
+            text-align: center;
         }
 
         .label-description {
@@ -270,6 +1221,7 @@ function generateSubtitleSyncPage(subtitles, videoId, streamFilename, configStr,
             color: var(--text-secondary);
             font-weight: 400;
             margin-top: 0.25rem;
+            text-align: center;
         }
 
         .form-group input[type="text"],
@@ -282,8 +1234,9 @@ function generateSubtitleSyncPage(subtitles, videoId, streamFilename, configStr,
             border-radius: 12px;
             color: var(--text-primary);
             font-size: 1rem;
-            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
             font-family: inherit;
+            text-align: center;
         }
 
         .form-group input[type="text"]:focus,
@@ -292,7 +1245,6 @@ function generateSubtitleSyncPage(subtitles, videoId, streamFilename, configStr,
             outline: none;
             border-color: var(--primary);
             box-shadow: 0 0 0 4px var(--glow);
-            transform: translateY(-1px);
         }
 
         .form-group textarea {
@@ -335,8 +1287,10 @@ function generateSubtitleSyncPage(subtitles, videoId, streamFilename, configStr,
             transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             gap: 0.5rem;
             font-family: inherit;
+            margin: 0 auto;
         }
 
         .btn:disabled {
@@ -418,18 +1372,53 @@ function generateSubtitleSyncPage(subtitles, videoId, streamFilename, configStr,
             background: rgba(8, 164, 213, 0.08);
             border: 1px solid rgba(8, 164, 213, 0.2);
             color: var(--text-primary);
+            text-align: center;
         }
 
         .status-message.success {
             background: rgba(16, 185, 129, 0.08);
             border: 1px solid rgba(16, 185, 129, 0.2);
             color: var(--text-primary);
+            text-align: center;
         }
 
         .status-message.error {
             background: rgba(239, 68, 68, 0.08);
             border: 1px solid var(--danger);
             color: var(--danger);
+            text-align: center;
+        }
+
+        .video-meta {
+            margin-top: 0.75rem;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px dashed var(--border);
+            background: var(--surface-2);
+            text-align: center;
+        }
+
+        .video-meta-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--muted);
+            margin: 0 0 4px;
+            font-weight: 700;
+        }
+
+        .video-meta-title {
+            margin: 0;
+            font-weight: 800;
+            font-size: 16px;
+            letter-spacing: -0.01em;
+        }
+
+        .video-meta-subtitle {
+            margin: 4px 0 0;
+            color: var(--muted);
+            font-size: 13px;
+            word-break: break-word;
         }
 
         .video-preview {
@@ -442,26 +1431,34 @@ function generateSubtitleSyncPage(subtitles, videoId, streamFilename, configStr,
         }
 
         .subtitle-list {
-            max-height: 250px;
-            overflow-y: auto;
-            margin-bottom: 1rem;
+            width: 100%;
+            padding: 0.875rem 1rem;
             border: 2px solid var(--border);
             border-radius: 12px;
             background: var(--surface);
+            color: var(--text-primary);
+            font-size: 1rem;
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background-image:
+                linear-gradient(45deg, transparent 50%, var(--text-secondary) 50%),
+                linear-gradient(135deg, var(--text-secondary) 50%, transparent 50%),
+                linear-gradient(to right, transparent, transparent);
+            background-position:
+                calc(100% - 20px) calc(50% - 4px),
+                calc(100% - 12px) calc(50% - 4px),
+                0 0;
+            background-size: 8px 8px, 8px 8px, 0 100%;
+            background-repeat: no-repeat;
+            padding-right: 2.5rem;
+            text-align: center;
         }
 
-        .subtitle-list::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        .subtitle-list::-webkit-scrollbar-track {
-            background: var(--surface-light);
-            border-radius: 4px;
-        }
-
-        .subtitle-list::-webkit-scrollbar-thumb {
-            background: var(--primary);
-            border-radius: 4px;
+        .subtitle-list:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px var(--glow);
         }
 
         .upload-area {
@@ -529,134 +1526,229 @@ function generateSubtitleSyncPage(subtitles, videoId, streamFilename, configStr,
             color: var(--text-secondary);
             line-height: 1.6;
         }
+
+        .auto-sync-box {
+            background: rgba(8, 164, 213, 0.12);
+            border-color: rgba(8, 164, 213, 0.25);
+            color: var(--text-primary);
+        }
+
+        [data-theme="dark"] .auto-sync-box,
+        [data-theme="true-dark"] .auto-sync-box {
+            background: rgba(30, 64, 175, 0.25);
+            border-color: rgba(59, 130, 246, 0.55);
+        }
+
+        .sync-method-description {
+            margin: 0;
+            color: var(--text-primary);
+        }
+
+        [data-theme="dark"] .sync-method-description,
+        [data-theme="true-dark"] .sync-method-description {
+            color: #e8edf7;
+        }
+    ${themeToggleStyles()}
     </style>
+    <script src="/js/theme-toggle.js" defer></script>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <div class="logo-icon">🎬</div>
-            <h1>Subtitle Sync</h1>
-            <p>Automatically synchronize subtitles with your video using audio analysis</p>
-        </div>
-
-        <!-- Step 1: Provide Stream Information -->
-        <div class="section">
-            <h2><span class="section-number">1</span> Provide Stream Information</h2>
-            <div class="info-box">
-                <h4>📝 How to get your stream link:</h4>
-                <p>Right-click on your video in Stremio, select "Copy Stream URL", and paste it below. The Chrome extension (to be installed) will extract audio for precise syncing.</p>
+    ${themeToggleMarkup()}
+    <button class="help-button mario" id="syncHelp" title="Show instructions">?</button>
+    <div class="modal-overlay" id="syncInstructionsModal" role="dialog" aria-modal="true" aria-labelledby="syncInstructionsTitle">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="syncInstructionsTitle">Subtitle Sync Instructions</h2>
+                <div class="modal-close" id="closeSyncInstructions" role="button" aria-label="Close instructions">&times;</div>
             </div>
-            <div class="form-group">
-                <label for="streamUrl">Stream URL:</label>
-                <input type="text" id="streamUrl" placeholder="Paste your stream URL here (e.g., http://... or magnet:...)" value="">
+            <div class="modal-content">
+                <h3>Sync Methods</h3>
+                <ol>
+                    <li><strong>Quick Sync:</strong> Grabs short windows at the start/middle/end (~2 mins total) for fast offset/drift detection.</li>
+                    <li><strong>Smart Sync:</strong> Five spread windows (~3–4 mins total) to catch bitrate shifts/ads with drift-aware alignment. Processing time: ~1–3 minutes.</li>
+                    <li><strong>Complete Sync:</strong> Dense windows across the full runtime (several minutes of audio) with chunked Whisper and per-window correction for heavy drifts/ads.</li>
+                    <li><strong>Manual Offset:</strong> Adjust subtitle timing manually with positive/negative milliseconds when you don't want to run autosync.</li>
+                </ol>
+                <p>Smart Sync auto-selects when the extension is detected; switch modes if ads or heavy drifts need a different scan.</p>
             </div>
-            <div class="status-message info" style="display: block;">
-                <strong>ℹ️ Audio Extraction:</strong> Install the SubMaker Chrome Extension for automatic audio-based syncing. Without it, you can still use manual offset adjustment.
-            </div>
-            <button id="continueBtn" class="btn btn-primary">
-                <span>➡️</span> Continue to Subtitle Selection
-            </button>
-        </div>
-
-        <!-- Step 2: Select Subtitle -->
-        <div class="section" id="step2Section" style="opacity: 0.5; pointer-events: none;">
-            <h2><span class="section-number">2</span> Select Subtitle to Sync</h2>
-            <div class="form-group">
-                <label>Choose from fetched subtitles:</label>
-                <select id="subtitleSelect" size="8" class="subtitle-list">
-                    ${subtitleOptionsHTML}
-                </select>
-            </div>
-            <div class="upload-area" id="uploadArea">
-                <p>📁 Or drag & drop your .srt file here</p>
-                <p style="font-size: 0.85rem; color: #9CA3AF; margin-top: 0.5rem;">Click to browse files</p>
-                <input type="file" id="fileInput" accept=".srt" style="display: none;">
-            </div>
-            <div class="form-group">
-                <label for="sourceLanguage">Source Language:</label>
-                <select id="sourceLanguage">
-                    ${sourceLangOptionsHTML}
-                </select>
-            </div>
-            <div class="checkbox-group">
-                <input type="checkbox" id="translateAfterSync">
-                <label for="translateAfterSync">Translate subtitle after syncing</label>
-            </div>
-            <div class="form-group" id="targetLangGroup" style="display: none; margin-top: 1rem;">
-                <label for="targetLanguage">Target Language:</label>
-                <select id="targetLanguage">
-                    ${targetLangOptionsHTML}
-                </select>
+            <div class="modal-footer">
+                <label class="modal-checkbox">
+                    <input type="checkbox" id="dontShowSyncInstructions">
+                    Don't show this again
+                </label>
+                <button type="button" class="btn" id="gotItSyncInstructions">Got it</button>
             </div>
         </div>
-
-        <!-- Step 3: Sync -->
-        <div class="section" id="step3Section" style="opacity: 0.5; pointer-events: none;">
-            <h2><span class="section-number">3</span> Sync Subtitle</h2>
-
-            <!-- Extension Status -->
-            <div class="form-group">
-                <label>Chrome Extension Status:</label>
-                <div class="status-message info" id="extensionStatus">
-                    <span id="extensionStatusText">🔌 Checking for extension...</span>
-                </div>
+    </div>
+    <div id="episodeToast" class="episode-toast" role="status" aria-live="polite">
+        <div class="icon">!</div>
+        <div class="content">
+            <p class="title" id="episodeToastTitle">New stream detected</p>
+            <p class="meta" id="episodeToastMeta">A different episode is playing in Stremio.</p>
+        </div>
+        <button class="close" id="episodeToastDismiss" type="button" aria-label="Dismiss notification">×</button>
+        <button class="action" id="episodeToastUpdate" type="button">Update</button>
+    </div>
+    ${renderQuickNav(links, 'syncSubtitles', false, devMode)}
+    <div class="page">
+        <header class="masthead">
+            <div class="page-hero">
+                <div class="page-icon">⏱️</div>
+                <h1 class="page-heading">Subtitles Sync Studio</h1>
+                <p class="page-subtitle">Automatically synchronize subtitles with your video using audio analysis</p>
             </div>
-
-            <!-- Sync Method Selection -->
-            <div class="info-box">
-                <h4>⚙️ Sync Methods:</h4>
-                <p><strong>Quick Sync:</strong> Fast offset detection from first 60 seconds (10-15 sec, 85-90% accuracy)<br>
-                <strong>Smart Sync:</strong> Multi-point sampling with drift detection (2-3 min, 92-96% accuracy)<br>
-                <strong>Complete Sync:</strong> Full audio analysis, matches each subtitle (5-10 min, 97-99% accuracy)<br>
-                <strong>Manual:</strong> Adjust subtitle timing manually with offset in milliseconds</p>
-            </div>
-
-            <div class="form-group">
-                <label for="syncMethod">Sync Method:</label>
-                <select id="syncMethod">
-                    <option value="manual">📝 Manual Offset Adjustment</option>
-                    <option value="quick" disabled>⚡ Quick Sync - First 60s (Requires Extension)</option>
-                    <option value="fast" disabled>🚀 Smart Sync - Multi-Point Sampling (Requires Extension)</option>
-                    <option value="complete" disabled>🎯 Complete Sync - Full Analysis (Requires Extension)</option>
-                </select>
-            </div>
-
-            <!-- Manual Sync Controls -->
-            <div id="manualSyncControls">
-                <div class="form-group">
-                    <label for="offsetMs">Time Offset (milliseconds):</label>
-                    <div style="display: flex; gap: 0.5rem; align-items: center;">
-                        <input type="number" id="offsetMs" value="0" step="100" style="flex: 1;">
-                        <button class="btn btn-secondary" onclick="document.getElementById('offsetMs').value = parseInt(document.getElementById('offsetMs').value) - 1000">-1s</button>
-                        <button class="btn btn-secondary" onclick="document.getElementById('offsetMs').value = parseInt(document.getElementById('offsetMs').value) - 100">-100ms</button>
-                        <button class="btn btn-secondary" onclick="document.getElementById('offsetMs').value = 0">Reset</button>
-                        <button class="btn btn-secondary" onclick="document.getElementById('offsetMs').value = parseInt(document.getElementById('offsetMs').value) + 100">+100ms</button>
-                        <button class="btn btn-secondary" onclick="document.getElementById('offsetMs').value = parseInt(document.getElementById('offsetMs').value) + 1000">+1s</button>
+            <div class="badge-row">
+                ${renderRefreshBadge()}
+                <div class="status-badge">
+                    <span class="status-dot ok"></span>
+                    <div class="status-labels">
+                        <span class="label-eyebrow">Addon</span>
+                        <strong>v${escapeHtml(appVersion || 'n/a')}</strong>
                     </div>
-                    <p style="font-size: 0.85rem; color: #9CA3AF; margin-top: 0.5rem;">
-                        Positive values = delay subtitles (appear later)<br>
-                        Negative values = advance subtitles (appear earlier)
-                    </p>
+                </div>
+                <div class="status-badge" id="ext-status">
+                    <span class="status-dot warn pulse" id="ext-dot"></span>
+                    <div class="status-labels">
+                        <span class="label-eyebrow">Extension</span>
+                        <strong id="ext-label">Waiting for extension...</strong>
+                    </div>
+                </div>
+                <div class="status-badge">
+                    <span class="status-dot ok"></span>
+                    <div class="status-labels">
+                        <span class="label-eyebrow">Hash</span>
+                        <strong>${escapeHtml(videoHash || 'pending')}</strong>
+                    </div>
                 </div>
             </div>
+        </header>
 
-            <!-- Auto Sync Info -->
-            <div id="autoSyncInfo" style="display: none;">
-                <div class="info-box" style="background-color: #1e40af15; border-color: #3b82f6;">
-                    <p id="syncMethodDescription" style="margin: 0; color: #e5e7eb;"></p>
+        <!-- Steps 1-3: Combined Flow -->
+        <div class="section" id="syncFlowSection">
+            <h2 class="section-heading section-centered"><span class="section-number">1-3</span> Link your stream, choose a subtitle, and sync</h2>
+            <div class="step-grid">
+                <div class="step-card" id="step1Section">
+                    <div class="step-title">
+                        <span class="step-chip">Step 1</span>
+                        <span>Provide Stream Information</span>
+                    </div>
+                    <div class="video-meta">
+                        <p class="video-meta-label">Linked stream</p>
+                        <p class="video-meta-title" id="sync-video-meta-title">${initialVideoTitle}</p>
+                        <p class="video-meta-subtitle" id="sync-video-meta-subtitle">${initialVideoSubtitle}</p>
+                    </div>
+                    <div class="form-group">
+                        <label for="streamUrl">Stream URL:</label>
+                        <input type="text" id="streamUrl" placeholder="Paste your stream URL here (e.g., http://... or magnet:...)" value="">
+                    </div>
+                    <div class="status-message info" style="display: block;">
+                        <strong>ℹ️ Subtitles Sync:</strong> Ensure the linked stream is the intended one (same as the Stream URL) and that the extension is detected before continuing.
+                    </div>
+                    <button id="continueBtn" class="btn btn-primary">
+                        <span>➡️</span> Continue to Subtitle Selection
+                    </button>
                 </div>
-            </div>
 
-            <button id="startSyncBtn" class="btn btn-primary">
-                <span>⚡</span> Apply Sync
-            </button>
-            <div class="progress-container" id="syncProgress">
-                <div class="progress-bar">
-                    <div class="progress-fill" id="syncProgressFill"></div>
+                <div class="step-card" id="step2Section" style="opacity: 0.5; pointer-events: none;">
+                    <div class="step-title">
+                        <span class="step-chip">Step 2</span>
+                        <span>Select Subtitle to Sync</span>
+                    </div>
+                    <div class="form-group">
+                        <label>Choose from <strong>${linkedVideoLabel}</strong> fetched subtitles:</label>
+                        <select id="subtitleSelect" class="subtitle-list">
+                            ${subtitleOptionsHTML}
+                        </select>
+                    </div>
+                    <div class="upload-area" id="uploadArea">
+                        <p>📁 Or drag & drop your .srt file here</p>
+                        <p style="font-size: 0.85rem; color: #9CA3AF; margin-top: 0.5rem;">Click to browse files</p>
+                        <input type="file" id="fileInput" accept=".srt" style="display: none;">
+                    </div>
+                    <div class="form-group" id="sourceLanguageGroup" style="display: none;">
+                        <label for="sourceLanguage">Source Language:</label>
+                        <select id="sourceLanguage">
+                            ${allLangOptionsHTML}
+                        </select>
+                    </div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="translateAfterSync">
+                        <label for="translateAfterSync">Translate subtitle after syncing</label>
+                    </div>
+                    <div class="form-group" id="targetLangGroup" style="display: none; margin-top: 1rem;">
+                        <label for="targetLanguage">Target Language:</label>
+                        <select id="targetLanguage">
+                            ${targetLangOptionsHTML}
+                        </select>
+                    </div>
                 </div>
-                <div class="progress-text" id="syncProgressText">Syncing subtitles...</div>
             </div>
-            <div class="status-message" id="syncStatus"></div>
+        </div>
+
+        <div class="section step3-section">
+            <div class="step3-wrapper">
+                <div class="step-card step3-standalone" id="step3Section" style="opacity: 0.5; pointer-events: none;">
+                    <div class="step-title">
+                        <span class="step-chip">Step 3</span>
+                        <span>Sync Subtitle</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="syncMethod">Sync Method:</label>
+                        <select id="syncMethod">
+                            <option value="manual">📝 Manual Offset Adjustment</option>
+                            <option value="quick" disabled>⚡ Quick Sync - Start/Mid/End windows (Requires Extension)</option>
+                            <option value="fast" disabled>🚀 Smart Sync - Five spread windows (Requires Extension)</option>
+                            <option value="complete" disabled>🎯 Complete Sync - Dense runtime windows (Requires Extension)</option>
+                        </select>
+                    </div>
+
+                    <!-- Manual Sync Controls -->
+                    <div id="manualSyncControls">
+                        <div class="form-group">
+                            <label for="offsetMs">Time Offset (milliseconds):</label>
+                            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                <input type="number" id="offsetMs" value="0" step="100" style="flex: 1;">
+                                <button class="btn btn-secondary" onclick="document.getElementById('offsetMs').value = parseInt(document.getElementById('offsetMs').value) - 1000">-1s</button>
+                                <button class="btn btn-secondary" onclick="document.getElementById('offsetMs').value = parseInt(document.getElementById('offsetMs').value) - 100">-100ms</button>
+                                <button class="btn btn-secondary" onclick="document.getElementById('offsetMs').value = 0">Reset</button>
+                                <button class="btn btn-secondary" onclick="document.getElementById('offsetMs').value = parseInt(document.getElementById('offsetMs').value) + 100">+100ms</button>
+                                <button class="btn btn-secondary" onclick="document.getElementById('offsetMs').value = parseInt(document.getElementById('offsetMs').value) + 1000">+1s</button>
+                            </div>
+                            <p style="font-size: 0.85rem; color: #9CA3AF; margin-top: 0.5rem;">
+                                Positive values = delay subtitles (appear later)<br>
+                                Negative values = advance subtitles (appear earlier)
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Auto Sync Info -->
+                    <div id="autoSyncInfo" style="display: none;">
+                        <div class="info-box auto-sync-box">
+                            <p id="syncMethodDescription" class="sync-method-description"></p>
+                        </div>
+                    </div>
+
+                    <div class="checkbox-group" style="margin-top: 0.75rem;">
+                        <input type="checkbox" id="preferAlass">
+                        <label for="preferAlass" style="display:flex;flex-direction:column;">
+                            <span style="font-weight:700;">Use alass alignment first</span>
+                            <span class="label-description">Skip straight to alass-wasm (faster if Whisper struggles); falls back automatically on failure.</span>
+                        </label>
+                    </div>
+
+                    <button id="startSyncBtn" class="btn btn-primary">
+                        <span>⚡</span> Apply Sync
+                    </button>
+                    <div class="progress-container" id="syncProgress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="syncProgressFill"></div>
+                        </div>
+                        <div class="progress-text" id="syncProgressText">Syncing subtitles...</div>
+                    </div>
+                    <div class="status-message" id="syncStatus"></div>
+                </div>
+            </div>
         </div>
 
         <!-- Step 4: Preview & Download -->
@@ -675,15 +1767,23 @@ function generateSubtitleSyncPage(subtitles, videoId, streamFilename, configStr,
         </div>
     </div>
 
+    <script src="/js/combobox.js"></script>
     <script>
+        ${quickNavScript()}
+
+        if (window.ComboBox && typeof window.ComboBox.enhanceAll === 'function') {
+            window.ComboBox.enhanceAll(document);
+        }
+
         // Configuration and state
-        const CONFIG = {
-            configStr: ${JSON.stringify(configStr)},
-            videoId: ${JSON.stringify(videoId)},
-            streamFilename: ${JSON.stringify(streamFilename)},
-            videoHash: ${JSON.stringify(videoHash)},
-            geminiApiKey: ${JSON.stringify(config.geminiApiKey || '')}
-        };
+        const CONFIG = ${safeJsonSerialize({
+            configStr,
+            videoId,
+            streamFilename,
+            videoHash,
+            linkedTitle,
+            geminiApiKey: config.geminiApiKey || ''
+        })};
 
         let STATE = {
             streamUrl: null,
@@ -693,11 +1793,115 @@ function generateSubtitleSyncPage(subtitles, videoId, streamFilename, configStr,
             syncedSubtitle: null,
             translatedSubtitle: null
         };
+        const startSyncBtn = document.getElementById('startSyncBtn');
+        const startSyncLabel = startSyncBtn ? startSyncBtn.innerHTML : 'Apply Sync';
+        let syncInFlight = false;
+
+        const LINKED_META = {
+            title: document.getElementById('sync-video-meta-title'),
+            subtitle: document.getElementById('sync-video-meta-subtitle')
+        };
+
+        const linkedTitleCache = new Map();
+        let linkedTitleRequestId = 0;
+
+        const instructionsEls = {
+            overlay: document.getElementById('syncInstructionsModal'),
+            help: document.getElementById('syncHelp'),
+            close: document.getElementById('closeSyncInstructions'),
+            gotIt: document.getElementById('gotItSyncInstructions'),
+            dontShow: document.getElementById('dontShowSyncInstructions')
+        };
+        const SYNC_INSTRUCTIONS_KEY = 'submaker_sync_instructions_visited';
+
+        function setInstructionLock(active) {
+            document.body.classList.toggle('modal-open', !!active);
+        }
+
+        function openInstructions(auto = false) {
+            if (!instructionsEls.overlay) return;
+            instructionsEls.overlay.classList.add('show');
+            instructionsEls.overlay.style.display = 'flex';
+            setInstructionLock(true);
+        }
+
+        function closeInstructions() {
+            if (instructionsEls.overlay) {
+                instructionsEls.overlay.classList.remove('show');
+                instructionsEls.overlay.style.display = 'none';
+            }
+            setInstructionLock(false);
+            // Mark as visited so it doesn't auto-show on subsequent visits
+            try { localStorage.setItem(SYNC_INSTRUCTIONS_KEY, 'true'); } catch (_) {}
+        }
+
+        function initInstructions() {
+            const hasVisited = (() => {
+                try { return localStorage.getItem(SYNC_INSTRUCTIONS_KEY) === 'true'; } catch (_) { return false; }
+            })();
+
+            // Always show the help button
+            if (instructionsEls.help) {
+                instructionsEls.help.addEventListener('click', () => openInstructions(false));
+                instructionsEls.help.style.display = 'flex';
+            }
+            if (instructionsEls.close) instructionsEls.close.addEventListener('click', closeInstructions);
+            if (instructionsEls.gotIt) instructionsEls.gotIt.addEventListener('click', closeInstructions);
+            if (instructionsEls.overlay) {
+                instructionsEls.overlay.addEventListener('click', (ev) => {
+                    if (ev.target === instructionsEls.overlay) closeInstructions();
+                });
+            }
+            document.addEventListener('keydown', (ev) => {
+                if (ev.key === 'Escape' && instructionsEls.overlay && instructionsEls.overlay.classList.contains('show')) {
+                    closeInstructions();
+                }
+            });
+
+            // Only auto-show on first visit
+            if (!hasVisited) {
+                setTimeout(() => openInstructions(true), 250);
+            }
+        }
+
+        initInstructions();
+
+        initStreamRefreshButton({
+            buttonId: 'quickNavRefresh',
+            configStr: CONFIG.configStr,
+            current: { videoId: CONFIG.videoId, filename: CONFIG.streamFilename, videoHash: CONFIG.videoHash },
+            labels: { loading: 'Refreshing...', empty: 'No stream yet', error: 'Refresh failed', current: 'Already latest' },
+            buildUrl: (payload) => {
+                return '/subtitle-sync?config=' + encodeURIComponent(CONFIG.configStr) +
+                    '&videoId=' + encodeURIComponent(payload.videoId || '') +
+                    '&filename=' + encodeURIComponent(payload.filename || '');
+            }
+        });
+
+        // Episode change watcher (toast + manual update)
+        initStreamWatcher({
+            configStr: CONFIG.configStr,
+            current: { videoId: CONFIG.videoId, filename: CONFIG.streamFilename, videoHash: CONFIG.videoHash },
+            buildUrl: (payload) => {
+                return '/subtitle-sync?config=' + encodeURIComponent(CONFIG.configStr) +
+                    '&videoId=' + encodeURIComponent(payload.videoId || '') +
+                    '&filename=' + encodeURIComponent(payload.filename || '');
+            }
+        });
 
         // Helper functions
         function updateProgress(fillId, textId, percent, text) {
             document.getElementById(fillId).style.width = percent + '%';
             document.getElementById(textId).textContent = text;
+        }
+
+        function isHttpUrl(url) {
+            try {
+                const u = new URL(url);
+                return u.protocol === 'http:' || u.protocol === 'https:';
+            } catch (_) {
+                return false;
+            }
         }
 
         function showStatus(elementId, message, type) {
@@ -716,6 +1920,113 @@ function generateSubtitleSyncPage(subtitles, videoId, streamFilename, configStr,
             section.style.opacity = '1';
             section.style.pointerEvents = 'auto';
         }
+
+        function cleanLinkedName(raw) {
+            if (!raw) return '';
+            const lastSegment = String(raw).split(${pathSplitRegex}).pop() || '';
+            return lastSegment.replace(${extStripRegex}, '').replace(/[._]/g, ' ').trim() || lastSegment;
+        }
+
+        function normalizeImdbId(id) {
+            if (!id) return '';
+            const trimmed = String(id).trim();
+            if (trimmed.startsWith('tt')) return trimmed;
+            if (/^\\d+$/.test(trimmed)) return 'tt' + trimmed;
+            return trimmed;
+        }
+
+        function parseVideoId(id) {
+            if (!id) return null;
+            const parts = String(id).split(':');
+            if (/^(anidb|kitsu|mal|anilist)/.test(parts[0])) {
+                return {
+                    type: 'anime',
+                    animeId: parts[0],
+                    season: parts.length === 4 ? parseInt(parts[2], 10) : undefined,
+                    episode: parts.length >= 3 ? parseInt(parts[parts.length - 1], 10) : undefined
+                };
+            }
+            const imdbId = normalizeImdbId(parts[0]);
+            if (parts.length >= 3) {
+                return {
+                    type: 'episode',
+                    imdbId,
+                    season: parseInt(parts[1], 10),
+                    episode: parseInt(parts[2], 10)
+                };
+            }
+            return { type: 'movie', imdbId };
+        }
+
+        function formatEpisodeTag(videoId) {
+            const parsed = parseVideoId(videoId);
+            if (!parsed) return '';
+            const s = Number.isFinite(parsed.season) ? 'S' + String(parsed.season).padStart(2, '0') : '';
+            const e = Number.isFinite(parsed.episode) ? 'E' + String(parsed.episode).padStart(2, '0') : '';
+            return (s || e) ? (s + e) : '';
+        }
+
+        async function fetchLinkedTitle(videoId) {
+            const parsed = parseVideoId(videoId);
+            if (!parsed || !parsed.imdbId) return null;
+            const key = parsed.imdbId + ':' + (parsed.type === 'episode' ? 'series' : 'movie');
+            if (CONFIG.videoId === videoId && CONFIG.linkedTitle) {
+                linkedTitleCache.set(key, CONFIG.linkedTitle);
+                return CONFIG.linkedTitle;
+            }
+            if (linkedTitleCache.has(key)) return linkedTitleCache.get(key);
+            const metaUrl = \`https://v3-cinemeta.strem.io/meta/\${parsed.type === 'episode' ? 'series' : 'movie'}/\${encodeURIComponent(parsed.imdbId)}.json\`;
+            try {
+                const resp = await fetch(metaUrl);
+                if (!resp.ok) throw new Error('Failed to fetch metadata');
+                const data = await resp.json();
+                const title = data?.meta?.name || data?.meta?.english_name || data?.meta?.nameTranslated?.en || null;
+                linkedTitleCache.set(key, title);
+                return title;
+            } catch (err) {
+                linkedTitleCache.set(key, null);
+                return null;
+            }
+        }
+
+        async function updateLinkedMeta(payload = {}) {
+            if (!LINKED_META.title || !LINKED_META.subtitle) return;
+            const source = {
+                videoId: payload.videoId || CONFIG.videoId,
+                filename: payload.filename || CONFIG.streamFilename || '',
+                title: payload.title || CONFIG.linkedTitle || ''
+            };
+            const episodeTag = formatEpisodeTag(source.videoId);
+            const fallbackTitle = source.title || cleanLinkedName(source.filename) || cleanLinkedName(source.videoId) || 'No stream linked';
+            const fallbackDetails = [];
+            if (source.title) {
+                fallbackDetails.push('Title: ' + source.title);
+            } else if (source.videoId) {
+                fallbackDetails.push('Video ID: ' + source.videoId);
+            }
+            if (episodeTag) fallbackDetails.push('Episode: ' + episodeTag);
+            if (source.filename) fallbackDetails.push('File: ' + source.filename);
+            LINKED_META.title.textContent = fallbackTitle;
+            LINKED_META.subtitle.textContent = fallbackDetails.join(' • ') || 'Waiting for a linked stream...';
+
+            const requestId = ++linkedTitleRequestId;
+            const fetchedTitle = source.title || await fetchLinkedTitle(source.videoId);
+            if (requestId !== linkedTitleRequestId) return;
+
+            const details = [];
+            if (fetchedTitle) {
+                details.push('Title: ' + fetchedTitle);
+            } else if (source.videoId) {
+                details.push('Video ID: ' + source.videoId);
+            }
+            if (episodeTag) details.push('Episode: ' + episodeTag);
+            if (source.filename) details.push('File: ' + source.filename);
+
+            LINKED_META.title.textContent = fetchedTitle || fallbackTitle;
+            LINKED_META.subtitle.textContent = details.join(' • ') || 'Waiting for a linked stream...';
+        }
+
+        updateLinkedMeta();
 
         // SRT parsing and manipulation functions
         function parseSRT(srtContent) {
@@ -788,69 +2099,93 @@ function generateSubtitleSyncPage(subtitles, videoId, streamFilename, configStr,
 
         // Chrome Extension Communication
         let extensionInstalled = false;
+        let pingTimer = null;
+        let pingAttempts = 0;
+        const MAX_PINGS = 6;
+        const extDot = document.getElementById('ext-dot');
+        const extLabel = document.getElementById('ext-label');
+        const extStatus = document.getElementById('ext-status');
+
+        function updateExtensionStatus(ready, text) {
+            extensionInstalled = ready;
+            if (extDot) extDot.className = 'status-dot ' + (ready ? 'ok' : 'bad');
+            if (extLabel) extLabel.textContent = ready ? (text || 'Ready') : (text || 'Extension not detected');
+            if (extStatus) extStatus.title = text || '';
+        }
+
+        function pingExtension() {
+            updateExtensionStatus(false, 'Pinging extension...');
+            if (pingTimer) clearInterval(pingTimer);
+            pingAttempts = 0;
+            const sendPing = () => {
+                if (extensionInstalled) return;
+                pingAttempts += 1;
+                console.log('[Sync Page] Sending PING to extension... attempt', pingAttempts);
+                window.postMessage({ type: 'SUBMAKER_PING', source: 'webpage' }, '*');
+                if (pingAttempts >= MAX_PINGS && !extensionInstalled) {
+                    clearInterval(pingTimer);
+                    updateExtensionStatus(false, 'Extension not detected');
+                }
+            };
+            sendPing();
+            pingTimer = setInterval(sendPing, 1200);
+        }
 
         // Set up message listener FIRST, before sending PING
         window.addEventListener('message', (event) => {
-            console.log('[Sync Page] Received message:', event.data);
+            const msg = event.data || {};
+            if (!msg || msg.type !== 'SUBMAKER_PONG') return;
+            if (msg.source && msg.source !== 'extension') return;
 
-            if (event.data.type === 'SUBMAKER_PONG' && event.data.source === 'extension') {
-                console.log('[Sync Page] Extension detected! Version:', event.data.version);
-                extensionInstalled = true;
-                const version = event.data.version || '1.0.0';
-                document.getElementById('extensionStatusText').textContent = \`✅ Chrome Extension Connected (v\${version})\`;
-                document.getElementById('extensionStatus').className = 'status-message success';
+            console.log('[Sync Page] Extension detected! Version:', msg.version);
+            extensionInstalled = true;
+            const version = msg.version || '1.0.0';
+            updateExtensionStatus(true, \`Ready (v\${version})\`);
+            if (pingTimer) clearInterval(pingTimer);
 
-                // Enable all automatic sync options
-                const quickOption = document.querySelector('#syncMethod option[value="quick"]');
-                const fastOption = document.querySelector('#syncMethod option[value="fast"]');
-                const completeOption = document.querySelector('#syncMethod option[value="complete"]');
+            // Enable all automatic sync options
+            const quickOption = document.querySelector('#syncMethod option[value="quick"]');
+            const fastOption = document.querySelector('#syncMethod option[value="fast"]');
+            const completeOption = document.querySelector('#syncMethod option[value="complete"]');
 
-                if (quickOption) quickOption.disabled = false;
-                if (fastOption) fastOption.disabled = false;
-                if (completeOption) completeOption.disabled = false;
+            if (quickOption) quickOption.disabled = false;
+            if (fastOption) fastOption.disabled = false;
+            if (completeOption) completeOption.disabled = false;
 
-                console.log('[Sync Page] Enabled sync options:', {
-                    quick: !quickOption?.disabled,
-                    fast: !fastOption?.disabled,
-                    complete: !completeOption?.disabled
-                });
+            console.log('[Sync Page] Enabled sync options:', {
+                quick: !quickOption?.disabled,
+                fast: !fastOption?.disabled,
+                complete: !completeOption?.disabled
+            });
 
-                // Select Smart Sync (fast) by default
-                document.getElementById('syncMethod').value = 'fast';
+            // Select Smart Sync (fast) by default
+            document.getElementById('syncMethod').value = 'fast';
 
-                // Trigger change event to show appropriate controls
-                document.getElementById('syncMethod').dispatchEvent(new Event('change'));
-            }
+            // Trigger change event to show appropriate controls
+            document.getElementById('syncMethod').dispatchEvent(new Event('change'));
         });
 
-        function checkExtension() {
-            console.log('[Sync Page] Sending PING to extension...');
-            // Send message to check if extension is installed
-            window.postMessage({ type: 'SUBMAKER_PING', source: 'webpage' }, '*');
-
-            // Timeout after 2 seconds
-            setTimeout(() => {
-                if (!extensionInstalled) {
-                    console.log('[Sync Page] Extension not detected after 2 seconds');
-                    document.getElementById('extensionStatusText').textContent = '❌ Extension Not Detected - Manual sync only';
-                    document.getElementById('extensionStatus').className = 'status-message error';
-                }
-            }, 2000);
-        }
-
-        // Check for extension on page load
-        checkExtension();
+        // Check for extension on page load (start early like working pages)
+        setTimeout(pingExtension, 150);
+        // Retry every 10 seconds if extension not detected
+        setInterval(() => {
+            if (extensionInstalled) return;
+            pingExtension();
+        }, 10000);
 
         // Request sync from Chrome extension
-        function requestExtensionSync(streamUrl, subtitleContent, mode = 'fast') {
+        function requestExtensionSync(streamUrl, subtitleContent, mode = 'fast', preferAlass = false) {
             return new Promise((resolve, reject) => {
                 const messageId = 'sync_' + Date.now();
+                let timeoutId;
 
                 // Listen for response
                 const responseHandler = (event) => {
                     if (event.data.type === 'SUBMAKER_SYNC_RESPONSE' &&
                         event.data.messageId === messageId) {
                         window.removeEventListener('message', responseHandler);
+                        window.removeEventListener('message', progressHandler);
+                        clearTimeout(timeoutId);
                         resolve(event.data);
                     }
                 };
@@ -875,12 +2210,13 @@ function generateSubtitleSyncPage(subtitles, videoId, streamFilename, configStr,
                     data: {
                         streamUrl,
                         subtitleContent,
-                        mode  // Pass mode to extension
+                        mode,  // Pass mode to extension
+                        preferAlass: !!preferAlass
                     }
                 }, '*');
 
                 // Timeout after 15 minutes (for Complete mode)
-                setTimeout(() => {
+                timeoutId = setTimeout(() => {
                     window.removeEventListener('message', responseHandler);
                     window.removeEventListener('message', progressHandler);
                     reject(new Error('Extension sync timeout'));
@@ -904,9 +2240,9 @@ function generateSubtitleSyncPage(subtitles, videoId, streamFilename, configStr,
 
                 // Update description based on mode
                 const descriptions = {
-                    'quick': '⚡ <strong>Quick Sync:</strong> Analyzes first 60 seconds of audio to detect speech patterns and calculate offset. Best for simple timing corrections. Processing time: 10-15 seconds.',
-                    'fast': '🚀 <strong>Smart Sync:</strong> Samples audio at 12 points throughout the movie to detect timing drift and section-specific offsets. Applies linear correction for perfect sync. Processing time: 2-3 minutes.',
-                    'complete': '🎯 <strong>Complete Sync:</strong> Processes entire audio, detects all speech segments, and matches EACH subtitle entry individually using advanced alignment algorithms. Guarantees perfect sync (alass-quality). Processing time: 5-10 minutes.'
+                    'quick': '⚡ <strong>Quick Sync:</strong> Grabs short windows at the start/middle/end (~2 mins total) for fast offset/drift detection. Processing time: ~15–30 seconds.',
+                    'fast': '🚀 <strong>Smart Sync:</strong> Five spread windows (~3–4 mins total) to catch bitrate shifts/ads with drift-aware alignment. Processing time: ~1–3 minutes.',
+                    'complete': '🎯 <strong>Complete Sync:</strong> Dense windows across the full runtime (several minutes of audio) with chunked Whisper and per-window correction for heavy drifts/ads. Processing time: ~3–8 minutes.'
                 };
 
                 syncMethodDesc.innerHTML = descriptions[method] || '';
@@ -916,6 +2252,11 @@ function generateSubtitleSyncPage(subtitles, videoId, streamFilename, configStr,
         // Step 1: Continue button
         document.getElementById('continueBtn').addEventListener('click', async () => {
             const streamUrl = document.getElementById('streamUrl').value.trim();
+
+            if (!isHttpUrl(streamUrl)) {
+                showStatus('syncStatus', 'Please provide a valid http(s) stream URL (required for autosync).', 'error');
+                return;
+            }
 
             // Store stream URL for extension
             STATE.streamUrl = streamUrl;
@@ -927,10 +2268,13 @@ function generateSubtitleSyncPage(subtitles, videoId, streamFilename, configStr,
         // Step 2: Select Subtitle
         document.getElementById('subtitleSelect').addEventListener('change', (e) => {
             const option = e.target.selectedOptions[0];
-            if (option) {
+            if (option && option.value) {
                 STATE.selectedSubtitleId = option.value;
                 STATE.selectedSubtitleLang = option.getAttribute('data-lang');
                 const subtitleUrl = option.getAttribute('data-url');
+
+                // Hide source language selector when selecting from dropdown (language is auto-detected)
+                document.getElementById('sourceLanguageGroup').style.display = 'none';
 
                 // Fetch subtitle content
                 fetch(subtitleUrl.replace('{{ADDON_URL}}', '/addon/' + CONFIG.configStr))
@@ -984,6 +2328,12 @@ function generateSubtitleSyncPage(subtitles, videoId, streamFilename, configStr,
             reader.onload = (e) => {
                 STATE.subtitleContent = e.target.result;
                 STATE.selectedSubtitleId = 'uploaded_' + Date.now();
+                // For uploaded files, clear auto-detected language (user must select)
+                STATE.selectedSubtitleLang = null;
+
+                // Show source language selector for uploaded files
+                document.getElementById('sourceLanguageGroup').style.display = 'block';
+
                 enableSection('step3Section');
                 showStatus('syncStatus', 'Subtitle file loaded: ' + file.name, 'success');
             };
@@ -996,7 +2346,16 @@ function generateSubtitleSyncPage(subtitles, videoId, streamFilename, configStr,
         });
 
         // Step 3: Start Sync
-        document.getElementById('startSyncBtn').addEventListener('click', async () => {
+        function setSyncInFlight(active) {
+            syncInFlight = !!active;
+            if (startSyncBtn) {
+                startSyncBtn.disabled = syncInFlight;
+                startSyncBtn.innerHTML = syncInFlight ? 'Syncing...' : startSyncLabel;
+            }
+        }
+
+        startSyncBtn?.addEventListener('click', async () => {
+            if (syncInFlight) return;
             if (!STATE.subtitleContent) {
                 showStatus('syncStatus', 'Please select a subtitle first', 'error');
                 return;
@@ -1005,9 +2364,18 @@ function generateSubtitleSyncPage(subtitles, videoId, streamFilename, configStr,
             const syncMethod = document.getElementById('syncMethod').value;
 
             try {
-                document.getElementById('startSyncBtn').disabled = true;
+                setSyncInFlight(true);
                 document.getElementById('syncProgress').style.display = 'block';
                 hideStatus('syncStatus');
+
+                if (syncMethod !== 'manual') {
+                    if (!extensionInstalled) {
+                        throw new Error('Autosync requires the SubMaker Chrome Extension. Please install/enable it.');
+                    }
+                    if (!isHttpUrl(STATE.streamUrl || '')) {
+                        throw new Error('Autosync requires a valid http(s) stream URL. Please paste it in Step 1.');
+                    }
+                }
 
                 if (syncMethod === 'manual') {
                     // Manual offset adjustment
@@ -1027,11 +2395,12 @@ function generateSubtitleSyncPage(subtitles, videoId, streamFilename, configStr,
                         'complete': 'Complete'
                     };
                     const modeName = modeNames[syncMethod] || syncMethod;
+                    const preferAlass = document.getElementById('preferAlass')?.checked === true;
 
                     updateProgress('syncProgressFill', 'syncProgressText', 10, \`Starting \${modeName} Sync...\`);
 
                     // Request audio extraction and sync from extension
-                    const syncResult = await requestExtensionSync(STATE.streamUrl, STATE.subtitleContent, syncMethod);
+                    const syncResult = await requestExtensionSync(STATE.streamUrl, STATE.subtitleContent, syncMethod, preferAlass);
 
                     if (!syncResult.success) {
                         throw new Error(syncResult.error || 'Extension sync failed');
@@ -1042,7 +2411,16 @@ function generateSubtitleSyncPage(subtitles, videoId, streamFilename, configStr,
                 }
 
                 // Save to cache
-                const sourceLanguage = document.getElementById('sourceLanguage').value;
+                // Extract language code: use manual selection if visible (file upload), otherwise auto-detected (dropdown)
+                let sourceLanguage;
+                const sourceLanguageGroup = document.getElementById('sourceLanguageGroup');
+                if (sourceLanguageGroup && sourceLanguageGroup.style.display !== 'none') {
+                    // File was uploaded, use user-selected language
+                    sourceLanguage = document.getElementById('sourceLanguage').value;
+                } else {
+                    // Subtitle selected from dropdown, use auto-detected language
+                    sourceLanguage = STATE.selectedSubtitleLang || 'eng';
+                }
                 await saveSyncedSubtitle(CONFIG.videoHash, sourceLanguage, STATE.selectedSubtitleId, STATE.syncedSubtitle);
 
                 showStatus('syncStatus', 'Subtitle synced successfully!', 'success');
@@ -1060,7 +2438,7 @@ function generateSubtitleSyncPage(subtitles, videoId, streamFilename, configStr,
                 console.error('[Sync] Error:', error);
                 showStatus('syncStatus', 'Sync failed: ' + error.message, 'error');
             } finally {
-                document.getElementById('startSyncBtn').disabled = false;
+                setSyncInFlight(false);
                 document.getElementById('syncProgress').style.display = 'none';
             }
         });

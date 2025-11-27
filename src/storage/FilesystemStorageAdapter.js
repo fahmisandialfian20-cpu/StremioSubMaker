@@ -22,6 +22,7 @@ class FilesystemStorageAdapter extends StorageAdapter {
       [StorageAdapter.CACHE_TYPES.BYPASS]: path.join(this.baseDir, 'translations_bypass'),
       [StorageAdapter.CACHE_TYPES.PARTIAL]: path.join(this.baseDir, 'translations_partial'),
       [StorageAdapter.CACHE_TYPES.SYNC]: path.join(this.baseDir, 'sync_cache'),
+      [StorageAdapter.CACHE_TYPES.EMBEDDED]: path.join(this.baseDir, 'embedded_cache'),
       [StorageAdapter.CACHE_TYPES.SESSION]: path.join(process.cwd(), 'data')
     };
 
@@ -36,10 +37,35 @@ class FilesystemStorageAdapter extends StorageAdapter {
    * @private
    */
   _sanitizeKey(key) {
-    let sanitized = key.replace(/\.\./g, '');
-    sanitized = sanitized.replace(/[/\\]/g, '_');
+    if (!key || typeof key !== 'string') {
+      throw new Error('Cache key must be a non-empty string');
+    }
+
+    // First, decode any URL-encoded characters to catch encoded traversal attempts
+    let decoded = key;
+    try {
+      // Decode twice to catch double-encoding
+      decoded = decodeURIComponent(decodeURIComponent(key));
+    } catch (e) {
+      // If decoding fails, use original (it's safer)
+      decoded = key;
+    }
+
+    // Remove all path separators and dots (including encoded versions)
+    // This prevents: ../ ./ .\ ..\ and any variations
+    let sanitized = decoded.replace(/[.\/\\]/g, '_');
+
+    // Remove any remaining special/control characters
+    // Only allow alphanumeric, underscore, and hyphen
     sanitized = sanitized.replace(/[^a-zA-Z0-9_-]/g, '_');
 
+    // Prevent empty or only-special-char keys
+    if (!sanitized || /^[_-]+$/.test(sanitized)) {
+      const hash = crypto.createHash('sha256').update(key).digest('hex');
+      sanitized = 'key_' + hash.substring(0, 16);
+    }
+
+    // Limit length and hash if too long
     if (sanitized.length > 200) {
       const hash = crypto.createHash('sha256').update(key).digest('hex');
       sanitized = sanitized.substring(0, 150) + '_' + hash.substring(0, 16);
@@ -66,12 +92,29 @@ class FilesystemStorageAdapter extends StorageAdapter {
 
   /**
    * Verify path is within the allowed directory (security check)
+   * Prevents path traversal attacks even if key sanitization is bypassed
    * @private
+   * @throws {Error} If path escapes the allowed directory
    */
   _verifyPath(filePath, cacheType) {
     const resolvedPath = path.resolve(filePath);
     const resolvedDir = path.resolve(this.directories[cacheType]);
-    return resolvedPath.startsWith(resolvedDir);
+
+    // Ensure resolved path starts with the allowed directory
+    // Use path.sep to ensure proper directory boundary check
+    const isWithinDir = resolvedPath.startsWith(resolvedDir + path.sep) || resolvedPath === resolvedDir;
+
+    if (!isWithinDir) {
+      log.error(() => [
+        '[FilesystemStorage] Path traversal attempt detected!',
+        `Attempted path: ${resolvedPath}`,
+        `Allowed directory: ${resolvedDir}`,
+        `Cache type: ${cacheType}`
+      ]);
+      throw new Error('Path traversal detected - access denied');
+    }
+
+    return true;
   }
 
   /**
@@ -139,10 +182,8 @@ class FilesystemStorageAdapter extends StorageAdapter {
     try {
       const filePath = this._getFilePath(key, cacheType);
 
-      if (!this._verifyPath(filePath, cacheType)) {
-        log.error(() => `[Filesystem] Security: Path traversal attempt detected for key ${key}`);
-        return null;
-      }
+      // Verify path is within allowed directory (throws on traversal attempt)
+      this._verifyPath(filePath, cacheType);
 
       if (!fs.existsSync(filePath)) {
         return null;
@@ -186,10 +227,8 @@ class FilesystemStorageAdapter extends StorageAdapter {
       const filePath = this._getFilePath(key, cacheType);
       const tempPath = `${filePath}.tmp`;
 
-      if (!this._verifyPath(filePath, cacheType)) {
-        log.error(() => `[Filesystem] Security: Path traversal attempt detected for key ${key}`);
-        return false;
-      }
+      // Verify path is within allowed directory (throws on traversal attempt)
+      this._verifyPath(filePath, cacheType);
 
       // Prepare data to store
       const now = Date.now();
@@ -272,10 +311,8 @@ class FilesystemStorageAdapter extends StorageAdapter {
     try {
       const filePath = this._getFilePath(key, cacheType);
 
-      if (!this._verifyPath(filePath, cacheType)) {
-        log.error(() => `[Filesystem] Security: Path traversal attempt detected for key ${key}`);
-        return false;
-      }
+      // Verify path is within allowed directory (throws on traversal attempt)
+      this._verifyPath(filePath, cacheType);
 
       if (!fs.existsSync(filePath)) {
         return false;

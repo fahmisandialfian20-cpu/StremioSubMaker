@@ -45,13 +45,18 @@ function generateCacheKeys(config, sourceFileId, targetLang) {
 
   // Generate scoped cache key
   // Bypass mode: User-scoped key (e.g., "imdb123_en_es__u_abc123")
-  // Permanent mode: Unscoped key (e.g., "imdb123_en_es")
-  const cacheKey = (bypass && bypassEnabled)
-    ? `${baseKey}__u_${userHash}`  // User-scoped for bypass mode
-    : baseKey;                       // Unscoped for permanent cache
+  // Permanent mode: Config-scoped key when userHash is available (e.g., "imdb123_en_es__c_abc123")
+  let cacheKey = baseKey;
+  if (bypass && bypassEnabled) {
+    cacheKey = `${baseKey}__u_${userHash}`;  // User-scoped for bypass mode
+  } else if (userHash) {
+    cacheKey = `${baseKey}__c_${userHash}`;  // Config-scoped permanent cache
+  }
 
   if (bypass && bypassEnabled) {
     log.debug(() => `[CacheKeys] Generated user-scoped bypass cache key: ${cacheKey}`);
+  } else if (userHash) {
+    log.debug(() => `[CacheKeys] Generated config-scoped cache key: ${cacheKey}`);
   }
 
   return {

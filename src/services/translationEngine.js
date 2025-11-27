@@ -296,10 +296,10 @@ class TranslationEngine {
     if (!estimatedTokens) {
       try {
         const { userPrompt } = this.gemini.buildUserPrompt(fullBatchText, targetLanguage, promptForCache);
-        estimatedTokens = this.gemini.estimateTokenCount(userPrompt);
+        estimatedTokens = this.safeEstimateTokens(userPrompt);
       } catch (estimateErr) {
         log.debug(() => ['[TranslationEngine] Single-batch prompt estimation failed, falling back:', estimateErr.message]);
-        estimatedTokens = this.gemini.estimateTokenCount(fullBatchText + (promptForCache || ''));
+        estimatedTokens = this.safeEstimateTokens(fullBatchText + (promptForCache || ''));
       }
     }
 
@@ -508,13 +508,15 @@ class TranslationEngine {
 
     // Check if we need to split due to token limits
     let actualTokenCount = null;
-    try {
-      actualTokenCount = await this.gemini.countTokensForTranslation(batchText, targetLanguage, prompt);
-    } catch (err) {
-      log.debug(() => ['[TranslationEngine] Token count check failed, using estimate:', err.message]);
+    if (typeof this.gemini?.countTokensForTranslation === 'function') {
+      try {
+        actualTokenCount = await this.gemini.countTokensForTranslation(batchText, targetLanguage, prompt);
+      } catch (err) {
+        log.debug(() => ['[TranslationEngine] Token count check failed, using estimate:', err.message]);
+      }
     }
 
-    const estimatedTokens = actualTokenCount || this.gemini.estimateTokenCount(batchText + prompt);
+    const estimatedTokens = actualTokenCount || this.safeEstimateTokens(batchText + prompt);
 
     if (allowAutoChunking && estimatedTokens > this.maxTokensPerBatch && batch.length > 1) {
       // Auto-chunk: Split batch in half recursively (sequential for memory safety)
@@ -1011,6 +1013,26 @@ OUTPUT (EXACTLY ${expectedCount} numbered entries, NO OTHER TEXT):`;
       .trim();
 
     return cleaned;
+  }
+
+  /**
+   * Estimate token count with a safe fallback when provider doesn't expose it
+   */
+  safeEstimateTokens(text) {
+    const content = String(text || '');
+    if (typeof this.gemini?.estimateTokenCount === 'function') {
+      try {
+        const tokens = this.gemini.estimateTokenCount(content);
+        if (Number.isFinite(tokens)) {
+          return tokens;
+        }
+      } catch (err) {
+        log.debug(() => ['[TranslationEngine] Token estimate failed, using fallback:', err.message]);
+      }
+    }
+    // Rough heuristic: ~4 characters per token
+    const fallbackEstimate = Math.max(1, Math.ceil(content.length / 4));
+    return fallbackEstimate;
   }
 
   /**

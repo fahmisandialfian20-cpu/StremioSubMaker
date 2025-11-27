@@ -15,6 +15,24 @@ const MAX_ZIP_BYTES = 25 * 1024 * 1024; // hard cap for ZIP downloads (~25MB) to
 const AUTH_FAILURE_TTL_MS = 5 * 60 * 1000; // Keep invalid credentials blocked for 5 minutes
 const credentialFailureCache = new Map();
 
+function inferFormatFromFilename(filename) {
+  if (!filename) return null;
+  const lower = String(filename).toLowerCase();
+  const extMatch = lower.match(/\.([a-z0-9]{2,4})$/);
+  if (extMatch && extMatch[1]) {
+    const ext = extMatch[1];
+    if (['srt', 'vtt', 'ass', 'ssa', 'sub'].includes(ext)) {
+      return ext;
+    }
+  }
+  return null;
+}
+
+function stripExtension(filename) {
+  if (!filename) return filename;
+  return filename.replace(/\.[^.]+$/, '');
+}
+
 function getCredentialsCacheKey(username, password) {
   if (!username) {
     return null;
@@ -420,18 +438,24 @@ class OpenSubtitlesService {
         const originalLang = sub.attributes.language;
         const normalizedLang = this.normalizeLanguageCode(originalLang);
         const fileId = sub.attributes.files?.[0]?.file_id || sub.id;
+        const fileName = sub.attributes.files?.[0]?.file_name || '';
+        const detectedFormat = sub.attributes.format || inferFormatFromFilename(fileName) || 'srt';
+        const releaseName = sub.attributes.release || '';
+        const cleanedName = stripExtension(fileName);
+        const displayName = releaseName || cleanedName || sub.attributes.feature_details?.movie_name || 'Unknown';
 
         return {
           id: String(fileId),
           language: originalLang,
           languageCode: normalizedLang,
-          name: sub.attributes.release || sub.attributes.feature_details?.movie_name || 'Unknown',
+          name: displayName,
           downloads: parseInt(sub.attributes.download_count) || 0,
           rating: parseFloat(sub.attributes.ratings) || 0,
           uploadDate: sub.attributes.upload_date,
-          format: sub.attributes.format || 'srt',
+          format: detectedFormat,
           fileId: String(fileId),
           downloadLink: sub.attributes.url,
+          originalFilename: fileName || null,
           hearing_impaired: sub.attributes.hearing_impaired || false,
           foreign_parts_only: sub.attributes.foreign_parts_only || false,
           machine_translated: sub.attributes.machine_translated || false,

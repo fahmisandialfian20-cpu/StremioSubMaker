@@ -7,6 +7,10 @@ const log = require('./logger');
 const DEFAULT_SOURCE_LANGUAGE_LIMIT = 3;
 const DEFAULT_TARGET_LANGUAGE_LIMIT = 6;
 const DEFAULT_NO_TRANSLATION_LANGUAGE_LIMIT = 9;
+const KEY_OPTIONAL_PROVIDERS = new Set(['googletranslate']);
+const GEMINI_LOG_INTERVAL_MS = parseInt(process.env.GEMINI_CONFIG_LOG_INTERVAL_MS || `${5 * 60 * 1000}`, 10);
+let lastGeminiConfigLog = 0;
+let suppressedGeminiConfigLogs = 0;
 
 function parseLanguageLimit(envVar, fallback, min = 1, max = 50) {
   const parsed = parseInt(process.env[envVar], 10);
@@ -85,6 +89,13 @@ const PROVIDER_PARAMETER_DEFAULTS = {
     maxOutputTokens: 32768,
     translationTimeout: 60,
     maxRetries: 2
+  },
+  googletranslate: {
+    temperature: 0,
+    topP: 1,
+    maxOutputTokens: 32768,
+    translationTimeout: 60,
+    maxRetries: 2
   }
 };
 
@@ -120,10 +131,16 @@ function mergeProviderParameters(defaults, incoming) {
       translationTimeout: Math.max(5, sanitizeProviderNumber(raw?.translationTimeout, base.translationTimeout, 5, 600)),
       maxRetries: Math.max(0, Math.min(5, parseInt(raw?.maxRetries) || base.maxRetries || 0)),
       reasoningEffort: sanitizeReasoningEffort(raw?.reasoningEffort, base.reasoningEffort),
-      thinkingBudget: Math.max(
-        0,
-        Math.min(200000, parseInt(raw?.thinkingBudget) || parseInt(base.thinkingBudget) || 0)
-      ),
+      thinkingBudget: (() => {
+        const requested = Number.isFinite(parseInt(raw?.thinkingBudget, 10))
+          ? parseInt(raw.thinkingBudget, 10)
+          : NaN;
+        const fallback = Number.isFinite(parseInt(base.thinkingBudget, 10))
+          ? parseInt(base.thinkingBudget, 10)
+          : 0;
+        const chosen = Number.isFinite(requested) ? requested : fallback;
+        return Math.max(-1, Math.min(200000, chosen));
+      })(),
       formality: typeof raw?.formality === 'string'
         ? raw.formality
         : (typeof base.formality === 'string' ? base.formality : 'default'),
@@ -136,6 +153,27 @@ function mergeProviderParameters(defaults, incoming) {
     };
   });
   return merged;
+}
+
+function logGeminiConfigThrottled(mergedConfig) {
+  const now = Date.now();
+  if (now - lastGeminiConfigLog < GEMINI_LOG_INTERVAL_MS) {
+    suppressedGeminiConfigLogs += 1;
+    return;
+  }
+  lastGeminiConfigLog = now;
+  const suppressed = suppressedGeminiConfigLogs;
+  suppressedGeminiConfigLogs = 0;
+
+  const thinkingDisplay = (() => {
+    const val = mergedConfig.advancedSettings?.thinkingBudget;
+    if (val === undefined || val === null) return 'dynamic';
+    if (Number(val) === 0) return 'disabled';
+    return val;
+  })();
+
+  const suffix = suppressed > 0 ? ` (suppressed ${suppressed} duplicate logs)` : '';
+  log.debug(() => `[Config] Gemini API config: model=${mergedConfig.geminiModel}, temperature=${mergedConfig.advancedSettings.temperature}, topK=${mergedConfig.advancedSettings.topK}, topP=${mergedConfig.advancedSettings.topP}, thinkingBudget=${thinkingDisplay}, maxOutputTokens=${mergedConfig.advancedSettings.maxOutputTokens}, timeout=${mergedConfig.advancedSettings.translationTimeout}s, maxRetries=${mergedConfig.advancedSettings.maxRetries}, sendTimestampsToAI=${mergedConfig.advancedSettings.sendTimestampsToAI ? 'enabled' : 'disabled'}${suffix}`);
 }
 
 function getDefaultProviderParameters() {
@@ -209,6 +247,21 @@ async function parseConfig(configStr, options = {}) {
 }
 
 /**
+ * Normalize base64/base64url strings by restoring standard characters and padding
+ * @param {string} input - Base64 or base64url string
+ * @returns {string} - Normalized base64 string
+ */
+function normalizeBase64Input(input) {
+  if (!input || typeof input !== 'string') return input;
+  let normalized = input.replace(/-/g, '+').replace(/_/g, '/');
+  const padding = normalized.length % 4;
+  if (padding) {
+    normalized += '='.repeat(4 - padding);
+  }
+  return normalized;
+}
+
+/**
  * Parse base64 encoded configuration (legacy method)
  * @param {string} configStr - Base64 encoded config string
  * @returns {Object} - Parsed configuration
@@ -218,7 +271,8 @@ function parseBase64Config(configStr) {
     // Express automatically URL-decodes path params, so we can decode base64 directly
     let decoded;
     try {
-      decoded = Buffer.from(configStr, 'base64').toString('utf-8');
+      const normalized = normalizeBase64Input(configStr);
+      decoded = Buffer.from(normalized, 'base64').toString('utf-8');
     } catch (decodeError) {
       log.error(() => ['[Config] Base64 decode error. Config string length:', configStr.length]);
       log.error(() => ['[Config] First 50 chars:', configStr.substring(0, 50)]);
@@ -362,8 +416,10 @@ function normalizeConfig(config) {
   mergedConfig.learnTargetLanguages = trimmedLearns;
 
   // Normalize key toggles early so downstream logic always sees booleans
-  mergedConfig.fileTranslationEnabled = mergedConfig.fileTranslationEnabled === true;
-  mergedConfig.syncSubtitlesEnabled = mergedConfig.syncSubtitlesEnabled === true;
+  const legacyToolboxEnabled = mergedConfig.fileTranslationEnabled === true || mergedConfig.syncSubtitlesEnabled === true;
+  mergedConfig.subToolboxEnabled = mergedConfig.subToolboxEnabled === true || legacyToolboxEnabled;
+  mergedConfig.fileTranslationEnabled = mergedConfig.subToolboxEnabled === true;
+  mergedConfig.syncSubtitlesEnabled = mergedConfig.subToolboxEnabled === true;
   mergedConfig.singleBatchMode = mergedConfig.singleBatchMode === true;
   mergedConfig.multiProviderEnabled = mergedConfig.multiProviderEnabled === true;
   const advSettings = mergedConfig.advancedSettings || {};
@@ -422,10 +478,17 @@ function normalizeConfig(config) {
   const providerIsConfigured = (key) => {
     const resolved = resolveProviderKey(key);
     const cfg = mergedConfig.providers?.[resolved] || {};
+    if (KEY_OPTIONAL_PROVIDERS.has(String(resolved).toLowerCase())) {
+      return cfg.enabled === true;
+    }
     return !!(cfg.enabled && cfg.apiKey && cfg.model);
   };
   const firstConfiguredProvider = () => {
-    const entry = Object.entries(mergedConfig.providers || {}).find(([, cfg]) => cfg && cfg.enabled && cfg.apiKey && cfg.model);
+    const entry = Object.entries(mergedConfig.providers || {}).find(([key, cfg]) => {
+      if (!cfg || cfg.enabled !== true) return false;
+      const isKeyOptional = KEY_OPTIONAL_PROVIDERS.has(String(key).toLowerCase());
+      return isKeyOptional || (cfg.apiKey && cfg.model);
+    });
     return entry ? String(entry[0]).toLowerCase() : null;
   };
   if (mergedConfig.providers && typeof mergedConfig.providers === 'object') {
@@ -513,11 +576,8 @@ function normalizeConfig(config) {
   // Normalize mobile mode flag
   mergedConfig.mobileMode = mergedConfig.mobileMode === true;
 
-  // Show all Gemini API configs that will be used
-  const thinkingDisplay = mergedConfig.advancedSettings.thinkingBudget === -1 ? 'dynamic' :
-                         mergedConfig.advancedSettings.thinkingBudget === 0 ? 'disabled' :
-                         mergedConfig.advancedSettings.thinkingBudget;
-  log.debug(() => `[Config] Gemini API config: model=${mergedConfig.geminiModel}, temperature=${mergedConfig.advancedSettings.temperature}, topK=${mergedConfig.advancedSettings.topK}, topP=${mergedConfig.advancedSettings.topP}, thinkingBudget=${thinkingDisplay}, maxOutputTokens=${mergedConfig.advancedSettings.maxOutputTokens}, timeout=${mergedConfig.advancedSettings.translationTimeout}s, maxRetries=${mergedConfig.advancedSettings.maxRetries}, sendTimestampsToAI=${mergedConfig.advancedSettings.sendTimestampsToAI ? 'enabled' : 'disabled'}`);
+  // Show all Gemini API configs that will be used (throttled to avoid spam on polling endpoints)
+  logGeminiConfigThrottled(mergedConfig);
 
   // Guardrail: if OpenSubtitles Auth is selected without credentials, fall back to V3 to avoid runtime auth errors
   const openSubConfig = mergedConfig.subtitleProviders?.opensubtitles;
@@ -533,6 +593,11 @@ function normalizeConfig(config) {
       }
       return normalized;
     };
+    // Normalize implementation type for legacy configs (default to v3)
+    const impl = typeof openSubConfig.implementationType === 'string'
+      ? openSubConfig.implementationType.trim().toLowerCase()
+      : '';
+    openSubConfig.implementationType = impl || 'v3';
     openSubConfig.username = normalizeCredential(openSubConfig.username);
     openSubConfig.password = normalizeCredential(openSubConfig.password);
     const wantsAuth = openSubConfig.implementationType === 'auth';
@@ -703,7 +768,8 @@ function getDefaultConfig(modelName = null) {
       deepl: { enabled: false, apiKey: '', model: '' },
       mistral: { enabled: false, apiKey: '', model: '' },
       cfworkers: { enabled: false, apiKey: '', model: '' },
-      openrouter: { enabled: false, apiKey: '', model: '' }
+      openrouter: { enabled: false, apiKey: '', model: '' },
+      googletranslate: { enabled: false, apiKey: '', model: 'web' }
     },
     providerParameters: getDefaultProviderParameters(),
     translationPrompt: DEFAULT_TRANSLATION_PROMPT,
@@ -736,8 +802,9 @@ function getDefaultConfig(modelName = null) {
       enabled: true,
       duration: 12
     },
-    fileTranslationEnabled: false, // enable file upload translation feature
-    syncSubtitlesEnabled: false, // enable 'Sync Subtitles' action in subtitles list
+    subToolboxEnabled: false, // unified toolbox entry for file translation, sync, and upcoming tools
+    fileTranslationEnabled: false, // legacy flag (mirrors subToolboxEnabled)
+    syncSubtitlesEnabled: false, // legacy flag (mirrors subToolboxEnabled)
     mobileMode: false, // Hold translation responses until full translation is ready (Android cache workaround)
     singleBatchMode: false, // Translate whole file at once (streaming partials)
     // Minimum size for a subtitle file to be considered valid (bytes)
@@ -776,7 +843,11 @@ function validateConfig(config) {
   const geminiConfigured = !!(config.geminiApiKey && config.geminiApiKey.trim() !== '' && config.geminiModel && config.geminiModel.trim() !== '');
   const providerIsConfigured = (key) => {
     const cfg = resolveProviderConfig(key);
-    return !!(cfg && cfg.enabled === true && cfg.apiKey && String(cfg.apiKey).trim() !== '' && cfg.model && String(cfg.model).trim() !== '');
+    if (!cfg || cfg.enabled !== true) return false;
+    if (KEY_OPTIONAL_PROVIDERS.has(String(key).toLowerCase())) {
+      return true;
+    }
+    return !!(cfg.apiKey && String(cfg.apiKey).trim() !== '' && cfg.model && String(cfg.model).trim() !== '');
   };
 
   const configuredProviders = new Set();
@@ -910,7 +981,8 @@ function buildManifest(config, baseUrl = '') {
           deepl: 'DeepL',
           mistral: 'Mistral',
           cfworkers: 'Cloudflare Workers AI',
-          openrouter: 'OpenRouter'
+          openrouter: 'OpenRouter',
+          googletranslate: 'Google Translate (unofficial)'
         };
         return labels[key] || key.charAt(0).toUpperCase() + key.slice(1);
       }
@@ -927,7 +999,11 @@ function buildManifest(config, baseUrl = '') {
     const providers = config.providers || {};
     const matchKey = Object.keys(providers).find(k => String(k).toLowerCase() === String(key).toLowerCase()) || key;
     const cfg = providers[matchKey];
-    return !!(cfg && cfg.enabled && cfg.apiKey && String(cfg.apiKey).trim() !== '' && cfg.model);
+    if (!cfg || cfg.enabled !== true) return false;
+    if (KEY_OPTIONAL_PROVIDERS.has(String(key).toLowerCase())) {
+      return true;
+    }
+    return !!(cfg.apiKey && String(cfg.apiKey).trim() !== '' && cfg.model);
   };
   const configuredProviders = new Set();
   if (geminiConfigured) configuredProviders.add('gemini');

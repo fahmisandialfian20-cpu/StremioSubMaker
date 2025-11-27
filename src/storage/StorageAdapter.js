@@ -123,6 +123,7 @@ StorageAdapter.CACHE_TYPES = {
   BYPASS: 'bypass',                // Temporary user-scoped cache (10GB, 12h TTL)
   PARTIAL: 'partial',              // In-flight partial translations (10GB, 1h TTL)
   SYNC: 'sync',                    // Synced subtitles (50GB)
+  EMBEDDED: 'embedded',            // Extracted/translated embedded subtitles (50GB)
   SESSION: 'session'               // Session persistence (no limit)
 };
 
@@ -138,6 +139,7 @@ StorageAdapter.CACHE_TYPES = {
 // - CACHE_LIMIT_BYPASS (default: 0.5GB)
 // - CACHE_LIMIT_PARTIAL (default: 0.5GB)
 // - CACHE_LIMIT_SYNC (default: 0.5GB)
+// - CACHE_LIMIT_EMBEDDED (default: 0.5GB)
 //
 // Example for larger deployments:
 // CACHE_LIMIT_TRANSLATION=50000000000 (50GB) - requires Redis with 120GB+ RAM
@@ -146,6 +148,7 @@ StorageAdapter.SIZE_LIMITS = {
   [StorageAdapter.CACHE_TYPES.BYPASS]: parseInt(process.env.CACHE_LIMIT_BYPASS) || (0.5 * 1024 * 1024 * 1024),           // 0.5GB - was 2GB (for 16GB Redis)
   [StorageAdapter.CACHE_TYPES.PARTIAL]: parseInt(process.env.CACHE_LIMIT_PARTIAL) || (0.5 * 1024 * 1024 * 1024),         // 0.5GB - was 2GB (for 16GB Redis)
   [StorageAdapter.CACHE_TYPES.SYNC]: parseInt(process.env.CACHE_LIMIT_SYNC) || (0.5 * 1024 * 1024 * 1024),               // 0.5GB - was 2GB (for 16GB Redis)
+  [StorageAdapter.CACHE_TYPES.EMBEDDED]: parseInt(process.env.CACHE_LIMIT_EMBEDDED) || (0.5 * 1024 * 1024 * 1024),       // 0.5GB - mirrors sync cache
   [StorageAdapter.CACHE_TYPES.SESSION]: null                                                                              // No limit
 };
 
@@ -155,6 +158,7 @@ StorageAdapter.DEFAULT_TTL = {
   [StorageAdapter.CACHE_TYPES.BYPASS]: 12 * 60 * 60, // 12 hours
   [StorageAdapter.CACHE_TYPES.PARTIAL]: 60 * 60,     // 1 hour
   [StorageAdapter.CACHE_TYPES.SYNC]: null,            // No expiry
+  [StorageAdapter.CACHE_TYPES.EMBEDDED]: null,        // No expiry (shared cache across users)
   [StorageAdapter.CACHE_TYPES.SESSION]: null          // No expiry
 };
 

@@ -136,6 +136,15 @@ class StorageFactory {
       }
     }, 60 * 60 * 1000);
 
+    // Cleanup embedded cache every hour
+    setInterval(async () => {
+      try {
+        await adapter.cleanup(StorageAdapter.CACHE_TYPES.EMBEDDED);
+      } catch (error) {
+        log.error(() => '[Cleanup] Failed to cleanup embedded cache:', error);
+      }
+    }, 60 * 60 * 1000);
+
     log.debug(() => 'Scheduled periodic cache cleanup tasks');
   }
 

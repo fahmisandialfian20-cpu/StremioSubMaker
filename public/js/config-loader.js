@@ -1,6 +1,9 @@
 (function() {
     'use strict';
 
+    const SESSION_PING_TIMEOUT_MS = 9000;
+    const PARTIALS_TIMEOUT_MS = 10000;
+
     function loadConfigJs(versionQuery) {
         var script = document.createElement('script');
         script.src = 'config.js' + versionQuery;
@@ -25,8 +28,13 @@
 
     function loadWithVersion() {
         try {
-            fetch('/api/session-stats', { cache: 'no-store' })
-                .then(function(res) { return res.ok ? res.json() : null; })
+            var controller = new AbortController();
+            var timer = setTimeout(function() {
+                try { controller.abort(); } catch (_) {}
+            }, SESSION_PING_TIMEOUT_MS);
+
+            fetch('/api/session-stats', { cache: 'no-store', signal: controller.signal })
+                .then(function(res) { return res && res.ok ? res.json() : null; })
                 .then(function(data) {
                     if (data && data.limits) {
                         window.__CONFIG_LIMITS__ = data.limits;
@@ -39,6 +47,9 @@
                 })
                 .catch(function() {
                     loadConfigJs('?v=' + Date.now());
+                })
+                .finally(function() {
+                    clearTimeout(timer);
                 });
         } catch (_) {
             loadConfigJs('?v=' + Date.now());
@@ -46,5 +57,9 @@
     }
 
     var partialsReady = window.partialsReady || Promise.resolve();
-    partialsReady.catch(function(err) { console.error(err); }).then(loadWithVersion);
+    var partialsOrTimeout = Promise.race([
+        partialsReady,
+        new Promise(function(resolve) { setTimeout(resolve, PARTIALS_TIMEOUT_MS); })
+    ]);
+    partialsOrTimeout.catch(function(err) { console.error(err); }).then(loadWithVersion);
 })();

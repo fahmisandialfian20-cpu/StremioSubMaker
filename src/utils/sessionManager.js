@@ -8,6 +8,29 @@ const { StorageFactory, StorageAdapter } = require('../storage');
 const log = require('./logger');
 const { shutdownLogger } = require('./logger');
 const { encryptUserConfig, decryptUserConfig } = require('./encryption');
+const { redactToken } = require('./security');
+
+// Cache decrypted configs briefly to avoid redundant decryption on rapid navigation
+const DECRYPTED_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+// Safe clone helper to prevent consumers from mutating cached objects
+function cloneConfig(config) {
+  if (!config || typeof config !== 'object') {
+    return config;
+  }
+  try {
+    if (typeof structuredClone === 'function') {
+      return structuredClone(config);
+    }
+  } catch (_) {
+    // structuredClone not available or failed, fallback below
+  }
+  try {
+    return JSON.parse(JSON.stringify(config));
+  } catch (_) {
+    return config;
+  }
+}
 
 // Storage adapter (lazy loaded)
 let storageAdapter = null;
@@ -144,6 +167,14 @@ class SessionManager extends EventEmitter {
         }
         this.cache = new LRUCache(cacheOptions);
 
+        // Short-lived cache of decrypted configs (in-memory only) to avoid re-decryption on frequent requests
+        const decryptedTtl = Math.min(this.maxAge || Infinity, DECRYPTED_CACHE_TTL_MS);
+        this.decryptedCache = new LRUCache({
+            max: this.maxSessions || 30000,
+            ttl: Number.isFinite(decryptedTtl) ? decryptedTtl : DECRYPTED_CACHE_TTL_MS,
+            updateAgeOnGet: true
+        });
+
         // Auto-save timer
         this.saveTimer = null;
 
@@ -230,14 +261,15 @@ class SessionManager extends EventEmitter {
 
                     // Ignore messages from ourselves to prevent self-invalidation
                     if (instanceId === this.instanceId) {
-                        log.debug(() => `[SessionManager] Ignoring own invalidation event: ${token} (action: ${action})`);
+                        log.debug(() => `[SessionManager] Ignoring own invalidation event: ${redactToken(token)} (action: ${action})`);
                         return;
                     }
 
                     if (token && this.cache.has(token)) {
                         this.cache.delete(token);
+                        this.decryptedCache?.delete(token);
                         this.emit('sessionInvalidated', { token, action, source: 'pubsub' });
-                        log.debug(() => `[SessionManager] Invalidated cached session from pub/sub: ${token} (action: ${action})`);
+                        log.debug(() => `[SessionManager] Invalidated cached session from pub/sub: ${redactToken(token)} (action: ${action})`);
                     }
                 } catch (err) {
                     log.error(() => ['[SessionManager] Failed to process pub/sub message:', err.message]);
@@ -275,7 +307,7 @@ class SessionManager extends EventEmitter {
                 timestamp: Date.now()
             });
             await publisher.publish('session:invalidate', message);
-            log.debug(() => `[SessionManager] Published invalidation event: ${token} (${action})`);
+            log.debug(() => `[SessionManager] Published invalidation event: ${redactToken(token)} (${action})`);
         } catch (err) {
             log.error(() => ['[SessionManager] Failed to publish invalidation event:', err.message]);
             // Don't throw - pub/sub is best-effort
@@ -337,6 +369,7 @@ class SessionManager extends EventEmitter {
         };
 
         this.cache.set(token, sessionData);
+        this.decryptedCache.set(token, cloneConfig(config));
         this.dirty = true;
 
         // Persist immediately (per-token) for durability across restarts and instances
@@ -350,7 +383,7 @@ class SessionManager extends EventEmitter {
         });
 
         this.emit('sessionCreated', { token, source: 'local' });
-        log.debug(() => `[SessionManager] Session created: ${token} (in-memory: ${this.cache.size})`);
+        log.debug(() => `[SessionManager] Session created: ${redactToken(token)} (in-memory: ${this.cache.size})`);
         return token;
     }
 
@@ -366,7 +399,7 @@ class SessionManager extends EventEmitter {
 
         // If not in cache, try loading from storage (Redis/filesystem)
         if (!sessionData) {
-            log.debug(() => `[SessionManager] Session not in cache, checking storage: ${token}`);
+            log.debug(() => `[SessionManager] Session not in cache, checking storage: ${redactToken(token)}`);
             const loadedConfig = await this.loadSessionFromStorage(token);
             if (!loadedConfig) {
                 return null;
@@ -393,10 +426,17 @@ class SessionManager extends EventEmitter {
             log.error(() => ['[SessionManager] Failed to refresh session TTL on access:', err?.message || String(err)]);
         });
 
+        // Use cached decrypted config when available to avoid redundant decrypt/log spam on page changes
+        const cachedDecrypted = this.decryptedCache.get(token);
+        if (cachedDecrypted) {
+            return cloneConfig(cachedDecrypted);
+        }
+
         // Decrypt sensitive fields in config before returning
         const decryptedConfig = decryptUserConfig(sessionData.config);
+        this.decryptedCache.set(token, cloneConfig(decryptedConfig));
 
-        return decryptedConfig;
+        return cloneConfig(decryptedConfig);
     }
 
     /**
@@ -421,10 +461,10 @@ class SessionManager extends EventEmitter {
 
         // If not in cache, try loading from storage (Redis/filesystem)
         if (!sessionData) {
-            log.debug(() => `[SessionManager] Session not in cache for update, checking storage: ${token}`);
+            log.debug(() => `[SessionManager] Session not in cache for update, checking storage: ${redactToken(token)}`);
             const loadedConfig = await this.loadSessionFromStorage(token);
             if (!loadedConfig) {
-                log.warn(() => `[SessionManager] Cannot update - session not found in cache or storage: ${token}`);
+                log.warn(() => `[SessionManager] Cannot update - session not found in cache or storage: ${redactToken(token)}`);
                 return false;
             }
             // loadSessionFromStorage already added to cache, retrieve it
@@ -439,6 +479,7 @@ class SessionManager extends EventEmitter {
         sessionData.lastAccessedAt = Date.now();
 
         this.cache.set(token, sessionData);
+        this.decryptedCache.set(token, cloneConfig(config));
         this.dirty = true;
 
         // Persist immediately (per-token)
@@ -453,7 +494,7 @@ class SessionManager extends EventEmitter {
         });
 
         this.emit('sessionUpdated', { token, source: 'local' });
-        log.debug(() => `[SessionManager] Session updated: ${token}`);
+        log.debug(() => `[SessionManager] Session updated: ${redactToken(token)}`);
         return true;
     }
 
@@ -464,9 +505,10 @@ class SessionManager extends EventEmitter {
      */
     deleteSession(token) {
         const existed = this.cache.delete(token);
+        this.decryptedCache.delete(token);
         if (existed) {
             this.dirty = true;
-            log.debug(() => `[SessionManager] Session deleted: ${token}`);
+            log.debug(() => `[SessionManager] Session deleted: ${redactToken(token)}`);
             // Remove from storage immediately
             Promise.resolve().then(async () => {
                 const adapter = await getStorageAdapter();
@@ -540,7 +582,7 @@ class SessionManager extends EventEmitter {
 
             // Session not found in storage
             if (!stored) {
-                log.debug(() => `[SessionManager] loadSessionFromStorage: session token not found in storage: ${token}`);
+                log.debug(() => `[SessionManager] loadSessionFromStorage: session token not found in storage: ${redactToken(token)}`);
                 return null;
             }
 
@@ -556,6 +598,7 @@ class SessionManager extends EventEmitter {
             // Refresh last accessed and cache it
             stored.lastAccessedAt = now;
             this.cache.set(token, stored);
+            this.decryptedCache.delete(token);
 
             // Refresh persistent TTL on successful load
             try {
@@ -571,7 +614,8 @@ class SessionManager extends EventEmitter {
                 if (!decryptedConfig) {
                     log.warn(() => `[SessionManager] loadSessionFromStorage: decryption returned null/falsy config for token: ${token}`);
                 }
-                return decryptedConfig;
+                this.decryptedCache.set(token, cloneConfig(decryptedConfig));
+                return cloneConfig(decryptedConfig);
             } catch (decryptErr) {
                 log.error(() => ['[SessionManager] loadSessionFromStorage: failed to decrypt config:', decryptErr?.message || String(decryptErr)]);
                 return null;
@@ -776,7 +820,7 @@ class SessionManager extends EventEmitter {
                         });
                     }
                 } catch (err) {
-                    log.debug(() => `[SessionManager] Failed to load session metadata for ${token}: ${err.message}`);
+                    log.debug(() => `[SessionManager] Failed to load session metadata for ${redactToken(token)}: ${err.message}`);
                 }
             }
 

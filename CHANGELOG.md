@@ -2,17 +2,151 @@
 
 All notable changes to this project will be documented in this file.
 
+## SubMaker v1.4.4
+
+**New Features:**
+- **Stream activity feed:** New `/api/stream-activity` endpoint (SSE + polling) tracks the latest stream per config, keeping toolbox pages in sync with what you're watching
+- **Google Translate provider (unofficial, keyless):** Uses the public web endpoint (no API key needed), works as main or fallback provider, includes safe token estimation and prompt compatibility, and is available in the config UI/manifest
+- **File translation queue:** File-upload tool now queues multiple uploads with configurable batch size/concurrency, shows per-file progress/download links, and respects your saved main/fallback provider settings and advanced toggles
+- **Lots of fixes to all new features from the unreleased v1.4.3**
+
+**Translation Providers:**
+- Providers with optional keys are now allowed in validation/manifest generation (keyless providers don't block saves)
+- Translation overrides now accept explicit provider/workflow/timing options (source language, single-batch/AI-timestamps flags) so the UI can safely pass per-job overrides
+
+**Subtitles, Sync & Embedded:**
+- xEmbed translations are now listed directly in Stremio as downloadable "xEmbed (Language)" subtitles, keyed by the embedded cache
+- First streaming partials wait for a minimum number of entries (`STREAM_FIRST_PARTIAL_MIN_ENTRIES`) to avoid ultra-short partial subtitles
+- xSync lookups use stable video hashes (filename + videoId) with legacy-hash fallback and dedupe, keeping existing synced subs accessible and preventing duplicate buttons
+
+**UI & Configuration:**
+- Google Translate card added to the AI providers list (fixed `web` model, optional key); main/secondary provider validation accepts optional-key providers
+- Localhost/base64 configs are normalized and validated (base64url padding restored) and invalid tokens are purged before reuse; session updates accept both session tokens and base64 tokens
+- Toolbox/file-upload/sync pages share a sticky quick-nav (mobile drawer) plus a "jump to latest stream" refresh/watcher wired to stream-activity so you can hop to the current episode from any tool
+
+**Storage, Cache & Infrastructure:**
+- Router cache + in-flight request deduplication reduce duplicate router builds and repeated operations; session caps tuned (30k in-memory, 60k persisted) with autosave override support
+- Translation caches (permanent/partial/bypass) now use config-scoped keys with legacy fallback/promotion and user-scoped purge logic; translation search dedupe keys include the config hash to avoid cross-user collisions
+- Session manager now caches decrypted configs briefly (with safe cloning) to avoid repeated decrypt/log churn when users bounce between pages
+
+**Security & Safety:**
+- Config/host hardening: strict host validation with additive origin/user-agent allowlists via `ALLOWED_ORIGINS` and `STREMIO_USER_AGENT_HINTS`, and no-store headers on stream-activity responses
+- Host validation now accepts IPv6/bracketed hosts and zone IDs while still rejecting injected/invalid Host headers (keeps manifests/addon URLs working on IPv6/self-hosted setups)
+- Session logging now redacts tokens across cache operations and pub/sub invalidations
+
+**Bug Fixes:**
+- Translation engine now falls back to safe token estimates when providers don't expose token counters
+- Base64 decode failures are prevented via normalization and stricter client/server token validation; manifest/model validation no longer blocks optional-key providers
+- Parallel translation chunks now carry the detected source language and cache lookups fall back to legacy keys so chunked jobs and upgrades reuse cached work instead of re-translating
+
+**Environment Variables:**
+- `FILE_UPLOAD_MAX_BATCH_FILES`, `FILE_UPLOAD_MAX_CONCURRENCY` tune the file-upload queue limits for batch translations
+- `ALLOWED_ORIGINS`, `STREMIO_USER_AGENT_HINTS` extend the host/user-agent allowlists for self-hosted or forked Stremio clients
+
+## SubMaker v1.4.3 (unreleased)
+
+**New Features:**
+- Sub Toolbox: Unified hub for all subtitle tools accessible directly from Stremio's subtitle menu (right click>download subtitles opens browser page with all available tools)
+- Video hash utility (`src/utils/videoHash.js`): Centralized video hash generation with `deriveVideoHash()` (stable hash combining filename + video ID), `deriveLegacyVideoHash()` (backward-compatible), multi-hash lookups ensure existing xSync cached subtitles remain accessible after upgrade, replaces inline MD5 hashing scattered throughout codebase
+- Embedded Subtitle Extraction & Translation (BETA, UNTESTED, NEEDS CHROME EXTENSION): Extract embedded subtitles from video files/streams (HLS, MP4, MKV) with language/codec detection, automatic VTT to SRT conversion, web-based UI for track selection/preview/management, requires integration with "SubMaker xSync" Chrome extension for client-side extraction
+- xEmbed cache system: Stores both original extracted tracks and translated versions, keyed by video hash (MD5 of filename) + track ID + language codes, shared across all users for same video file, prevents duplicate extraction/translation work, persistent storage with metadata
+- TranslationEngine integration for embedded subtitles: Respects user's configured provider (Gemini, OpenAI, Anthropic, etc.), supports all advanced settings, single-batch mode and timestamps-to-AI toggle support, per-translation provider/model overrides, streaming disabled for embedded translations (batch-only)
+- Chrome Extension Protocol: Message-based communication for subtitle extraction (`SUBMAKER_PING`/`PONG`, `EXTRACT_REQUEST`/`PROGRESS`/`RESPONSE`)
+
+**New Routes & Pages:**
+- `/addon/:config/sub-toolbox/:videoId` - Redirects to standalone Sub Toolbox page with session
+- `/sub-toolbox` - Main toolbox hub page with links to all tools
+- `/embedded-subtitles` - Embedded subtitle extraction and translation interface with extension status indicator, stream URL input, track selection grid, target language multi-select, provider/model selectors, translation options toggles, real-time logging, download cards
+- `/auto-subtitles` - Placeholder page for upcoming automatic subtitle generation feature
+
+**API Endpoints:**
+- `/api/save-embedded-subtitle` - Save extracted embedded subtitle to cache (accepts: configStr, videoHash, trackId, languageCode, content, metadata; returns: cacheKey and metadata)
+- `/api/translate-embedded` - Translate embedded subtitle with TranslationEngine (accepts: configStr, videoHash, trackId, sourceLanguageCode, targetLanguage, content, options, overrides, forceRetranslate; returns: translatedContent, cacheKey, metadata, cached flag; includes automatic VTT to SRT conversion, cache lookup with force retranslate option)
+- `/addon/:config/xembedded/:videoHash/:lang/:trackId` - Download translated xEmbed subtitle (embedded translation)
+- `/addon/:config/xembedded/:videoHash/:lang/:trackId/original` - Download original xEmbed subtitle (embedded original)
+
+**Storage System Enhancements:**
+- New cache type `StorageAdapter.CACHE_TYPES.EMBEDDED` for embedded subtitle storage (separate from translation/sync cache, supports original tracks and translated versions)
+- Pattern-based key listing for video hash lookups (Redis uses SCAN with `embedded:<pattern>`)
+- Redis implementation uses same LRU eviction + size-counter enforcement as other caches (default limit 0.5GB, configurable via `CACHE_LIMIT_EMBEDDED`, no TTL by default)
+- New StorageAdapter methods: `list(cacheType, pattern)` for listing cache keys matching glob pattern, `getStats(cacheType)` for cache statistics
+- FilesystemStorageAdapter: Added `data/embedded/` directory, implemented pattern matching with glob support, cache statistics calculation
+- Storage factory cleanup: Hourly cleanup interval added for embedded cache type (matches sync/bypass/partial)
+
+**Configuration Updates:**
+- Unified "Enable Sub Toolbox" toggle replaces separate "Translate SRT" and "Sync Subtitles" checkboxes
+- Removed "Dev" section entirely - `syncSubtitlesEnabled` toggle no longer shown separately
+- Config migration logic automatically consolidates `subToolboxEnabled`, `fileTranslationEnabled`, and `syncSubtitlesEnabled` flags (if any are true in saved config, all three set to true on load, ensures backward compatibility)
+- Modal renamed from "Translate SRT Instructions" to "Sub Toolbox Instructions" with updated content
+- Visual state localStorage key updated: `submaker_dont_show_sub_toolbox` (preserves legacy key for backward compat)
+- Description updated to mention all four tools: translate files, sync subtitles, extract embedded subs, automatic subs
+
+**UI Improvements:**
+- Sub Toolbox page: Modern gradient design with card-based tool layout, hero section with configuration summary, quick links to all tools, "How it works" guide, responsive grid layout
+- Embedded subtitles page: Full-featured extraction and translation interface with extension status indicator, stream URL input with extraction controls, track selection grid with visual feedback, target language multi-select with status pills, provider and model dropdown selectors, translation options toggles (single-batch, timestamps), real-time logging for extraction/translation progress, download cards for originals/translated files, "Reload subtitle list" reminder after successful translations
+- Auto subtitles page: Placeholder with feature preview and links to other tools
+- Single "Sub Toolbox" action button in Stremio subtitle list replaces separate "Translate SRT" and "Sync Subtitles" buttons (appears when `subToolboxEnabled === true`, links to `/addon/:config/sub-toolbox/:videoId?filename=...`)
+
+**Security & Cache Safety:**
+- All toolbox routes protected with cache prevention headers
+- Session token validation before serving toolbox pages
+- Config validation on all embedded subtitle API endpoints
+- VTT to SRT conversion sandboxed with error handling
+- Provider override sanitization and validation
+- Advanced settings clamping (temperature 0-2, topP 0-1, etc.)
+- Centralized `setNoStore(res)` helper function (sets Cache-Control, Pragma, Expires, Surrogate-Control headers for cache prevention)
+
+**Error Handling Improvements:**
+- Enhanced OpenSubtitles Auth rate limit detection (429) with implementation-specific guidance
+- Differentiated error messages: Auth with credentials ("rate limiting your account"), Auth without credentials ("basic rate limit, add username/password or switch to V3"), V3 (standard rate limit subtitle)
+- Rate limit errors (429) no longer misclassified as authentication failures
+- User-facing error subtitles (0→4h) explain quota and suggest remediation
+- Logs which subtitle (fileId, language) triggered the rate limit for easier debugging
+
+**Bug Fixes:**
+- Fixed VTT content not being convertible for translation
+- Fixed provider override not applying to embedded subtitle workflows
+- Fixed cache key collisions between different subtitle types
+- Fixed missing cache headers on session management endpoints
+- Fixed redirect cache for `/addon/:config/sub-toolbox/:videoId` route
+
+**Performance & Infrastructure:**
+- JSON payload limit increased from 1MB to 6MB (`express.json({ limit: '6mb' })`) for embedded subtitle uploads up to ~5MB (browser-extracted SRT content)
+- Sync page (`syncPageGenerator.js`) filters out `sub_toolbox` action button from fetchable subtitle list
+- OpenSubtitles `implementationType` defaults to 'v3' during config normalization (was implicit before)
+- Subtitle handler logs now include cache type counts: `xSync`, `xEmbed`, `learn`, `translations`, `actions`
+
+**Environment Variables:**
+- `CACHE_LIMIT_EMBEDDED` - Configurable embedded subtitle cache limit (default 0.5GB, documented in `.env.example`)
+
+**This release addresses multiple security vulnerabilities:**
+
+**CRITICAL Security Fixes:**
+- XSS (Cross-Site Scripting) in `src/utils/toolboxPageGenerator.js` and `src/utils/syncPageGenerator.js`: Added `safeJsonSerialize()` using double-encoding to prevent `</script>` breakout, replaced `.innerHTML` with safe DOM methods (prevented session token theft, API key exfiltration, account compromise)
+- NoSQL Injection in Redis (`src/storage/RedisStorageAdapter.js`, `src/utils/embeddedCache.js`): Added `_sanitizeKey()` removing wildcards (`*?[]\`), validates length, hashes oversized keys (prevented cache poisoning, data exfiltration via wildcard patterns, key collision attacks)
+- Session Token Exposure in Logs (`src/utils/sessionManager.js`, `index.js`): Created `redactToken()` utility showing only first/last 4 chars, updated 12+ log statements (prevented session hijacking if logs compromised)
+
+**HIGH Priority Security Fixes:**
+- Path Traversal in `src/storage/FilesystemStorageAdapter.js`: Double URL-decode detection, strengthened path verification with proper boundary checks (prevented arbitrary file read/write outside cache directories)
+- API Key Exposure: Created `src/utils/security.js` with `sanitizeError()`, `sanitizeConfig()`, `redactApiKey()` utilities (prevented API keys in error messages and logs)
+- Closed caching gaps: Expanded no-store middleware to every user-specific API listed in v1.4.2 (manifests/addon paths were already covered) and disabled ETags even for static assets to stop conditional caching bleed (index.js)
+- Blocked host-header poisoning: Added strict host validation and now build addon URLs/manifests with sanitized hosts so malicious Host headers can't poison generated links (index.js)
+- Hardened config handling: Validated all `:config` path params (length/characters) before parsing, added 120KB guardrail on session create/update payloads, and kept request bodies under control without changing normal flows (index.js)
+
+**Security Audit Summary:**
+- Vulnerabilities fixed by type: XSS (2), NoSQL Injection (1 + defense-in-depth), Information Disclosure (3), Path Traversal (1), Input Validation (4), Security Misconfiguration (6), Caching Gaps (1), Host Header Poisoning (1)
+
 ## SubMaker v1.4.2
 
 **Critical Bug Fix - Comprehensive Cache Prevention:**
 
-- **Fixed critical incomplete cache fix**: The fix for cross-user configuration contamination only added cache prevention headers to `/api/get-session/:token` endpoint. Problems kept occurring.
+- **Fixed critical incomplete cache fix**: The past fix for cross-user configuration contamination only added cache prevention headers to `/api/get-session/:token` endpoint.
 
 **Complete fix includes:**
-  1. **Early middleware**: `/addon` path already in `noStorePaths` array to catch all addon routes at the earliest middleware layer
-  2. **Disabled ETags globally**: `app.set('etag', false)` prevents any conditional caching mechanisms
+  1. **Early middleware**: Added `/addon` to `noStorePaths` array to catch all addon routes at the earliest middleware layer
+  2. **Disabled ETags globally**: Set `app.set('etag', false)` to prevent any conditional caching mechanisms
   3. **Explicit cache headers on all user-specific routes** (defense-in-depth):
-     - **Configuration pages**: `/`, `/configure`, `/file-upload`, `/subtitle-sync` - Aggressive no-store headers to prevent config leakage
+     - **Configuration pages**: `/`, `/configure`, `/file-upload`, `/subtitle-sync`
      - **Addon routes**:
        - `/addon/:config` - Base addon path redirect
        - `/addon/:config/manifest.json` - Primary manifest endpoint that Stremio uses
@@ -39,8 +173,9 @@ All notable changes to this project will be documented in this file.
        - `/api/validate-subsource` - SubSource API key validation
        - `/api/validate-subdl` - SubDL API key validation
        - `/api/validate-opensubtitles` - OpenSubtitles credentials validation
+     - **Toolbox pages**: `/file-upload`, `/subtitle-sync`, `/sub-toolbox`, `/embedded-subtitles`, `/auto-subtitles`
 
-**Impact**: This fix ensures complete isolation between users by preventing browsers, proxies, and CDNs from caching any user-specific data (configurations, credentials, session tokens, or API responses). All 26+ user-specific routes now have aggressive `no-store, no-cache, must-revalidate, private, max-age=0` headers with defense-in-depth protection.
+- This comprehensive fix uses a **defense-in-depth strategy** with cache prevention at three layers (early middleware, route-specific headers, and disabled ETags) to ensure no user-specific content is ever cached by proxies, CDNs, or browsers. This should completely resolve all reported cases of "random language in Make button" issues.
 
 ## SubMaker v1.4.1
 

@@ -53,7 +53,7 @@ const providerParameterSchema = Joi.object({
   maxOutputTokens: Joi.number().min(1).max(200000).optional(),
   translationTimeout: Joi.number().min(5).max(600).optional(),
   maxRetries: Joi.number().integer().min(0).max(5).optional(),
-  thinkingBudget: Joi.number().min(0).max(200000).optional(),
+  thinkingBudget: Joi.number().min(-1).max(200000).optional(),
   modelType: Joi.string().max(100).optional(),
   formality: Joi.string().max(50).optional(),
   preserveFormatting: Joi.boolean().optional()
@@ -62,10 +62,19 @@ const providerParameterSchema = Joi.object({
 // Validate translation overrides payload (optional provider/model/prompt tweaks)
 const translationOverridesSchema = Joi.object({
   translationPrompt: Joi.string().max(8000).allow('').optional(),
+  provider: Joi.string().max(50).optional(),
   providerModel: Joi.string().max(300).allow('').optional(),
   providerParameters: Joi.object().pattern(/.*/, providerParameterSchema).optional(),
   advancedSettings: Joi.object().unknown(true).optional()
 }).optional();
+
+// Optional translation engine toggles (workflow/timing)
+const translationOptionsSchema = Joi.object({
+  workflow: Joi.string().valid('batched', 'single-pass', 'single-batch', 'one-pass').optional(),
+  timingMode: Joi.string().valid('preserve-timing', 'ai-timing', 'ai-timestamps', 'source-timing').optional(),
+  singleBatchMode: Joi.boolean().optional(),
+  sendTimestampsToAI: Joi.boolean().optional()
+}).unknown(true).optional();
 
 /**
  * Validate request parameters
@@ -142,9 +151,11 @@ const translationSelectorParamsSchema = Joi.object({
 const fileTranslationBodySchema = Joi.object({
   content: subtitleContentSchema,
   targetLanguage: looseLanguageSchema,
+  sourceLanguage: looseLanguageSchema.optional(),
   configStr: configStringSchema,
   advancedSettings: Joi.object().unknown(true).optional(), // Allow advanced settings override
-  overrides: translationOverridesSchema
+  overrides: translationOverridesSchema,
+  options: translationOptionsSchema
 });
 
 module.exports = {
