@@ -6,6 +6,7 @@ const { detectAndConvertEncoding } = require('../utils/encodingDetector');
 const { appendHiddenInformationalNote } = require('../utils/subtitle');
 const { redactSensitiveData } = require('../utils/logger');
 const log = require('../utils/logger');
+const { waitForDownloadSlot, currentDownloadLimit } = require('../utils/downloadLimiter');
 
 const SUBDL_API_URL = 'https://api.subdl.com/api/v1';
 const USER_AGENT = 'StremioSubtitleTranslator v1.0';
@@ -427,6 +428,12 @@ class SubDLService {
         } else {
           throw new Error('Invalid SubDL file ID format');
         }
+      }
+
+      const waitedMs = await waitForDownloadSlot('SubDL');
+      if (waitedMs > 0) {
+        const { maxPerMinute } = currentDownloadLimit();
+        log.debug(() => `[SubDL] Throttling download (${maxPerMinute}/min) waited ${waitedMs}ms`);
       }
 
       // Construct download URL according to SubDL API documentation

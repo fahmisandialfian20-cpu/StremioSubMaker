@@ -19,6 +19,12 @@ class RedisStorageAdapter extends StorageAdapter {
 
     const { canonicalPrefix, variants } = this._normalizeKeyPrefix(options.keyPrefix);
 
+    // Prefix/key migration can unintentionally merge data between tenants when
+    // a shared Redis instance is used (e.g., managed hosting). Keep it opt-in
+    // to avoid cross-user config leakage while still allowing operators to
+    // enable it explicitly for controlled single-tenant migrations.
+    this.prefixMigrationEnabled = process.env.REDIS_PREFIX_MIGRATION === 'true';
+
     // Check if Redis Sentinel is enabled (disabled by default)
     const sentinelEnabled = process.env.REDIS_SENTINEL_ENABLED === 'true' || options.sentinelEnabled === true;
 
@@ -203,10 +209,14 @@ class RedisStorageAdapter extends StorageAdapter {
         setTimeout(() => reject(new Error('Redis connection timeout')), 10000);
       });
 
-      // Self-heal legacy double-prefixed keys to prevent invisible sessions/configs
-      await this._migrateDoublePrefixedKeys();
-      // Self-heal single-prefixed keys written with alternate prefixes (colon vs non-colon or custom)
-      await this._migrateCrossPrefixKeys();
+      if (this.prefixMigrationEnabled) {
+        // Self-heal legacy double-prefixed keys to prevent invisible sessions/configs
+        await this._migrateDoublePrefixedKeys();
+        // Self-heal single-prefixed keys written with alternate prefixes (colon vs non-colon or custom)
+        await this._migrateCrossPrefixKeys();
+      } else {
+        log.debug(() => '[RedisStorage] Prefix migration disabled (REDIS_PREFIX_MIGRATION!=true)');
+      }
 
       this.initialized = true;
       log.debug(() => 'Redis storage adapter initialized successfully');

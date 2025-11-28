@@ -5,6 +5,7 @@ const { httpAgent, httpsAgent, dnsLookup } = require('../utils/httpAgents');
 const { detectAndConvertEncoding } = require('../utils/encodingDetector');
 const { version } = require('../utils/version');
 const { appendHiddenInformationalNote } = require('../utils/subtitle');
+const { waitForDownloadSlot, currentDownloadLimit } = require('../utils/downloadLimiter');
 const log = require('../utils/logger');
 
 const OPENSUBTITLES_V3_BASE_URL = 'https://opensubtitles-v3.strem.io/subtitles/';
@@ -357,6 +358,12 @@ class OpenSubtitlesV3Service {
     const downloadUrl = Buffer.from(encodedUrl, 'base64url').toString('utf-8');
 
     log.debug(() => '[OpenSubtitles V3] Decoded download URL');
+
+    const waitedMs = await waitForDownloadSlot('OpenSubtitles V3');
+    if (waitedMs > 0) {
+      const { maxPerMinute } = currentDownloadLimit();
+      log.debug(() => `[OpenSubtitles V3] Throttling download (${maxPerMinute}/min) waited ${waitedMs}ms`);
+    }
 
     // Retry logic with exponential backoff
     let lastError;

@@ -31,18 +31,12 @@ const CACHE_PREFIX = 'submaker';
 const getVersionedCacheName = (version) => `${CACHE_PREFIX}-static-v${version}`;
 const API_CACHE_NAME = `${CACHE_PREFIX}-api-v1`;
 
-// Detect whether an API request is sensitive (contains tokens/config/session identifiers)
+// Treat all API requests as sensitive to avoid any chance of cached responses
+// leaking configuration or credentials between users (especially on shared
+// hosting/CDN layers). We simply skip caching altogether for /api/* paths.
 function isSensitiveApiRequest(urlLike) {
     const url = urlLike instanceof URL ? urlLike : new URL(urlLike, self.location.origin);
-
-    return [
-        '/api/get-session',
-        '/api/update-session',
-        '/api/create-session'
-    ].some(path => url.pathname.startsWith(path)) ||
-        url.searchParams.has('config') ||
-        url.searchParams.has('token') ||
-        url.pathname.includes('session');
+    return url.pathname.startsWith('/api/');
 }
 
 // Honor server cache directives (no-store/private) when deciding to cache
@@ -180,7 +174,6 @@ self.addEventListener('fetch', (event) => {
  * Handle API requests with network-first strategy
  */
 async function handleApiRequest(request) {
-    const isGetRequest = request.method === 'GET';
     const url = new URL(request.url);
     const isSensitiveRequest = isSensitiveApiRequest(url);
 
@@ -189,23 +182,9 @@ async function handleApiRequest(request) {
         const fetchOptions = isSensitiveRequest ? { cache: 'no-store' } : undefined;
         const response = await fetch(request, fetchOptions);
 
-        // Cache successful API responses (GET only) when they are safe to store
-        if (response.ok && isGetRequest && !isSensitiveRequest && !responseHasNoStore(response)) {
-            const cache = await caches.open(API_CACHE_NAME);
-            cache.put(request, response.clone());
-        }
-
         return response;
     } catch (error) {
-        // Network failed, try cache only when the request is safe to read from cache
-        if (isGetRequest && !isSensitiveRequest) {
-            const cached = await caches.match(request);
-            if (cached) {
-                return cached;
-            }
-        }
-
-        // No cache available, return error response
+        // No cache available (we do not cache API responses anymore), return error response
         return new Response(
             JSON.stringify({ error: 'Offline - no cached response available' }),
             {

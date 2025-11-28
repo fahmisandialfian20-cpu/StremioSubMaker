@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## SubMaker v1.4.6
+## SubMaker v1.4.6-beta
 
 - Addon origin checks now accept any `*.strem.io` host to prevent false security blocks from Stremio edge domains.
 - Service worker now treats session/token API calls as non-cacheable and honors server no-store headers before caching API responses to avoid persisting sensitive data.

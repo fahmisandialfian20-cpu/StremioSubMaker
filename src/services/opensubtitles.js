@@ -7,6 +7,7 @@ const { detectAndConvertEncoding } = require('../utils/encodingDetector');
 const { version } = require('../utils/version');
 const { appendHiddenInformationalNote } = require('../utils/subtitle');
 const log = require('../utils/logger');
+const { waitForDownloadSlot, currentDownloadLimit } = require('../utils/downloadLimiter');
 
 const OPENSUBTITLES_API_URL = 'https://api.opensubtitles.com/api/v1';
 const USER_AGENT = `SubMaker v${version}`;
@@ -601,6 +602,12 @@ class OpenSubtitlesService {
           // Authentication failed, handleAuthError already logged it
           throw new Error('OpenSubtitles authentication failed');
         }
+      }
+
+      const waitedMs = await waitForDownloadSlot('OpenSubtitles');
+      if (waitedMs > 0) {
+        const { maxPerMinute } = currentDownloadLimit();
+        log.debug(() => `[OpenSubtitles] Throttling download (${maxPerMinute}/min) waited ${waitedMs}ms`);
       }
 
       // First, request download link

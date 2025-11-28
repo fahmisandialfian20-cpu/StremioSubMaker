@@ -1719,7 +1719,7 @@ function createSubtitleHandler(config) {
         return {
           subtitles: [{
             id: 'config_error_session_token',
-            lang: 'âš ï¸ SubMaker Config Error',
+            lang: 'SubMaker Error',
             url: `{{ADDON_URL}}/error-subtitle/session-token-not-found.srt`
           }]
         };

@@ -1046,7 +1046,14 @@ app.use((req, res, next) => {
 // Other static files get 1 year cache as well
 app.use(express.static('public', {
     maxAge: '1y',  // 1 year in milliseconds = 31536000000
-    etag: false    // Keep ETag disabled globally to avoid conditional caching bleed
+    etag: false,   // Keep ETag disabled globally to avoid conditional caching bleed
+    // Respect no-store headers set by earlier middleware for sensitive routes.
+    // Without this, serve-static would overwrite Cache-Control and allow proxies
+    // to cache config-bearing pages or API responses that pass through /public.
+    setHeaders: (res) => {
+        if (res.getHeader('Cache-Control')) return; // Preserve explicit no-store
+        res.setHeader('Cache-Control', 'public, max-age=31536000000, immutable');
+    }
 }));
 
 // CRITICAL FIX: Ensure session manager is ready before handling requests

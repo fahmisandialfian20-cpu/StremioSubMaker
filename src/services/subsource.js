@@ -16,6 +16,7 @@ const { detectAndConvertEncoding } = require('../utils/encodingDetector');
 const { appendHiddenInformationalNote } = require('../utils/subtitle');
 const zlib = require('zlib');
 const log = require('../utils/logger');
+const { waitForDownloadSlot, currentDownloadLimit } = require('../utils/downloadLimiter');
 
 const SUBSOURCE_API_URL = 'https://api.subsource.net/api/v1';
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
@@ -854,6 +855,12 @@ class SubSourceService {
       // Check if we have a valid ID
       if (!subsource_id || subsource_id === 'undefined') {
         throw new Error('Invalid or missing SubSource subtitle ID');
+      }
+
+      const waitedMs = await waitForDownloadSlot('SubSource');
+      if (waitedMs > 0) {
+        const { maxPerMinute } = currentDownloadLimit();
+        log.debug(() => `[SubSource] Throttling download (${maxPerMinute}/min) waited ${waitedMs}ms`);
       }
 
       // Attempt CDN/direct download first if we cached a direct URL from search
