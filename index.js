@@ -1006,6 +1006,21 @@ app.use('/addon/:config', (req, res, next) => {
 
 // Custom caching middleware for different file types
 app.use((req, res, next) => {
+    // Config UI assets must always be fresh to avoid stale layouts across hosts
+    const configUiAssets = [
+        '/css/configure.css',
+        '/css/combobox.css',
+        '/js/init.js',
+        '/js/combobox.js',
+        '/js/combobox-init.js',
+        '/js/config-loader.js',
+        '/js/ui-widgets.js',
+        '/js/theme-toggle.js',
+        '/js/help-modal.js',
+        '/js/sw-register.js',
+        '/sw.js'
+    ];
+
     // Never cache session/config endpoints or configure assets (prevents cross-user bleed)
     const noStorePaths = [
         '/config.js',
@@ -1030,7 +1045,8 @@ app.use((req, res, next) => {
         '/subtitle-sync',
         '/sub-toolbox',
         '/embedded-subtitles',
-        '/auto-subtitles'
+        '/auto-subtitles',
+        ...configUiAssets
     ];
 
     if (noStorePaths.some(p => req.path === p || req.path.startsWith(`${p}/`))) {

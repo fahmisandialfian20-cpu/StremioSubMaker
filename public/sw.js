@@ -30,6 +30,20 @@ getAppVersion().then(v => {
 const CACHE_PREFIX = 'submaker';
 const getVersionedCacheName = (version) => `${CACHE_PREFIX}-static-v${version}`;
 const API_CACHE_NAME = `${CACHE_PREFIX}-api-v1`;
+const NON_CACHEABLE_ASSETS = new Set([
+    '/css/configure.css',
+    '/css/combobox.css',
+    '/js/init.js',
+    '/js/combobox.js',
+    '/js/combobox-init.js',
+    '/js/config-loader.js',
+    '/js/ui-widgets.js',
+    '/js/theme-toggle.js',
+    '/js/help-modal.js',
+    '/js/sw-register.js',
+    '/config.js',
+    '/sw.js'
+]);
 
 // Treat all API requests as sensitive to avoid any chance of cached responses
 // leaking configuration or credentials between users (especially on shared
@@ -248,7 +262,32 @@ async function handleHtmlRequest(request) {
  * Handle static assets with cache-first strategy
  */
 async function handleStaticAsset(request) {
+    const url = new URL(request.url);
     const cacheName = getVersionedCacheName(APP_VERSION);
+
+    if (NON_CACHEABLE_ASSETS.has(url.pathname)) {
+        try {
+            const cache = await caches.open(cacheName);
+            await cache.delete(request);
+        } catch (_) {
+        }
+
+        try {
+            return await fetch(request, { cache: 'no-store' });
+        } catch (error) {
+            const cached = await caches.match(request);
+            if (cached) {
+                return cached;
+            }
+            return new Response(
+                'Offline - asset not cached',
+                {
+                    status: 503,
+                    statusText: 'Service Unavailable'
+                }
+            );
+        }
+    }
 
     // Try cache first
     const cached = await caches.match(request);
