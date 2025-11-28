@@ -52,6 +52,13 @@ function responseHasNoStore(response) {
         surrogate.includes('no-store');
 }
 
+// Cache API rejects responses with "Vary: *" to prevent opaque caching.
+// Skip caching in that case to avoid runtime failures and unintended sharing.
+function responseHasVaryStar(response) {
+    const vary = response.headers.get('Vary');
+    return !!vary && vary.includes('*');
+}
+
 // Purge any previously cached sensitive API entries so legacy data isn't retained
 async function purgeSensitiveApiCacheEntries() {
     try {
@@ -207,7 +214,9 @@ async function handleHtmlRequest(request) {
         if (response.ok) {
             // Check if response has no-cache headers
             const cacheControl = response.headers.get('Cache-Control');
-            const shouldCache = !cacheControl || (!cacheControl.includes('no-cache') && !cacheControl.includes('no-store'));
+            const hasVaryStar = responseHasVaryStar(response);
+            const shouldCache = !hasVaryStar &&
+                (!cacheControl || (!cacheControl.includes('no-cache') && !cacheControl.includes('no-store')));
 
             // Only cache HTML if it doesn't have no-cache headers
             // This ensures configure.html and config.js are always fresh
@@ -252,9 +261,12 @@ async function handleStaticAsset(request) {
         const response = await fetch(request);
 
         if (response.ok) {
-            // Cache the response
+            // Cache the response unless headers forbid it
             const cache = await caches.open(cacheName);
-            cache.put(request, response.clone());
+            const shouldCache = !responseHasNoStore(response) && !responseHasVaryStar(response);
+            if (shouldCache) {
+                cache.put(request, response.clone());
+            }
         }
 
         return response;

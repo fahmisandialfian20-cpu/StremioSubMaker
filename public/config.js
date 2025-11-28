@@ -948,9 +948,9 @@ Translate to {target_language}.`;
             btn.classList.remove('show');
             return;
         }
+        // Show whenever we have a token for this origin; avoid hiding due to init timing
         const cfgRef = configOverride || getActiveConfigRef();
-        const hasConfigLoaded = !!currentConfig && (!isFirstRun || !!cfgRef);
-        const shouldShow = !!cfgRef && hasConfigLoaded;
+        const shouldShow = !!cfgRef;
         if (shouldShow) {
             btn.style.display = 'flex';
             btn.dataset.configRef = cfgRef;

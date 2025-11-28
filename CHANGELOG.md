@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## SubMaker v1.4.7
+
+- Synced subtitle saves now reject missing/invalid session tokens with a 401 response, preventing cross-user pollution of the shared sync cache.
+- Service worker skips caching responses that advertise `Vary: *` or `no-store`, avoiding runtime cache failures and leaking user-specific assets.
+- Gemini config button visibility no longer flickers during init; it shows whenever a session token is present for the current origin.
+- Simplified Gemini API key help by removing the inline tooltip widget; translation UI copy clarified for the triple-click retrigger tip.
+
 ## SubMaker v1.4.6-beta
 
 - Addon origin checks now accept any `*.strem.io` host to prevent false security blocks from Stremio edge domains.

@@ -3193,6 +3193,12 @@ app.post('/api/save-synced-subtitle', userDataWriteLimiter, async (req, res) => 
         // Validate config
         const config = await resolveConfigAsync(configStr, req);
 
+        // Reject writes when session token is missing/invalid to prevent cross-user pollution of shared sync cache
+        if (config.__sessionTokenError === true) {
+            log.warn(() => '[Save Synced] Rejected write due to invalid/missing session token');
+            return res.status(401).json({ error: 'Invalid or expired session token' });
+        }
+
         log.debug(() => `[Save Synced] Saving synced subtitle: ${videoHash}_${languageCode}_${sourceSubId}`);
 
         // Save to sync cache
