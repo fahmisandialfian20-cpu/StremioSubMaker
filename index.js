@@ -643,7 +643,16 @@ app.use(helmet({
         directives: {
             defaultSrc: ["'self'"],
             styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"], // Allow inline styles and Google Fonts
-            scriptSrc: ["'self'", "'unsafe-inline'"], // Allow inline scripts for HTML pages
+            scriptSrc: ["'self'", "'unsafe-inline'", "https://static.cloudflareinsights.com"], // Allow inline scripts for HTML pages + CF beacon
+            connectSrc: [
+                "'self'",
+                "https://v3-cinemeta.strem.io", // Needed for linked title lookup on embedded subtitles page
+                "https://*.strem.io",
+                "https://cloudflareinsights.com",
+                "https://static.cloudflareinsights.com",
+                "https://fonts.googleapis.com",
+                "https://fonts.gstatic.com"
+            ],
             imgSrc: ["'self'", "data:"],
             fontSrc: ["'self'", "https://fonts.gstatic.com"], // Allow Google Fonts
             // Don't upgrade insecure requests for localhost (would break HTTP logo loading)

@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 ## SubMaker v1.4.9
 
 - Fixed per-user translation concurrency tracking so the 3-slot cap is enforced reliably even when multiple translations are started at the same time.
+- Subtitle lookups now understand `tmdb:` IDs, map them to IMDB via Cinemeta with a 24h cache, and fall back to TMDB IDs in dedup keys so TMDB-only titles still return subtitles without cache collisions.
+- Translation selector uses the same IMDB/TMDB mapping and cache-key fix, ensuring available subtitles populate correctly for TMDB-sourced streams and stay scoped to each user's config hash.
+- Service worker cache writes are now guarded against `Vary: *`/`no-store` responses (including precache), preventing runtime `cache.put` failures when CDNs inject non-cacheable headers.
+- Embedded subtitles page moves the MKV caution inline with the stream URL input so the warning is visible while choosing a source.
+- Embedded-subtitles page CSP now explicitly allows Stremio Cinemeta metadata fetches and the hosting Cloudflare beacon script, preventing console CSP blocks for title lookups.
 
 ## SubMaker v1.4.8-beta
 
