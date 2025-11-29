@@ -490,7 +490,16 @@ class RedisStorageAdapter extends StorageAdapter {
       const content = await this.client.get(redisKey);
 
       if (!content) {
-        return null;
+        // If the key isn't found under the canonical prefix, try to self-heal
+        // across alternate prefixes (colon/no-colon, fallback/default) so
+        // sessions/configs don't "disappear" after restarts when the prefix
+        // changes. This is intentionally scoped to our known variants to avoid
+        // cross-tenant leakage on shared Redis deployments.
+        const migrated = await this._migrateFromAlternatePrefixes(key, cacheType);
+        if (!migrated) {
+          return null;
+        }
+        return migrated;
       }
 
       // Update LRU timestamp
@@ -507,6 +516,87 @@ class RedisStorageAdapter extends StorageAdapter {
       log.error(() => `Redis get error for key ${key}:`, error);
       return null;
     }
+  }
+
+  /**
+   * Attempt to read and migrate a key stored under an alternate prefix variant
+   * (e.g., colon vs no-colon) back into the canonical prefix. This prevents
+   * silent config/session loss after restarts when the configured prefix
+   * changes or the isolation-derived fallback is used.
+   * @private
+   */
+  async _migrateFromAlternatePrefixes(key, cacheType) {
+    if (!this.prefixVariants || this.prefixVariants.length === 0) {
+      return null;
+    }
+
+    const canonicalPrefix = this.options.keyPrefix || '';
+    const sanitizedKey = this._sanitizeKey(key);
+    const contentKeySuffix = `${cacheType}:${sanitizedKey}`;
+
+    // Use a raw client without keyPrefix to read alternate namespaces
+    const migrationClient = await this._getMigrationClient('[RedisStorage] Cross-prefix fetch skipped: could not open raw client:');
+    if (!migrationClient) return null;
+
+    for (const altPrefix of this.prefixVariants) {
+      // Skip the canonical prefix – the normal get() already tried it
+      if (altPrefix === canonicalPrefix) continue;
+      const altContentKey = `${altPrefix}${contentKeySuffix}`;
+      try {
+        const content = await migrationClient.get(altContentKey);
+        if (!content) continue;
+
+        // Pull metadata + TTL from the old namespace so we can rehydrate
+        const altMetaKey = `${altContentKey}:meta`;
+        const altLruKey = `${altPrefix}lru:${cacheType}`;
+        const [ttl, meta, lruScore] = await Promise.all([
+          migrationClient.ttl(altContentKey),
+          migrationClient.hgetall(altMetaKey),
+          migrationClient.zscore(altLruKey, key)
+        ]);
+
+        const parsed = (() => {
+          try { return JSON.parse(content); } catch { return content; }
+        })();
+
+        // Write into canonical prefix using the standard client so future reads
+        // hit the normal fast path
+        const pipeline = this.client.pipeline();
+        const canonicalKey = this._getKey(key, cacheType);
+        const canonicalMetaKey = this._getMetadataKey(key, cacheType);
+        const canonicalLruKey = this._getLruKey(cacheType);
+
+        if (ttl && ttl > 0) {
+          pipeline.setex(canonicalKey, ttl, content);
+          pipeline.expire(canonicalMetaKey, ttl);
+        } else {
+          pipeline.set(canonicalKey, content);
+        }
+
+        const now = Date.now();
+        pipeline.hmset(canonicalMetaKey, {
+          size: meta.size || Buffer.byteLength(content, 'utf8'),
+          createdAt: meta.createdAt || now,
+          expiresAt: meta.expiresAt || (ttl && ttl > 0 ? now + (ttl * 1000) : 'null')
+        });
+
+        // Preserve LRU ordering when available
+        pipeline.zadd(canonicalLruKey, lruScore || now, key);
+
+        // Clean up the old entry to avoid duplication
+        pipeline.del(altContentKey);
+        pipeline.del(altMetaKey);
+        pipeline.zrem(altLruKey, key);
+
+        await pipeline.exec();
+        log.warn(() => `[RedisStorage] Migrated ${cacheType} key across prefixes (${altPrefix} -> ${canonicalPrefix || '<none>'}): ${key}`);
+        return parsed;
+      } catch (err) {
+        log.error(() => ['[RedisStorage] Failed cross-prefix migration for key', key, 'prefix', altPrefix, err.message]);
+      }
+    }
+
+    return null;
   }
 
   /**
