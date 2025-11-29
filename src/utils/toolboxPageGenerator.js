@@ -1786,22 +1786,6 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
     .subtitle-menu-header strong { display: block; font-size: 16px; color: var(--text-primary); }
     .subtitle-menu-substatus { margin: 0; font-size: 12px; color: var(--muted); font-weight: 700; }
     .subtitle-menu-actions { display: flex; align-items: center; gap: 6px; }
-    .subtitle-menu-auto {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 8px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      background: var(--surface-light);
-      cursor: pointer;
-      font-weight: 700;
-      color: var(--text-secondary);
-      transition: all 0.15s ease;
-      user-select: none;
-    }
-    .subtitle-menu-auto:hover { border-color: var(--primary); color: var(--text-primary); }
-    .subtitle-menu-auto input { accent-color: var(--primary); cursor: pointer; }
     .subtitle-menu-icon-btn {
       width: 32px;
       height: 32px;
@@ -1813,10 +1797,12 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       cursor: pointer;
       font-weight: 800;
       color: var(--text-secondary);
+      font-size: 20px;
+      line-height: 1;
       transition: all 0.15s ease;
     }
     .subtitle-menu-icon-btn:hover { background: var(--surface-hover); color: var(--text-primary); border-color: var(--primary); }
-    .subtitle-menu-body { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 10px; overflow: auto; max-height: calc(72vh - 70px); }
+    .subtitle-menu-body { padding: 12px 14px 34px; display: flex; flex-direction: column; gap: 10px; overflow: auto; max-height: calc(72vh - 70px); }
     .subtitle-menu-group { display: flex; flex-direction: column; gap: 8px; }
     .subtitle-menu-group-title { font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px; }
     .subtitle-menu-group-title::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, var(--border), transparent); }
@@ -1866,13 +1852,26 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
     }
     .subtitle-menu-link:hover { transform: translateY(-1px); box-shadow: 0 10px 20px var(--glow); }
     .subtitle-menu-status {
-      padding: 10px 14px;
-      border-bottom: 1px solid var(--border);
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      bottom: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
       color: var(--text-secondary);
-      font-weight: 600;
+      font-weight: 700;
       background: var(--surface);
+      box-shadow: 0 12px 28px var(--shadow-color);
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(6px);
+      z-index: 2;
+      transition: opacity 0.18s ease, transform 0.18s ease;
+      display: none;
     }
-    .subtitle-menu-status.error { color: var(--danger); }
+    .subtitle-menu-status.show { opacity: 1; transform: translateY(0); display: block; }
+    .subtitle-menu-status.error { color: var(--danger); border-color: rgba(239, 68, 68, 0.4); box-shadow: 0 12px 28px rgba(239, 68, 68, 0.28); }
     .subtitle-lang-card {
       border: 1px solid var(--border);
       border-radius: 12px;
@@ -2556,23 +2555,18 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       <path d="M4 4h16a1 1 0 011 1v10a1 1 0 01-1 1H7l-4 4V5a1 1 0 011-1z"></path>
     </svg>
   </button>
-  <div class="subtitle-menu-panel" id="subtitleMenu" aria-live="polite">
+  <div class="subtitle-menu-panel" id="subtitleMenu">
     <div class="subtitle-menu-header">
       <div class="subtitle-menu-titles">
         <p class="subtitle-menu-eyebrow">Stream subtitles</p>
         <strong>Sources & Targets</strong>
-        <p class="subtitle-menu-substatus" id="subtitleMenuSubstatus">Auto-refresh off</p>
+        <p class="subtitle-menu-substatus" id="subtitleMenuSubstatus">Waiting for first fetch</p>
       </div>
       <div class="subtitle-menu-actions">
-        <label class="subtitle-menu-auto" for="subtitleMenuAuto">
-          <input type="checkbox" id="subtitleMenuAuto">
-          <span>Auto</span>
-        </label>
         <button type="button" class="subtitle-menu-icon-btn" id="subtitleMenuRefresh" title="Refresh subtitle list">&#8635;</button>
         <button type="button" class="subtitle-menu-icon-btn" id="subtitleMenuClose" title="Close subtitle list">&times;</button>
       </div>
     </div>
-    <div class="subtitle-menu-status" id="subtitleMenuStatus">Loading subtitles...</div>
     <div class="subtitle-menu-body" id="subtitleMenuBody">
       <div class="subtitle-menu-group">
         <div class="subtitle-menu-group-title">Source languages</div>
@@ -2583,6 +2577,7 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
         <div class="subtitle-menu-list" id="subtitleMenuTarget"></div>
       </div>
     </div>
+    <div class="subtitle-menu-status" id="subtitleMenuStatus" role="status" aria-live="polite"></div>
   </div>
   <div class="modal-overlay" id="embeddedInstructionsModal" role="dialog" aria-modal="true" aria-labelledby="embeddedInstructionsTitle">
     <div class="modal">
@@ -2812,13 +2807,35 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
     }
     const BOOTSTRAP = ${safeJsonSerialize(bootstrap)};
     const PAGE = { configStr: BOOTSTRAP.configStr, videoId: BOOTSTRAP.videoId, filename: BOOTSTRAP.filename || '', videoHash: BOOTSTRAP.videoHash || '' };
+    function normalizeTargetLangCode(lang) {
+      return (lang || '').toString().trim().toLowerCase();
+    }
+    function mergeTargetOptions(primary = [], secondary = []) {
+      const merged = [];
+      const seen = new Set();
+      const push = (opt) => {
+        if (!opt) return;
+        const code = normalizeTargetLangCode(opt.code || opt.value || opt.lang || '');
+        if (!code || seen.has(code)) return;
+        seen.add(code);
+        merged.push({
+          code,
+          name: opt.name || opt.label || opt.languageLabel || opt.text || code,
+          source: opt.source || ''
+        });
+      };
+      (primary || []).forEach(push);
+      (secondary || []).forEach(push);
+      return merged;
+    }
+    const baseTargetOptions = mergeTargetOptions(BOOTSTRAP.targetLanguages || [], []);
     const state = {
       extensionReady: false,
       extractionInFlight: false,
       translationInFlight: false,
       tracks: [],
       selectedTrackId: null,
-      selectedTargetLang: (BOOTSTRAP.targetLanguages?.[0]?.code) || null,
+      selectedTargetLang: baseTargetOptions[0]?.code || null,
       extractMode: 'smart',
       targets: {},
       downloads: [],
@@ -2826,7 +2843,8 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       queue: [],
       step2Enabled: false,
       lastProgressStatus: null,  // Track last logged progress message to prevent spam
-      extractMessageId: null
+      extractMessageId: null,
+      targetOptions: baseTargetOptions
     };
     const translatedHistory = new Set();
     const instructionsEls = {
@@ -2838,7 +2856,6 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
     };
     const INSTRUCTIONS_KEY = 'submaker_embedded_instructions_visited';
     const EXTRACT_MODE_KEY = 'submaker_embedded_extract_mode';
-    const SUBTITLE_MENU_AUTO_KEY = 'submaker_subtitle_menu_auto';
     const subtitleMenuEls = {
       toggle: document.getElementById('subtitleMenuToggle'),
       panel: document.getElementById('subtitleMenu'),
@@ -2848,16 +2865,23 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       targetList: document.getElementById('subtitleMenuTarget'),
       refresh: document.getElementById('subtitleMenuRefresh'),
       close: document.getElementById('subtitleMenuClose'),
-      substatus: document.getElementById('subtitleMenuSubstatus'),
-      auto: document.getElementById('subtitleMenuAuto')
+      substatus: document.getElementById('subtitleMenuSubstatus')
     };
     const subtitleMenuState = {
       open: false,
       loading: false,
       items: [],
       lastFetched: null,
-      autoRefresh: false,
-      autoTimer: null
+      hasFetchedOnce: false,
+      hasShownInitialNotice: false,
+      statusTimer: null
+    };
+    const subtitleInventory = {
+      items: [],
+      lastFetched: null,
+      promise: null,
+      streamSig: null,
+      promiseStreamSig: null
     };
 
     function requestExtensionReset(reason) {
@@ -2940,17 +2964,33 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       return 'movie';
     }
 
+    function normalizeStreamValue(val) {
+      return (val || '').toString().trim();
+    }
+
+    function isPlaceholderStreamValue(val) {
+      const normalized = normalizeStreamValue(val).toLowerCase();
+      return !normalized || normalized === 'stream and refresh';
+    }
+
+    function hasValidStream() {
+      if (!PAGE.configStr) return false;
+      if (!normalizeStreamValue(PAGE.videoId)) return false;
+      if (isPlaceholderStreamValue(PAGE.videoId) || isPlaceholderStreamValue(PAGE.filename)) return false;
+      return true;
+    }
+
+    function getStreamSignature(source = {}) {
+      const videoId = normalizeStreamValue(source.videoId !== undefined ? source.videoId : PAGE.videoId);
+      const filename = normalizeStreamValue(source.filename !== undefined ? source.filename : PAGE.filename);
+      return [videoId, filename].join('::');
+    }
+
     function buildSubtitleFetchUrl() {
+      if (!hasValidStream()) return '';
       const type = getSubtitleRouteType(PAGE.videoId || '');
       const suffix = PAGE.filename ? ('?filename=' + encodeURIComponent(PAGE.filename)) : '';
       return '/addon/' + encodeURIComponent(PAGE.configStr) + '/subtitles/' + type + '/' + encodeURIComponent(PAGE.videoId || '') + '.json' + suffix;
-    }
-
-    function setSubtitleMenuStatus(message, variant = 'muted') {
-      if (!subtitleMenuEls.status) return;
-      subtitleMenuEls.status.textContent = message || '';
-      subtitleMenuEls.status.className = 'subtitle-menu-status' + (variant === 'error' ? ' error' : '');
-      subtitleMenuEls.status.style.display = message ? 'block' : 'none';
     }
 
     function subtitleChipForType(type) {
@@ -3106,7 +3146,7 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       const renderList = (container, map) => {
         container.innerHTML = '';
         const languages = Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label));
-        languages.forEach((lang, idx) => container.appendChild(buildLanguageCard(lang, idx === 0, container)));
+        languages.forEach(lang => container.appendChild(buildLanguageCard(lang, false, container)));
       };
 
       renderList(subtitleMenuEls.sourceList, grouped.source);
@@ -3120,63 +3160,188 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
 
     function updateSubtitleMenuMeta() {
       if (!subtitleMenuEls.substatus) return;
+      if (subtitleMenuState.loading) {
+        subtitleMenuEls.substatus.textContent = 'Refreshing...';
+        return;
+      }
       if (subtitleMenuState.lastFetched) {
         const elapsed = Math.max(0, Math.floor((Date.now() - subtitleMenuState.lastFetched) / 1000));
         const recency = elapsed < 5 ? 'just now' : (elapsed + 's ago');
-        subtitleMenuEls.substatus.textContent = 'Updated ' + recency + (subtitleMenuState.autoRefresh ? ' · Auto-refresh on' : '');
+        subtitleMenuEls.substatus.textContent = 'Updated ' + recency;
       } else {
-        subtitleMenuEls.substatus.textContent = subtitleMenuState.autoRefresh ? 'Auto-refresh on' : 'Auto-refresh off';
+        subtitleMenuEls.substatus.textContent = 'Waiting for first fetch';
       }
     }
 
-    function stopSubtitleAutoRefresh() {
-      if (subtitleMenuState.autoTimer) {
-        clearInterval(subtitleMenuState.autoTimer);
-        subtitleMenuState.autoTimer = null;
+    function hideSubtitleMenuStatus() {
+      if (!subtitleMenuEls.status) return;
+      if (subtitleMenuState.statusTimer) {
+        clearTimeout(subtitleMenuState.statusTimer);
+        subtitleMenuState.statusTimer = null;
+      }
+      subtitleMenuEls.status.classList.remove('show');
+      subtitleMenuState.statusTimer = setTimeout(() => {
+        if (!subtitleMenuEls.status) return;
+        subtitleMenuEls.status.style.display = 'none';
+        subtitleMenuEls.status.textContent = '';
+        subtitleMenuState.statusTimer = null;
+      }, 180);
+    }
+
+    function setSubtitleMenuStatus(message, variant = 'muted', options = {}) {
+      if (!subtitleMenuEls.status) return;
+      const persist = options.persist === true;
+      if (subtitleMenuState.statusTimer) {
+        clearTimeout(subtitleMenuState.statusTimer);
+        subtitleMenuState.statusTimer = null;
+      }
+      if (!message) {
+        hideSubtitleMenuStatus();
+        return;
+      }
+      subtitleMenuEls.status.textContent = message || '';
+      subtitleMenuEls.status.className = 'subtitle-menu-status' + (variant === 'error' ? ' error' : '');
+      subtitleMenuEls.status.style.display = 'block';
+      requestAnimationFrame(() => subtitleMenuEls.status?.classList.add('show'));
+      if (!persist) {
+        subtitleMenuState.statusTimer = setTimeout(() => hideSubtitleMenuStatus(), 3200);
       }
     }
 
-    function setSubtitleAutoRefresh(enabled) {
-      subtitleMenuState.autoRefresh = !!enabled;
-      if (subtitleMenuEls.auto) {
-        subtitleMenuEls.auto.checked = subtitleMenuState.autoRefresh;
-        subtitleMenuEls.auto.setAttribute('aria-pressed', subtitleMenuState.autoRefresh ? 'true' : 'false');
-      }
-      stopSubtitleAutoRefresh();
-      if (subtitleMenuState.autoRefresh) {
-        subtitleMenuState.autoTimer = setInterval(() => fetchSubtitleMenuData(true), 12000);
-        fetchSubtitleMenuData(true);
-      }
-      try { localStorage.setItem(SUBTITLE_MENU_AUTO_KEY, subtitleMenuState.autoRefresh ? '1' : '0'); } catch (_) {}
-      updateSubtitleMenuMeta();
+    function resetSubtitleInventoryState() {
+      subtitleInventory.items = [];
+      subtitleInventory.lastFetched = null;
+      subtitleInventory.promise = null;
+      subtitleInventory.streamSig = null;
+      subtitleInventory.promiseStreamSig = null;
     }
 
-    async function fetchSubtitleMenuData(silent = false) {
-      if (!PAGE.configStr || !PAGE.videoId) {
-        setSubtitleMenuStatus('Missing config or video ID for subtitle fetch.', 'error');
+    async function loadSubtitleInventory(options = {}) {
+      const opts = typeof options === 'object' && options !== null ? options : {};
+      const force = opts.force === true;
+      const currentSig = getStreamSignature();
+
+      if (!hasValidStream()) {
+        throw new Error('Waiting for a valid stream before loading subtitles.');
+      }
+
+      if (subtitleInventory.streamSig && subtitleInventory.streamSig !== currentSig) {
+        resetSubtitleInventoryState();
+      }
+
+      if (subtitleInventory.promise && subtitleInventory.promiseStreamSig === currentSig) {
+        return subtitleInventory.promise;
+      }
+      if (!force && subtitleInventory.items.length && subtitleInventory.lastFetched && subtitleInventory.streamSig === currentSig) {
+        return Promise.resolve({
+          items: subtitleInventory.items,
+          fetchedAt: subtitleInventory.lastFetched,
+          fromCache: true
+        });
+      }
+      const fetchUrl = buildSubtitleFetchUrl();
+      if (!fetchUrl) {
+        throw new Error('No subtitle endpoint available for the current stream.');
+      }
+
+      subtitleInventory.promise = (async () => {
+        subtitleInventory.promiseStreamSig = currentSig;
+        const resp = await fetch(fetchUrl, { headers: { 'Accept': 'application/json' } });
+        if (!resp.ok) throw new Error('Request failed (' + resp.status + ')');
+        const data = await resp.json();
+        const normalized = Array.isArray(data?.subtitles) ? data.subtitles.map(normalizeSubtitleEntry) : [];
+        subtitleInventory.items = normalized;
+        subtitleInventory.lastFetched = Date.now();
+        subtitleInventory.streamSig = currentSig;
+        return { items: normalized, fetchedAt: subtitleInventory.lastFetched, fromCache: false };
+      })();
+      try {
+        return await subtitleInventory.promise;
+      } finally {
+        subtitleInventory.promise = null;
+        subtitleInventory.promiseStreamSig = null;
+      }
+    }
+
+    function parseTargetLangFromSubtitle(item) {
+      if (!item) return '';
+      if (item.id && typeof item.id === 'string') {
+        const match = item.id.match(/_to_([a-z0-9-]+)/i);
+        if (match && match[1]) return match[1];
+      }
+      const label = (item.languageLabel || item.label || '').toString();
+      if (label.toLowerCase().startsWith('make ')) {
+        return label.slice(5).trim();
+      }
+      return label.trim();
+    }
+
+    function deriveTargetOptionsFromSubtitles(items = []) {
+      const derived = [];
+      const seen = new Set();
+      items.forEach(item => {
+        if (!item || item.type !== 'target') return;
+        const code = normalizeTargetLangCode(parseTargetLangFromSubtitle(item));
+        if (!code || seen.has(code)) return;
+        seen.add(code);
+        const prettyName = (item.languageLabel || item.label || '').replace(/^make\s+/i, '').trim() || code;
+        derived.push({ code, name: prettyName, source: 'subtitles' });
+      });
+      return derived;
+    }
+
+    function hydrateTargetsFromSubtitleInventory(items) {
+      if (!Array.isArray(items) || !items.length) return;
+      const derived = deriveTargetOptionsFromSubtitles(items);
+      if (!derived.length) return;
+      const merged = mergeTargetOptions(state.targetOptions, derived);
+      setTargetOptions(merged, true);
+    }
+
+    async function fetchSubtitleMenuData(silentOrOptions = false) {
+      const opts = typeof silentOrOptions === 'object' && silentOrOptions !== null
+        ? silentOrOptions
+        : { silent: !!silentOrOptions };
+      const silent = opts.silent === true;
+      const force = opts.force === true;
+      if (!hasValidStream()) {
+        setSubtitleMenuStatus('Waiting for a linked stream before loading subtitles.', 'muted', { persist: true });
         return;
       }
       subtitleMenuState.loading = true;
       subtitleMenuEls.toggle?.classList.add('is-loading');
+      updateSubtitleMenuMeta();
       if (!silent) setSubtitleMenuStatus('Loading subtitles...', 'muted');
+      const panelOpen = subtitleMenuState.open && subtitleMenuEls.panel?.classList.contains('show');
+      const shouldShowInitialNotice = panelOpen && !subtitleMenuState.hasShownInitialNotice;
+      const shouldShowActiveNotice = panelOpen && !silent;
       try {
-        const resp = await fetch(buildSubtitleFetchUrl(), { headers: { 'Accept': 'application/json' } });
-        if (!resp.ok) throw new Error('Request failed (' + resp.status + ')');
-        const data = await resp.json();
-        const normalized = Array.isArray(data?.subtitles) ? data.subtitles.map(normalizeSubtitleEntry) : [];
+        const { items: normalized, fetchedAt, fromCache } = await loadSubtitleInventory({ force });
         const visibleCount = normalized.filter(shouldDisplaySubtitle).length;
         subtitleMenuState.items = normalized;
-        subtitleMenuState.lastFetched = Date.now();
+        subtitleMenuState.lastFetched = fetchedAt || Date.now();
+        hydrateTargetsFromSubtitleInventory(normalized);
+        const canShow = shouldShowInitialNotice || shouldShowActiveNotice || !subtitleMenuState.hasFetchedOnce;
         if (visibleCount) {
-          setSubtitleMenuStatus('Loaded ' + visibleCount + ' subtitle entr' + (visibleCount === 1 ? 'y' : 'ies') + '.');
-        } else {
+          if (canShow && (!fromCache || !subtitleMenuState.hasFetchedOnce || force)) {
+            setSubtitleMenuStatus('Loaded ' + visibleCount + ' subtitle entr' + (visibleCount === 1 ? 'y' : 'ies') + '.');
+            if (shouldShowInitialNotice) subtitleMenuState.hasShownInitialNotice = true;
+          } else {
+            hideSubtitleMenuStatus();
+          }
+        } else if (canShow && (!fromCache || !subtitleMenuState.hasFetchedOnce || force)) {
           setSubtitleMenuStatus('No subtitles available for this stream yet.');
+          if (shouldShowInitialNotice) subtitleMenuState.hasShownInitialNotice = true;
+        } else {
+          hideSubtitleMenuStatus();
         }
         renderSubtitleMenu(normalized);
+        subtitleMenuState.hasFetchedOnce = true;
       } catch (err) {
-        setSubtitleMenuStatus('Could not load subtitles: ' + err.message, 'error');
+        setSubtitleMenuStatus('Could not load subtitles: ' + err.message, 'error', { persist: true });
         subtitleMenuState.items = [];
         renderSubtitleMenu([]);
+        subtitleMenuState.hasFetchedOnce = true;
       } finally {
         subtitleMenuState.loading = false;
         subtitleMenuEls.toggle?.classList.remove('is-loading');
@@ -3185,13 +3350,28 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
     }
 
     function toggleSubtitleMenu(forceOpen) {
-      subtitleMenuState.open = typeof forceOpen === 'boolean' ? !!forceOpen : !subtitleMenuState.open;
+      const nextOpen = typeof forceOpen === 'boolean' ? !!forceOpen : !subtitleMenuState.open;
+      subtitleMenuState.open = nextOpen;
       if (subtitleMenuEls.panel) {
         subtitleMenuEls.panel.classList.toggle('show', subtitleMenuState.open);
         subtitleMenuEls.panel.setAttribute('aria-hidden', subtitleMenuState.open ? 'false' : 'true');
       }
-      if (subtitleMenuState.open && !subtitleMenuState.items.length && !subtitleMenuState.loading) {
-        fetchSubtitleMenuData(true);
+      if (subtitleMenuState.open) {
+        if (!subtitleMenuState.loading) {
+          fetchSubtitleMenuData({ silent: true });
+        }
+        if (!subtitleMenuState.hasShownInitialNotice && subtitleMenuState.items.length) {
+          const visibleCount = subtitleMenuState.items.filter(shouldDisplaySubtitle).length;
+          if (visibleCount) {
+            setSubtitleMenuStatus('Loaded ' + visibleCount + ' subtitle entr' + (visibleCount === 1 ? 'y' : 'ies') + '.');
+            subtitleMenuState.hasShownInitialNotice = true;
+          } else if (subtitleMenuState.hasFetchedOnce) {
+            setSubtitleMenuStatus('No subtitles available for this stream yet.');
+            subtitleMenuState.hasShownInitialNotice = true;
+          }
+        }
+      } else {
+        hideSubtitleMenuStatus();
       }
     }
 
@@ -3203,24 +3383,42 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
         subtitleMenuEls.close.addEventListener('click', () => toggleSubtitleMenu(false));
       }
       if (subtitleMenuEls.refresh) {
-        subtitleMenuEls.refresh.addEventListener('click', () => fetchSubtitleMenuData(false));
+        subtitleMenuEls.refresh.addEventListener('click', () => fetchSubtitleMenuData({ silent: false, force: true }));
       }
-      if (subtitleMenuEls.auto) {
-        subtitleMenuEls.auto.addEventListener('change', (ev) => setSubtitleAutoRefresh(ev.target.checked));
+      updateSubtitleMenuMeta();
+    }
+
+    function prefetchSubtitleInventory() {
+      if (!hasValidStream()) return;
+      loadSubtitleInventory({ force: false })
+        .then(result => {
+          hydrateTargetsFromSubtitleInventory((result && result.items) || []);
+        })
+        .catch(() => {});
+    }
+
+    function handleStreamUpdateFromNotification(payload) {
+      const nextSig = getStreamSignature(payload || {});
+      const currentSig = getStreamSignature();
+      if (!nextSig || nextSig === currentSig) return;
+
+      PAGE.videoId = normalizeStreamValue(payload.videoId) || PAGE.videoId;
+      PAGE.filename = normalizeStreamValue(payload.filename) || PAGE.filename;
+      PAGE.videoHash = normalizeStreamValue(payload.videoHash) || PAGE.videoHash;
+
+      resetSubtitleInventoryState();
+      subtitleMenuState.items = [];
+      subtitleMenuState.lastFetched = null;
+      subtitleMenuState.hasFetchedOnce = false;
+      subtitleMenuState.hasShownInitialNotice = false;
+      renderSubtitleMenu([]);
+      updateSubtitleMenuMeta();
+      setTargetOptions(baseTargetOptions, true);
+      updateVideoMeta(PAGE);
+      prefetchSubtitleInventory();
+      if (subtitleMenuState.open) {
+        fetchSubtitleMenuData({ silent: true });
       }
-      setSubtitleMenuStatus('Loading subtitles...', 'muted');
-      const savedAuto = (() => {
-        try { return localStorage.getItem(SUBTITLE_MENU_AUTO_KEY) === '1'; } catch (_) { return false; }
-      })();
-      if (subtitleMenuEls.auto) {
-        setSubtitleAutoRefresh(savedAuto);
-      } else {
-        updateSubtitleMenuMeta();
-      }
-      if (!subtitleMenuState.autoRefresh) {
-        setTimeout(() => fetchSubtitleMenuData(true), 650);
-      }
-      window.addEventListener('beforeunload', stopSubtitleAutoRefresh);
     }
 
     initInstructions();
@@ -3634,9 +3832,25 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       }
     }
 
+    function getTargetOptions() {
+      return Array.isArray(state.targetOptions) ? state.targetOptions : [];
+    }
+
+    function setTargetOptions(options = [], keepSelection = true) {
+      const merged = mergeTargetOptions(options, []);
+      const previous = keepSelection ? normalizeTargetLangCode(state.selectedTargetLang) : '';
+      state.targetOptions = merged;
+      if (previous && merged.some(opt => normalizeTargetLangCode(opt.code) === previous)) {
+        state.selectedTargetLang = merged.find(opt => normalizeTargetLangCode(opt.code) === previous)?.code || previous;
+      } else {
+        state.selectedTargetLang = merged[0]?.code || null;
+      }
+      renderTargets();
+    }
+
     function renderTargets() {
       if (!els.targetSelect) return;
-      const availableTargets = BOOTSTRAP.targetLanguages || [];
+      const availableTargets = getTargetOptions();
       if (!state.selectedTargetLang && availableTargets.length) {
         state.selectedTargetLang = availableTargets[0].code;
       }
@@ -3961,7 +4175,7 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
           state.targets = {};
           state.queue = [];
           state.activeTranslations = 0;
-          state.selectedTargetLang = (BOOTSTRAP.targetLanguages?.[0]?.code) || null;
+          state.selectedTargetLang = getTargetOptions()[0]?.code || null;
           state.selectedTrackId = null;
           if (els.translateLog) els.translateLog.innerHTML = '';
           state.tracks = msg.tracks.map((t, idx) => ({
@@ -4103,6 +4317,9 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       els.timestamps.value = BOOTSTRAP.defaults.sendTimestampsToAI ? 'send' : 'original';
     }
 
+    // Prefetch subtitles once so menu + target list share the same request
+    prefetchSubtitleInventory();
+
     // Auto ping on load (delay to allow extension content script to initialize)
     setTimeout(sendPing, 500);
 
@@ -4114,7 +4331,8 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
         return '/embedded-subtitles?config=' + encodeURIComponent(PAGE.configStr) +
           '&videoId=' + encodeURIComponent(payload.videoId || '') +
           '&filename=' + encodeURIComponent(payload.filename || '');
-      }
+      },
+      onEpisode: handleStreamUpdateFromNotification
     });
   </script>
 </body>

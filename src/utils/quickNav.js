@@ -553,6 +553,9 @@ function quickNavScript() {
         lastSeenTs = ts || Date.now();
         lastSig = payloadSig;
         latest = payload;
+        if (typeof opts.onEpisode === 'function') {
+          try { opts.onEpisode(payload); } catch (_) {}
+        }
         showToast(payload);
       }
 
