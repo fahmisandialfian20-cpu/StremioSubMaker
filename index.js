@@ -1054,6 +1054,13 @@ app.use((req, res, next) => {
     next();
 });
 
+// Service worker must always be fetched fresh to pick up cache-busting logic
+app.get('/sw.js', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store, must-revalidate');
+    res.setHeader('Service-Worker-Allowed', '/');
+    res.sendFile(path.join(__dirname, 'public', 'sw.js'));
+});
+
 // Serve static files with caching enabled
 // CSS and JS files get 1 year cache (bust with version in filename if needed)
 // Other static files get 1 year cache as well
@@ -1063,7 +1070,14 @@ app.use(express.static('public', {
     // Respect no-store headers set by earlier middleware for sensitive routes.
     // Without this, serve-static would overwrite Cache-Control and allow proxies
     // to cache config-bearing pages or API responses that pass through /public.
-    setHeaders: (res) => {
+    setHeaders: (res, servedPath) => {
+        // HTML must never be cached to avoid leaking user-specific pages/configs
+        if (servedPath && servedPath.endsWith('.html')) {
+            res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+            res.setHeader('Pragma', 'no-cache');
+            res.setHeader('Expires', '0');
+            return;
+        }
         if (res.getHeader('Cache-Control')) return; // Preserve explicit no-store
         res.setHeader('Cache-Control', 'public, max-age=31536000000, immutable');
     }
@@ -3008,12 +3022,8 @@ app.get('/embedded-subtitles', async (req, res) => {
 
 // Addon route: Automatic subtitles (redirects to standalone page)
 app.get('/addon/:config/auto-subtitles/:videoId', async (req, res) => {
-    // CRITICAL: Prevent caching to avoid cross-user config contamination (defense-in-depth)
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
-
     try {
+        // CRITICAL: Prevent caching to avoid cross-user config contamination (defense-in-depth)
         setNoStore(res);
 
         const { config: configStr, videoId } = req.params;
@@ -3039,9 +3049,6 @@ app.get('/auto-subtitles', async (req, res) => {
 
         // Defense-in-depth: prevent caching of page embedding user config/videoId
         setNoStore(res);
-        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
-        res.setHeader('Pragma', 'no-cache');
-        res.setHeader('Expires', '0');
 
         const config = await resolveConfigAsync(configStr, req);
         ensureConfigHash(config, configStr);
@@ -3065,16 +3072,12 @@ app.get('/auto-subtitles', async (req, res) => {
 // Custom route: Addon configuration page (BEFORE SDK router to take precedence)
 // This handles both /addon/:config/configure and /addon/:config (base path)
 app.get('/addon/:config/configure', (req, res) => {
-    // CRITICAL: Prevent caching to avoid cross-user config contamination (defense-in-depth)
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
-
     try {
+        // CRITICAL: Prevent caching to avoid cross-user config contamination (defense-in-depth)
+        setNoStore(res);
+
         const { config: configStr } = req.params;
 
-        // Defense-in-depth: Prevent caching (redirect includes session token)
-        setNoStore(res);
         log.debug(() => `[Configure] Redirecting to configure page with config`);
         // Redirect to main configure page with config parameter
         res.redirect(302, `/configure?config=${encodeURIComponent(configStr)}`);
@@ -3086,11 +3089,6 @@ app.get('/addon/:config/configure', (req, res) => {
 
 // Custom route: Sync subtitles page (BEFORE SDK router to take precedence)
 app.get('/addon/:config/sync-subtitles/:videoId', async (req, res) => {
-    // CRITICAL: Prevent caching to avoid cross-user config contamination (defense-in-depth)
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
-
     try {
         // Defense-in-depth: Prevent caching (carries session token in query)
         setNoStore(res);
@@ -3113,14 +3111,9 @@ app.get('/addon/:config/sync-subtitles/:videoId', async (req, res) => {
 // Actual subtitle sync page (standalone, not under /addon route)
 app.get('/subtitle-sync', async (req, res) => {
     // CRITICAL: Prevent caching to avoid cross-user config contamination (user-specific config in query params)
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
+    setNoStore(res);
 
     try {
-        // CRITICAL: Prevent caching to avoid cross-user config contamination (config/session in query)
-        setNoStore(res);
-
         const { config: configStr, videoId, filename } = req.query;
 
         if (!configStr || !videoId) {
