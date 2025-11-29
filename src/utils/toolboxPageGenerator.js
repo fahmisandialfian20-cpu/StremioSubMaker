@@ -1707,6 +1707,155 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       background: #2b2044;
       box-shadow: calc(100% - 12px) 0 0 #2b2044;
     }
+    .subtitle-menu-toggle {
+      position: fixed;
+      bottom: 1.1rem;
+      left: 1.1rem;
+      width: 56px;
+      height: 56px;
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      box-shadow: 0 14px 32px var(--shadow);
+      cursor: pointer;
+      z-index: 12010;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+    .subtitle-menu-toggle:hover {
+      transform: translateY(-2px);
+      border-color: var(--primary);
+      box-shadow: 0 16px 36px var(--shadow-color);
+    }
+    .subtitle-menu-toggle svg { width: 26px; height: 26px; fill: #0f172a; }
+    [data-theme="dark"] .subtitle-menu-toggle svg,
+    [data-theme="true-dark"] .subtitle-menu-toggle svg { fill: #E8EAED; }
+    .subtitle-menu-toggle.is-loading::after {
+      content: '';
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      border: 2px solid var(--border);
+      border-top-color: var(--primary);
+      animation: spin 0.8s linear infinite;
+    }
+    .subtitle-menu-panel {
+      position: fixed;
+      bottom: 80px;
+      left: 1.1rem;
+      width: min(360px, calc(100% - 32px));
+      max-height: 72vh;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 18px 42px var(--shadow);
+      overflow: hidden;
+      z-index: 12005;
+      transform: translateY(8px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+    .subtitle-menu-panel.show {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+    .subtitle-menu-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px 14px;
+      background: linear-gradient(135deg, rgba(8, 164, 213, 0.08), rgba(51, 185, 225, 0.06));
+      border-bottom: 1px solid var(--border);
+    }
+    .subtitle-menu-eyebrow {
+      margin: 0;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 700;
+    }
+    .subtitle-menu-header strong { display: block; font-size: 16px; color: var(--text-primary); }
+    .subtitle-menu-actions { display: flex; align-items: center; gap: 6px; }
+    .subtitle-menu-icon-btn {
+      width: 32px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface-light);
+      cursor: pointer;
+      font-weight: 800;
+      color: var(--text-secondary);
+      transition: all 0.15s ease;
+    }
+    .subtitle-menu-icon-btn:hover { background: var(--surface-hover); color: var(--text-primary); border-color: var(--primary); }
+    .subtitle-menu-body { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 10px; overflow: auto; max-height: calc(72vh - 70px); }
+    .subtitle-menu-group { display: flex; flex-direction: column; gap: 8px; }
+    .subtitle-menu-group-title { font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px; }
+    .subtitle-menu-group-title::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, var(--border), transparent); }
+    .subtitle-menu-list { display: flex; flex-direction: column; gap: 8px; }
+    .subtitle-menu-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface-light);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+    .subtitle-menu-item .meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .subtitle-menu-item .label { font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .subtitle-menu-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 700;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      background: var(--surface);
+      white-space: nowrap;
+    }
+    .subtitle-menu-chip.source { border-color: var(--primary); color: var(--primary); }
+    .subtitle-menu-chip.target { border-color: var(--secondary); color: var(--secondary); }
+    .subtitle-menu-chip.cached { border-color: var(--muted); color: var(--text-secondary); }
+    .subtitle-menu-chip.learn { border-color: #6366f1; color: #6366f1; }
+    .subtitle-menu-chip.synced { border-color: #10b981; color: #0f9f6e; }
+    .subtitle-menu-link {
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      color: #fff;
+      font-weight: 700;
+      text-decoration: none;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      box-shadow: 0 8px 18px var(--glow);
+      flex-shrink: 0;
+    }
+    .subtitle-menu-link:hover { transform: translateY(-1px); box-shadow: 0 10px 20px var(--glow); }
+    .subtitle-menu-status {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-secondary);
+      font-weight: 600;
+      background: var(--surface);
+    }
+    .subtitle-menu-status.error { color: var(--danger); }
+    @keyframes spin { to { transform: rotate(360deg); } }
     .modal-overlay {
       position: fixed;
       inset: 0;
@@ -2344,6 +2493,34 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
 <body>
   ${themeToggleMarkup()}
   <button class="help-button mario" id="embeddedHelp" title="Show instructions">?</button>
+  <button class="subtitle-menu-toggle" id="subtitleMenuToggle" title="Stream subtitles">
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M4 4h16a1 1 0 011 1v10a1 1 0 01-1 1H7l-4 4V5a1 1 0 011-1z"></path>
+    </svg>
+  </button>
+  <div class="subtitle-menu-panel" id="subtitleMenu" aria-live="polite">
+    <div class="subtitle-menu-header">
+      <div>
+        <p class="subtitle-menu-eyebrow">Stream subtitles</p>
+        <strong>Sources & Targets</strong>
+      </div>
+      <div class="subtitle-menu-actions">
+        <button type="button" class="subtitle-menu-icon-btn" id="subtitleMenuRefresh" title="Refresh subtitle list">&#8635;</button>
+        <button type="button" class="subtitle-menu-icon-btn" id="subtitleMenuClose" title="Close subtitle list">&times;</button>
+      </div>
+    </div>
+    <div class="subtitle-menu-status" id="subtitleMenuStatus">Loading subtitles...</div>
+    <div class="subtitle-menu-body" id="subtitleMenuBody">
+      <div class="subtitle-menu-group">
+        <div class="subtitle-menu-group-title">Source languages</div>
+        <div class="subtitle-menu-list" id="subtitleMenuSource"></div>
+      </div>
+      <div class="subtitle-menu-group">
+        <div class="subtitle-menu-group-title">Target & cached</div>
+        <div class="subtitle-menu-list" id="subtitleMenuTarget"></div>
+      </div>
+    </div>
+  </div>
   <div class="modal-overlay" id="embeddedInstructionsModal" role="dialog" aria-modal="true" aria-labelledby="embeddedInstructionsTitle">
     <div class="modal">
       <div class="modal-header">
@@ -2597,6 +2774,22 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
     };
     const INSTRUCTIONS_KEY = 'submaker_embedded_instructions_visited';
     const EXTRACT_MODE_KEY = 'submaker_embedded_extract_mode';
+    const subtitleMenuEls = {
+      toggle: document.getElementById('subtitleMenuToggle'),
+      panel: document.getElementById('subtitleMenu'),
+      status: document.getElementById('subtitleMenuStatus'),
+      body: document.getElementById('subtitleMenuBody'),
+      sourceList: document.getElementById('subtitleMenuSource'),
+      targetList: document.getElementById('subtitleMenuTarget'),
+      refresh: document.getElementById('subtitleMenuRefresh'),
+      close: document.getElementById('subtitleMenuClose')
+    };
+    const subtitleMenuState = {
+      open: false,
+      loading: false,
+      items: [],
+      lastFetched: null
+    };
 
     function setInstructionLock(active) {
       document.body.classList.toggle('modal-open', !!active);
@@ -2661,7 +2854,164 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       }
     }
 
+    function getSubtitleRouteType(videoId) {
+      const parts = (videoId || '').split(':');
+      if (parts[0] === 'tmdb' && parts.length >= 3) return 'series';
+      if (parts.length >= 3) return 'series';
+      return 'movie';
+    }
+
+    function buildSubtitleFetchUrl() {
+      const type = getSubtitleRouteType(PAGE.videoId || '');
+      const suffix = PAGE.filename ? ('?filename=' + encodeURIComponent(PAGE.filename)) : '';
+      return '/addon/' + encodeURIComponent(PAGE.configStr) + '/subtitles/' + type + '/' + encodeURIComponent(PAGE.videoId || '') + '.json' + suffix;
+    }
+
+    function setSubtitleMenuStatus(message, variant = 'muted') {
+      if (!subtitleMenuEls.status) return;
+      subtitleMenuEls.status.textContent = message || '';
+      subtitleMenuEls.status.className = 'subtitle-menu-status' + (variant === 'error' ? ' error' : '');
+      subtitleMenuEls.status.style.display = message ? 'block' : 'none';
+    }
+
+    function subtitleChipForType(type) {
+      switch (type) {
+        case 'target': return { label: 'Target', cls: 'target' };
+        case 'cached': return { label: 'xEmbed', cls: 'cached' };
+        case 'learn': return { label: 'Learn', cls: 'learn' };
+        case 'synced': return { label: 'xSync', cls: 'synced' };
+        case 'action': return { label: 'Tool', cls: 'cached' };
+        default: return { label: 'Source', cls: 'source' };
+      }
+    }
+
+    function normalizeSubtitleEntry(entry) {
+      const label = (entry?.lang || '').toString().trim() || 'Untitled';
+      const lower = label.toLowerCase();
+      const type = lower.startsWith('make ') ? 'target'
+        : lower.startsWith('learn ') ? 'learn'
+        : lower.startsWith('xembed') ? 'cached'
+        : lower.startsWith('xsync') ? 'synced'
+        : lower.includes('toolbox') ? 'action'
+        : 'source';
+      const group = (type === 'target' || type === 'cached' || type === 'learn') ? 'target' : 'source';
+      return {
+        id: entry?.id || label,
+        label,
+        url: entry?.url || '#',
+        type,
+        group
+      };
+    }
+
+    function renderSubtitleMenu(items) {
+      if (!subtitleMenuEls.sourceList || !subtitleMenuEls.targetList) return;
+      const source = [];
+      const target = [];
+      items.forEach(item => {
+        if (item.group === 'target') target.push(item);
+        else source.push(item);
+      });
+
+      const renderList = (container, list) => {
+        container.innerHTML = '';
+        if (!list.length) return;
+        list.forEach(item => {
+          const row = document.createElement('div');
+          row.className = 'subtitle-menu-item';
+
+          const meta = document.createElement('div');
+          meta.className = 'meta';
+          const labelEl = document.createElement('div');
+          labelEl.className = 'label';
+          labelEl.textContent = item.label;
+          const chipData = subtitleChipForType(item.type);
+          const chip = document.createElement('span');
+          chip.className = 'subtitle-menu-chip ' + chipData.cls;
+          chip.textContent = chipData.label;
+          meta.appendChild(labelEl);
+          meta.appendChild(chip);
+
+          const link = document.createElement('a');
+          link.className = 'subtitle-menu-link';
+          link.href = item.url;
+          link.target = '_blank';
+          link.rel = 'noopener';
+          link.textContent = 'Open';
+
+          row.appendChild(meta);
+          row.appendChild(link);
+          container.appendChild(row);
+        });
+      };
+
+      renderList(subtitleMenuEls.sourceList, source);
+      renderList(subtitleMenuEls.targetList, target);
+
+      if (subtitleMenuEls.body) {
+        const hasAny = source.length || target.length;
+        subtitleMenuEls.body.style.display = hasAny ? 'flex' : 'none';
+      }
+    }
+
+    async function fetchSubtitleMenuData(silent = false) {
+      if (!PAGE.configStr || !PAGE.videoId) {
+        setSubtitleMenuStatus('Missing config or video ID for subtitle fetch.', 'error');
+        return;
+      }
+      subtitleMenuState.loading = true;
+      subtitleMenuEls.toggle?.classList.add('is-loading');
+      if (!silent) setSubtitleMenuStatus('Loading subtitles...', 'muted');
+      try {
+        const resp = await fetch(buildSubtitleFetchUrl(), { headers: { 'Accept': 'application/json' } });
+        if (!resp.ok) throw new Error('Request failed (' + resp.status + ')');
+        const data = await resp.json();
+        const normalized = Array.isArray(data?.subtitles) ? data.subtitles.map(normalizeSubtitleEntry) : [];
+        subtitleMenuState.items = normalized;
+        subtitleMenuState.lastFetched = Date.now();
+        if (normalized.length) {
+          setSubtitleMenuStatus('Loaded ' + normalized.length + ' subtitle entries.');
+        } else {
+          setSubtitleMenuStatus('No subtitles available for this stream yet.');
+        }
+        renderSubtitleMenu(normalized);
+      } catch (err) {
+        setSubtitleMenuStatus('Could not load subtitles: ' + err.message, 'error');
+        subtitleMenuState.items = [];
+        renderSubtitleMenu([]);
+      } finally {
+        subtitleMenuState.loading = false;
+        subtitleMenuEls.toggle?.classList.remove('is-loading');
+      }
+    }
+
+    function toggleSubtitleMenu(forceOpen) {
+      subtitleMenuState.open = typeof forceOpen === 'boolean' ? !!forceOpen : !subtitleMenuState.open;
+      if (subtitleMenuEls.panel) {
+        subtitleMenuEls.panel.classList.toggle('show', subtitleMenuState.open);
+        subtitleMenuEls.panel.setAttribute('aria-hidden', subtitleMenuState.open ? 'false' : 'true');
+      }
+      if (subtitleMenuState.open && !subtitleMenuState.items.length && !subtitleMenuState.loading) {
+        fetchSubtitleMenuData(true);
+      }
+    }
+
+    function initSubtitleMenu() {
+      if (subtitleMenuEls.toggle) {
+        subtitleMenuEls.toggle.addEventListener('click', () => toggleSubtitleMenu());
+      }
+      if (subtitleMenuEls.close) {
+        subtitleMenuEls.close.addEventListener('click', () => toggleSubtitleMenu(false));
+      }
+      if (subtitleMenuEls.refresh) {
+        subtitleMenuEls.refresh.addEventListener('click', () => fetchSubtitleMenuData(false));
+      }
+      setSubtitleMenuStatus('Loading subtitles...', 'muted');
+      setTimeout(() => fetchSubtitleMenuData(true), 650);
+    }
+
     initInstructions();
+    initSubtitleMenu();
 
     initStreamRefreshButton({
       buttonId: 'quickNavRefresh',
