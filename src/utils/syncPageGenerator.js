@@ -2184,7 +2184,7 @@ async function generateSubtitleSyncPage(subtitles, videoId, streamFilename, conf
                     console.log('[Sync Page] Extension detected! Version:', msg.version);
                     extensionInstalled = true;
                     const version = msg.version || '1.0.0';
-                    updateExtensionStatus(true, `Ready (v${version})`);
+                    updateExtensionStatus(true, 'Ready (v' + version + ')');
                     logSync('Extension detected (v' + version + ')', 'info');
                     if (pingTimer) clearInterval(pingTimer);
 
