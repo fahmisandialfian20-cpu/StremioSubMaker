@@ -40,6 +40,12 @@ class RedisStorageAdapter extends StorageAdapter {
     // Check if Redis Sentinel is enabled (disabled by default)
     const sentinelEnabled = process.env.REDIS_SENTINEL_ENABLED === 'true' || options.sentinelEnabled === true;
 
+    // Avoid options spreading from clobbering the normalized keyPrefix. We still
+    // honor other option fields, but keyPrefix must remain the canonical
+    // colon-suffixed value so reads/writes stay in the same namespace across
+    // restarts and deployments.
+    const { keyPrefix: _ignoredKeyPrefix, ...restOptions } = options || {};
+
     if (sentinelEnabled) {
       // Redis Sentinel configuration for HA deployments
       const sentinels = process.env.REDIS_SENTINELS
@@ -54,8 +60,8 @@ class RedisStorageAdapter extends StorageAdapter {
       this.options = {
         sentinels,
         name: sentinelName,
-        password: options.password || process.env.REDIS_PASSWORD || undefined,
-        db: options.db || process.env.REDIS_DB || 0,
+        password: restOptions.password || process.env.REDIS_PASSWORD || undefined,
+        db: restOptions.db || process.env.REDIS_DB || 0,
         keyPrefix: canonicalPrefix,
         maxRetriesPerRequest: 3,
         retryStrategy: (times) => {
@@ -66,23 +72,23 @@ class RedisStorageAdapter extends StorageAdapter {
           const delay = Math.min(times * 100, 3000);
           return delay;
         },
-        ...options
+        ...restOptions
       };
       log.debug(() => `[Redis] Sentinel mode enabled: ${sentinelName} with ${sentinels.length} sentinel(s)`);
     } else {
       // Standard Redis configuration (default for single-user deployments)
       this.options = {
-        host: options.host || process.env.REDIS_HOST || 'localhost',
-        port: options.port || process.env.REDIS_PORT || 6379,
-        password: options.password || process.env.REDIS_PASSWORD || undefined,
-        db: options.db || process.env.REDIS_DB || 0,
+        host: restOptions.host || process.env.REDIS_HOST || 'localhost',
+        port: restOptions.port || process.env.REDIS_PORT || 6379,
+        password: restOptions.password || process.env.REDIS_PASSWORD || undefined,
+        db: restOptions.db || process.env.REDIS_DB || 0,
         keyPrefix: canonicalPrefix,
         maxRetriesPerRequest: 3,
         retryStrategy: (times) => {
           const delay = Math.min(times * 50, 2000);
           return delay;
         },
-        ...options
+        ...restOptions
       };
     }
 
@@ -600,10 +606,8 @@ class RedisStorageAdapter extends StorageAdapter {
         // Preserve LRU ordering when available
         pipeline.zadd(canonicalLruKey, lruScore || now, key);
 
-        // Clean up the old entry to avoid duplication
-        pipeline.del(altContentKey);
-        pipeline.del(altMetaKey);
-        pipeline.zrem(altLruKey, key);
+        // Do NOT delete the old entry; keep both namespaces readable so either
+        // prefix continues to work without destructive migrations.
 
         await pipeline.exec();
         log.warn(() => `[RedisStorage] Migrated ${cacheType} key across prefixes (${altPrefix} -> ${canonicalPrefix || '<none>'}): ${key}`);
