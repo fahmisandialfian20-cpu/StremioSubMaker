@@ -81,7 +81,8 @@ networks:
 
 volumes:
   redis-data:
-    driver: local
+    external: true
+    name: redis-data
   app-data:
     driver: local
   app-cache:

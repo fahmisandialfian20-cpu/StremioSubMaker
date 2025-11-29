@@ -4,8 +4,12 @@ const path = require('path');
 const log = require('./logger');
 
 // Persisted instance id so restarts keep the same namespace when no explicit
-// isolation value is provided. Stored alongside other process data.
-const INSTANCE_FILE = process.env.INSTANCE_ID_FILE || path.join(process.cwd(), '.instance-id');
+// isolation value is provided. Store it in the data volume by default so it
+// survives container rebuilds/redeployments (otherwise every new container
+// would write a new file at /app/.instance-id and switch the implicit Redis
+// prefix, making previously saved sessions unreachable until they naturally
+// expire). Existing custom paths via INSTANCE_ID_FILE are still honored.
+const INSTANCE_FILE = process.env.INSTANCE_ID_FILE || path.join(process.cwd(), 'data', '.instance-id');
 // Keep in sync with src/utils/encryption.js so we can derive a stable isolation
 // namespace from the encryption key even when it's loaded from disk instead of
 // the environment. This lets multiple pods share redis sessions/caches when
