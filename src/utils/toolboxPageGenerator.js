@@ -1393,7 +1393,10 @@ function generateSubToolboxPage(configStr, videoId, filename, config) {
         const parsed = parseVideoId(payload.videoId);
         const tag = formatEpisodeTag(parsed);
         const base = cleanName(payload.filename) || parsed?.imdbId || payload.videoId;
-        return tag ? `${base} ${tag}` : (base || 'New stream detected');
+        if (tag) {
+          return base ? (base + ' ' + tag) : tag;
+        }
+        return base || 'New stream detected';
       }
 
       async function enhanceMeta(payload) {
@@ -1402,7 +1405,7 @@ function generateSubToolboxPage(configStr, videoId, filename, config) {
         if (!parsed?.imdbId) return;
         const metaType = parsed.type === 'episode' ? 'series' : 'movie';
         const tag = formatEpisodeTag(parsed);
-        const requestKey = `${parsed.imdbId}:${metaType}:${tag}`;
+        const requestKey = (parsed.imdbId || '') + ':' + metaType + ':' + (tag || '');
         lastMetaRequestKey = requestKey;
         try {
           const resp = await fetch('https://v3-cinemeta.strem.io/meta/' + metaType + '/' + encodeURIComponent(parsed.imdbId) + '.json', { cache: 'force-cache' });
@@ -1411,7 +1414,7 @@ function generateSubToolboxPage(configStr, videoId, filename, config) {
           const meta = data && data.meta;
           const name = meta?.name || meta?.english_name || (meta?.nameTranslated && meta.nameTranslated.en);
           if (!name || lastMetaRequestKey !== requestKey) return;
-          const label = tag ? `${name} ${tag}` : name;
+          const label = tag ? (name ? name + ' ' + tag : tag) : name;
           metaEl.textContent = label;
         } catch (_) { /* ignore */ }
       }
@@ -3158,7 +3161,7 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       } catch (_) {}
       const lang = normalizeTargetLangCode(langKey || '') || 'subtitle';
       const hash = (typeof getVideoHash === 'function' ? getVideoHash() : 'video') || 'video';
-      return `${hash}_${lang}_translated.srt`;
+      return (hash || 'video') + '_' + lang + '_translated.srt';
     }
 
     function triggerSubtitleDownload(content, filename) {
@@ -3963,7 +3966,7 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
         return BOOTSTRAP.linkedTitle;
       }
       if (linkedTitleCache.has(key)) return linkedTitleCache.get(key);
-      const metaUrl = \`https://v3-cinemeta.strem.io/meta/\${parsed.type === 'episode' ? 'series' : 'movie'}/\${encodeURIComponent(parsed.imdbId)}.json\`;
+      const metaUrl = 'https://v3-cinemeta.strem.io/meta/' + (parsed.type === 'episode' ? 'series' : 'movie') + '/' + encodeURIComponent(parsed.imdbId) + '.json';
       try {
         const resp = await fetch(metaUrl);
         if (!resp.ok) throw new Error('Failed to fetch metadata');
