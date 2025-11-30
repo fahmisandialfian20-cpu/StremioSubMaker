@@ -143,7 +143,12 @@ self.addEventListener('install', (event) => {
                             if (responseHasVaryStar(response)) {
                                 return;
                             }
-                            await safeCachePut(cache, assetUrl, response.clone());
+                            try {
+                                await safeCachePut(cache, assetUrl, response.clone());
+                            } catch (err) {
+                                // Avoid unhandled rejections when upstream sets Vary: *
+                                console.warn('Skipping cache put for install asset due to error', assetUrl, err);
+                            }
                         }
                     } catch (err) {
                         // Ignore individual asset failures to keep install resilient
@@ -266,7 +271,11 @@ async function handleHtmlRequest(request) {
             // This ensures configure.html and config.js are always fresh
             if (shouldCache) {
                 const cache = await caches.open(getVersionedCacheName(APP_VERSION));
-                await safeCachePut(cache, request, response.clone());
+                try {
+                    await safeCachePut(cache, request, response.clone());
+                } catch (err) {
+                    console.warn('Skipping cache put for HTML due to error', request.url, err);
+                }
             }
         }
 
@@ -334,7 +343,11 @@ async function handleStaticAsset(request) {
             const cache = await caches.open(cacheName);
             const shouldCache = !responseHasNoStore(response) && !responseHasVaryStar(response);
             if (shouldCache) {
-                await safeCachePut(cache, request, response.clone());
+                try {
+                    await safeCachePut(cache, request, response.clone());
+                } catch (err) {
+                    console.warn('Skipping cache put for static asset due to error', request.url, err);
+                }
             }
         }
 
