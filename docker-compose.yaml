@@ -59,14 +59,14 @@ services:
       mkdir -p /app/keys;
       if [ -n "$$REDIS_PASSWORD" ]; then
         echo "$$REDIS_PASSWORD" > /app/keys/.redis-password;
-        chmod 600 /app/keys/.redis-password;
       else
         if [ ! -f /app/keys/.redis-password ]; then
           echo "Generating new Redis password...";
           tr -dc A-Za-z0-9 < /dev/urandom | head -c 32 > /app/keys/.redis-password;
-          chmod 600 /app/keys/.redis-password;
         fi;
       fi;
+      chown 1000:1000 /app/keys/.redis-password || true;
+      chmod 600 /app/keys/.redis-password;
       export REDIS_PASSWORD=$$(cat /app/keys/.redis-password);
       redis-server
       --maxmemory 4gb
