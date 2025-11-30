@@ -2614,7 +2614,7 @@ async function generateSubtitleSyncPage(subtitles, videoId, streamFilename, conf
 
             const summary = describeSyncPlan(plan);
             const baseDesc = SYNC_DESCRIPTIONS[method] || '';
-            syncMethodDesc.innerHTML = baseDesc + (summary ? `<div class="plan-summary">Plan: ${summary}</div>` : '');
+            syncMethodDesc.innerHTML = baseDesc + (summary ? '<div class="plan-summary">Plan: ' + summary + '</div>' : '');
         }
 
         document.getElementById('syncMethod').addEventListener('change', refreshSyncPlanPreview);
