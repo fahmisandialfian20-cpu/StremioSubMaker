@@ -3,7 +3,35 @@
 
     if (!('serviceWorker' in navigator)) return;
 
+    const BYPASS_PATH_PREFIXES = [
+        '/sub-toolbox',
+        '/embedded-subtitles',
+        '/auto-subtitles',
+        '/subtitle-sync',
+        '/file-upload',
+        '/addon/'
+    ];
+
+    function shouldBypassSw() {
+        const path = window.location.pathname || '';
+        return BYPASS_PATH_PREFIXES.some(prefix => path === prefix || path.startsWith(prefix));
+    }
+
+    // On toolbox/addon pages, unregister any existing SW so users don’t need manual steps
+    function unregisterIfBypassed() {
+        if (!shouldBypassSw()) return;
+        navigator.serviceWorker.getRegistrations()
+            .then(function(regs) {
+                regs.forEach(function(reg) { reg.unregister().catch(function(){}); });
+            })
+            .catch(function(){});
+    }
+
     window.addEventListener('load', function() {
+        if (shouldBypassSw()) {
+            unregisterIfBypassed();
+            return;
+        }
         // Version-based cache-buster: keeps first load light while updating on new releases
         var versionTag = (window.__APP_VERSION__ || 'dev').toString();
         // Hourly bump ensures changed SW rolls out even if app version stays the same
