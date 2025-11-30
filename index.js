@@ -699,13 +699,14 @@ function getConfigHashSafe(config) {
 }
 
 // Rate limit tracker for 3-click cache resets (per user/config + cache type)
-function checkCacheResetRateLimit(config) {
+// Set consume=false to perform a dry-run check without recording usage
+function checkCacheResetRateLimit(config, { consume = true } = {}) {
     const cacheType = resolveCacheType(config);
     const limit = cacheType === 'bypass' ? CACHE_RESET_LIMIT_BYPASS : CACHE_RESET_LIMIT_PERMANENT;
 
     // Limit disabled or misconfigured -> allow
     if (!limit || limit <= 0) {
-        return { blocked: false, cacheType, remaining: Infinity };
+        return { blocked: false, cacheType, remaining: Infinity, limit };
     }
 
     const now = Date.now();
@@ -721,8 +722,10 @@ function checkCacheResetRateLimit(config) {
         return { blocked: true, cacheType, remaining: 0, limit };
     }
 
-    // Record successful reset
-    recent.push(now);
+    // Record successful reset only when consuming
+    if (consume) {
+        recent.push(now);
+    }
     cacheResetHistory.set(key, recent);
 
     return { blocked: false, cacheType, remaining: Math.max(0, limit - recent.length), limit };
@@ -2905,19 +2908,29 @@ app.get('/addon/:config/translate/:sourceFileId/:targetLang', normalizeSubtitleF
                 if (shouldBlock) {
                     log.debug(() => `[PurgeTrigger] 3 rapid loads detected but BLOCKED: Translation in progress for ${sourceFileId}/${targetLang} (user: ${config.__configHash})`);
                 } else {
-                    const rateLimitStatus = checkCacheResetRateLimit(config);
+                    const rateLimitStatus = checkCacheResetRateLimit(config, { consume: false });
 
                     if (rateLimitStatus.blocked) {
                         log.warn(() => `[PurgeTrigger] BLOCKING 3-click reset: Rate limit reached for ${rateLimitStatus.cacheType} cache (${rateLimitStatus.limit}/${Math.round(CACHE_RESET_WINDOW_MS / 60000)}m) on ${sourceFileId}/${targetLang} (user: ${getConfigHashSafe(config)})`);
                     } else {
                         // Reset the counter immediately to avoid loops
                         firstClickTracker.set(clickKey, { times: [] });
+                        const { runtimeKey } = generateCacheKeys(config, sourceFileId, targetLang);
                         const hadCache = await hasCachedTranslation(sourceFileId, targetLang, config);
-                        if (hadCache) {
-                            log.debug(() => `[PurgeTrigger] 3 rapid loads detected (<5s) for ${sourceFileId}/${targetLang}. Purging cache and re-triggering translation. Remaining resets this window: ${rateLimitStatus.remaining}`);
-                            await purgeTranslationCache(sourceFileId, targetLang, config);
+                        const partial = (!hadCache) ? await readFromPartialCache(runtimeKey) : null;
+                        const hasResetTarget = hadCache || (partial && typeof partial.content === 'string' && partial.content.length > 0);
+
+                        if (!hasResetTarget) {
+                            log.debug(() => `[PurgeTrigger] 3 rapid loads detected but no cached translation or partial found for ${sourceFileId}/${targetLang}. Skipping purge and rate-limit consumption.`);
                         } else {
-                            log.debug(() => `[PurgeTrigger] 3 rapid loads detected but no cached translation found for ${sourceFileId}/${targetLang}. Skipping purge.`);
+                            // Consume rate-limit slot only when we actually purge
+                            const consumeStatus = checkCacheResetRateLimit(config);
+                            if (consumeStatus.blocked) {
+                                log.warn(() => `[PurgeTrigger] BLOCKING 3-click reset: Rate limit reached for ${consumeStatus.cacheType} cache (${consumeStatus.limit}/${Math.round(CACHE_RESET_WINDOW_MS / 60000)}m) on ${sourceFileId}/${targetLang} (user: ${getConfigHashSafe(config)})`);
+                            } else {
+                                log.debug(() => `[PurgeTrigger] 3 rapid loads detected (<5s) for ${sourceFileId}/${targetLang}. Purging ${hadCache ? 'cached translation' : 'partial translation cache'} and re-triggering translation. Remaining resets this window: ${consumeStatus.remaining}`);
+                                await purgeTranslationCache(sourceFileId, targetLang, config);
+                            }
                         }
                     }
                 }
@@ -3054,7 +3067,7 @@ app.get('/addon/:config/learn/:sourceFileId/:targetLang', normalizeSubtitleForma
             }
         };
 
-        const { cacheKey } = generateCacheKeys(config, sourceFileId, targetLang);
+        const { cacheKey, runtimeKey } = generateCacheKeys(config, sourceFileId, targetLang);
 
         // Unusual purge: if same Learn subtitle is loaded 3 times in < 5s, purge cache and retrigger
         try {
@@ -3074,19 +3087,28 @@ app.get('/addon/:config/learn/:sourceFileId/:targetLang', normalizeSubtitleForma
                 if (shouldBlock) {
                     log.debug(() => `[LearnPurgeTrigger] 3 rapid loads detected but BLOCKED: Translation in progress for ${sourceFileId}/${targetLang} (user: ${config.__configHash})`);
                 } else {
-                    const rateLimitStatus = checkCacheResetRateLimit(config);
+                    const rateLimitStatus = checkCacheResetRateLimit(config, { consume: false });
 
                     if (rateLimitStatus.blocked) {
                         log.warn(() => `[LearnPurgeTrigger] BLOCKING 3-click reset: Rate limit reached for ${rateLimitStatus.cacheType} cache (${rateLimitStatus.limit}/${Math.round(CACHE_RESET_WINDOW_MS / 60000)}m) on ${sourceFileId}/${targetLang} (user: ${getConfigHashSafe(config)})`);
                     } else {
                         // Reset the counter immediately to avoid loops
                         firstClickTracker.set(clickKey, { times: [] });
+                        const partialKey = runtimeKey || cacheKey;
                         const hadCache = await hasCachedTranslation(sourceFileId, targetLang, config);
-                        if (hadCache) {
-                            log.debug(() => `[LearnPurgeTrigger] 3 rapid loads detected (<5s) for ${sourceFileId}/${targetLang}. Purging cache and re-triggering translation. Remaining resets this window: ${rateLimitStatus.remaining}`);
-                            await purgeTranslationCache(sourceFileId, targetLang, config);
+                        const partial = (!hadCache) ? await readFromPartialCache(partialKey) : null;
+                        const hasResetTarget = hadCache || (partial && typeof partial.content === 'string' && partial.content.length > 0);
+
+                        if (!hasResetTarget) {
+                            log.debug(() => `[LearnPurgeTrigger] 3 rapid loads detected but no cached translation or partial found for ${sourceFileId}/${targetLang}. Skipping purge and rate-limit consumption.`);
                         } else {
-                            log.debug(() => `[LearnPurgeTrigger] 3 rapid loads detected but no cached translation found for ${sourceFileId}/${targetLang}. Skipping purge.`);
+                            const consumeStatus = checkCacheResetRateLimit(config);
+                            if (consumeStatus.blocked) {
+                                log.warn(() => `[LearnPurgeTrigger] BLOCKING 3-click reset: Rate limit reached for ${consumeStatus.cacheType} cache (${consumeStatus.limit}/${Math.round(CACHE_RESET_WINDOW_MS / 60000)}m) on ${sourceFileId}/${targetLang} (user: ${getConfigHashSafe(config)})`);
+                            } else {
+                                log.debug(() => `[LearnPurgeTrigger] 3 rapid loads detected (<5s) for ${sourceFileId}/${targetLang}. Purging ${hadCache ? 'cached translation' : 'partial translation cache'} and re-triggering translation. Remaining resets this window: ${consumeStatus.remaining}`);
+                                await purgeTranslationCache(sourceFileId, targetLang, config);
+                            }
                         }
                     }
                 }
