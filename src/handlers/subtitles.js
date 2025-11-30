@@ -544,41 +544,38 @@ function initializeCacheDirectory() {
   }
 }
 
-// Verify cache integrity on startup and clean up expired entries
-function verifyCacheIntegrity() {
+async function verifyCacheIntegrity() {
   try {
     if (!fs.existsSync(CACHE_DIR)) {
       return;
     }
 
-    const files = fs.readdirSync(CACHE_DIR);
+    const files = await fs.promises.readdir(CACHE_DIR);
     let validCount = 0;
     let expiredCount = 0;
     let corruptCount = 0;
+    const now = Date.now();
 
     for (const file of files) {
       if (!file.endsWith('.json')) continue;
 
+      const filePath = path.join(CACHE_DIR, file);
       try {
-        const filePath = path.join(CACHE_DIR, file);
-        const content = fs.readFileSync(filePath, 'utf8');
+        const content = await fs.promises.readFile(filePath, 'utf8');
         const cached = JSON.parse(content);
 
-        // Check if cache is still valid
-        if (cached.expiresAt && Date.now() > cached.expiresAt) {
-          // Expired, delete file
-          fs.unlinkSync(filePath);
+        if (cached.expiresAt && now > cached.expiresAt) {
+          await fs.promises.unlink(filePath);
           expiredCount++;
         } else {
           validCount++;
         }
       } catch (error) {
         log.error(() => [`[Cache] Corrupt cache file ${file}:`, error.message]);
-        // Delete corrupt files
         try {
-          fs.unlinkSync(path.join(CACHE_DIR, file));
+          await fs.promises.unlink(filePath);
           corruptCount++;
-        } catch (e) {
+        } catch (_) {
           // Ignore deletion errors
         }
       }
@@ -590,29 +587,29 @@ function verifyCacheIntegrity() {
   }
 }
 
-// Verify and cleanup expired entries in bypass cache
-function verifyBypassCacheIntegrity() {
+async function verifyBypassCacheIntegrity() {
   try {
     if (!fs.existsSync(BYPASS_CACHE_DIR)) {
       return;
     }
 
-    const files = fs.readdirSync(BYPASS_CACHE_DIR);
+    const files = await fs.promises.readdir(BYPASS_CACHE_DIR);
     let removedCount = 0;
+    const now = Date.now();
 
     for (const file of files) {
       if (!file.endsWith('.json')) continue;
 
+      const filePath = path.join(BYPASS_CACHE_DIR, file);
       try {
-        const filePath = path.join(BYPASS_CACHE_DIR, file);
-        const content = fs.readFileSync(filePath, 'utf8');
+        const content = await fs.promises.readFile(filePath, 'utf8');
         const cached = JSON.parse(content);
-        if (!cached.expiresAt || Date.now() > cached.expiresAt) {
-          fs.unlinkSync(filePath);
+        if (!cached.expiresAt || now > cached.expiresAt) {
+          await fs.promises.unlink(filePath);
           removedCount++;
         }
       } catch (error) {
-        try { fs.unlinkSync(path.join(BYPASS_CACHE_DIR, file)); } catch (e) {}
+        try { await fs.promises.unlink(filePath); } catch (_) {}
       }
     }
 
@@ -821,13 +818,13 @@ async function readFromPartialCache(cacheKey) {
 }
 
 // Calculate total cache size
-function calculateCacheSize() {
+async function calculateCacheSize() {
   try {
     if (!fs.existsSync(CACHE_DIR)) {
       return 0;
     }
 
-    const files = fs.readdirSync(CACHE_DIR);
+    const files = await fs.promises.readdir(CACHE_DIR);
     let totalSize = 0;
 
     for (const file of files) {
@@ -835,9 +832,9 @@ function calculateCacheSize() {
 
       try {
         const filePath = path.join(CACHE_DIR, file);
-        const stats = fs.statSync(filePath);
+        const stats = await fs.promises.stat(filePath);
         totalSize += stats.size;
-      } catch (error) {
+      } catch (_) {
         // Ignore errors for individual files
       }
     }
@@ -849,14 +846,13 @@ function calculateCacheSize() {
   }
 }
 
-// Enforce cache size limit with LRU eviction
-function enforceCacheSizeLimit() {
+async function enforceCacheSizeLimit() {
   try {
     if (!fs.existsSync(CACHE_DIR)) {
       return;
     }
 
-    const totalSize = calculateCacheSize();
+    const totalSize = await calculateCacheSize();
     cacheMetrics.totalCacheSize = totalSize;
 
     if (totalSize <= MAX_CACHE_SIZE_BYTES) {
@@ -865,8 +861,7 @@ function enforceCacheSizeLimit() {
 
     log.debug(() => `[Cache] Cache size (${(totalSize / 1024 / 1024 / 1024).toFixed(2)}GB) exceeds limit (${(MAX_CACHE_SIZE_BYTES / 1024 / 1024 / 1024).toFixed(2)}GB), performing LRU eviction`);
 
-    // Get all cache files with their access times
-    const files = fs.readdirSync(CACHE_DIR);
+    const files = await fs.promises.readdir(CACHE_DIR);
     const fileStats = [];
 
     for (const file of files) {
@@ -874,31 +869,29 @@ function enforceCacheSizeLimit() {
 
       try {
         const filePath = path.join(CACHE_DIR, file);
-        const stats = fs.statSync(filePath);
+        const stats = await fs.promises.stat(filePath);
         fileStats.push({
           path: filePath,
-          atime: stats.atime.getTime(), // Last access time
+          atime: stats.atime.getTime(),
           size: stats.size
         });
-      } catch (error) {
+      } catch (_) {
         // Ignore errors for individual files
       }
     }
 
-    // Sort by access time (oldest first - LRU)
     fileStats.sort((a, b) => a.atime - b.atime);
 
-    // Delete oldest files until we're under the limit
     let currentSize = totalSize;
     let evictedCount = 0;
 
     for (const file of fileStats) {
-      if (currentSize <= MAX_CACHE_SIZE_BYTES * 0.9) { // Target 90% of limit to avoid frequent evictions
+      if (currentSize <= MAX_CACHE_SIZE_BYTES * 0.9) {
         break;
       }
 
       try {
-        fs.unlinkSync(file.path);
+        await fs.promises.unlink(file.path);
         currentSize -= file.size;
         evictedCount++;
         cacheMetrics.filesEvicted++;
@@ -909,7 +902,6 @@ function enforceCacheSizeLimit() {
 
     log.debug(() => `[Cache] LRU eviction complete: removed ${evictedCount} files, new size: ${(currentSize / 1024 / 1024 / 1024).toFixed(2)}GB`);
     cacheMetrics.totalCacheSize = currentSize;
-
   } catch (error) {
     log.error(() => ['[Cache] Failed to enforce cache size limit:', error.message]);
   }
@@ -928,12 +920,21 @@ function logCacheMetrics() {
 
 // Initialize cache on module load
 initializeCacheDirectory();
-verifyCacheIntegrity();
-verifyBypassCacheIntegrity();
+(async () => { try { await verifyCacheIntegrity(); } catch (err) { log.error(() => ['[Cache] Async integrity check failed:', err.message]); } })();
+(async () => { try { await verifyBypassCacheIntegrity(); } catch (err) { log.error(() => ['[Bypass Cache] Async integrity check failed:', err.message]); } })();
+(async () => {
+  try {
+    cacheMetrics.totalCacheSize = await calculateCacheSize();
+    log.debug(() => `[Cache] Initial cache size: ${(cacheMetrics.totalCacheSize / 1024 / 1024 / 1024).toFixed(2)}GB`);
+  } catch (err) {
+    log.error(() => ['[Cache] Failed to measure initial cache size:', err.message]);
+  }
+})();
 
-// Calculate initial cache size
-cacheMetrics.totalCacheSize = calculateCacheSize();
-log.debug(() => `[Cache] Initial cache size: ${(cacheMetrics.totalCacheSize / 1024 / 1024 / 1024).toFixed(2)}GB`);
+// If async measurement hasn't finished yet, keep a conservative default
+if (!cacheMetrics.totalCacheSize) {
+  cacheMetrics.totalCacheSize = 0;
+}
 
 // Log subtitle search cache configuration
 log.debug(() => `[Subtitle Search Cache] Initialized: max=${SUBTITLE_SEARCH_CACHE_MAX} entries, ttl=${Math.floor(SUBTITLE_SEARCH_CACHE_TTL_MS / 1000 / 60)}min, user-scoped=true`);
@@ -941,10 +942,14 @@ log.debug(() => `[Subtitle Search Cache] Initialized: max=${SUBTITLE_SEARCH_CACH
 // Log metrics every 30 minutes
 setInterval(logCacheMetrics, 1000 * 60 * 30);
 
-// Enforce cache size limit every 10 minutes
-setInterval(enforceCacheSizeLimit, 1000 * 60 * 10);
-// Cleanup bypass cache periodically
-setInterval(verifyBypassCacheIntegrity, 1000 * 60 * 30);
+// Enforce cache size limit every 10 minutes (async)
+setInterval(() => {
+  enforceCacheSizeLimit().catch(err => log.error(() => ['[Cache] Failed in scheduled size enforcement:', err.message]));
+}, 1000 * 60 * 10);
+// Cleanup bypass cache periodically (async)
+setInterval(() => {
+  verifyBypassCacheIntegrity().catch(err => log.error(() => ['[Bypass Cache] Scheduled cleanup failed:', err.message]));
+}, 1000 * 60 * 30);
 
 /**
  * Deduplicates subtitle search requests by caching in-flight promises and completed results
@@ -3433,47 +3438,44 @@ async function getAvailableSubtitlesForTranslation(videoId, config) {
 
 // Clean up expired disk cache entries periodically (only needed for non-permanent caches)
 setInterval(() => {
-  try {
-    if (!fs.existsSync(CACHE_DIR)) {
-      return;
-    }
-
-    const now = Date.now();
-    const files = fs.readdirSync(CACHE_DIR);
-    let removedCount = 0;
-
-    for (const file of files) {
-      if (!file.endsWith('.json')) continue;
-
-      try {
-        const filePath = path.join(CACHE_DIR, file);
-        const content = fs.readFileSync(filePath, 'utf8');
-        const cached = JSON.parse(content);
-
-        // Check if cache has expired
-        if (cached.expiresAt && now > cached.expiresAt) {
-          fs.unlinkSync(filePath);
-          removedCount++;
-        }
-      } catch (error) {
-        // Ignore errors for individual files
+  (async () => {
+    try {
+      if (!fs.existsSync(CACHE_DIR)) {
+        return;
       }
-    }
 
-    if (removedCount > 0) {
-      log.debug(() => `[Cache] Cleaned up ${removedCount} expired disk cache entries`);
+      const now = Date.now();
+      const files = await fs.promises.readdir(CACHE_DIR);
+      let removedCount = 0;
+
+      for (const file of files) {
+        if (!file.endsWith('.json')) continue;
+
+        try {
+          const filePath = path.join(CACHE_DIR, file);
+          const content = await fs.promises.readFile(filePath, 'utf8');
+          const cached = JSON.parse(content);
+
+          if (cached.expiresAt && now > cached.expiresAt) {
+            await fs.promises.unlink(filePath);
+            removedCount++;
+          }
+        } catch (_) {
+          // Ignore errors for individual files
+        }
+      }
+
+      if (removedCount > 0) {
+        log.debug(() => `[Cache] Cleaned up ${removedCount} expired disk cache entries`);
+      }
+    } catch (error) {
+      log.error(() => ['[Cache] Failed to clean up disk cache:', error.message]);
     }
-  } catch (error) {
-    log.error(() => ['[Cache] Failed to clean up disk cache:', error.message]);
-  }
+  })();
 }, 1000 * 60 * 60); // Every hour (less frequent for disk operations)
-// Also clean up bypass cache (more frequent not needed here)
+
 setInterval(() => {
-  try {
-    verifyBypassCacheIntegrity();
-  } catch (error) {
-    // ignore
-  }
+  verifyBypassCacheIntegrity().catch(() => {});
 }, 1000 * 60 * 60);
 
 // Note: No manual cleanup needed for translationStatus - LRU cache handles TTL automatically

@@ -6,6 +6,8 @@ const crypto = require('crypto');
 const { getIsolationKey } = require('../utils/isolation');
 const { getRedisPassword } = require('../utils/redisHelper');
 
+const SESSION_INDEX_KEY = 'session:index';
+
 /**
  * Redis Storage Adapter
  *
@@ -302,6 +304,14 @@ class RedisStorageAdapter extends StorageAdapter {
   _getSizeKey(cacheType) {
     // Keep raw key; client keyPrefix will be applied by ioredis
     return `size:${cacheType}`;
+  }
+
+  /**
+   * Get the session index key (used for O(1) session counts)
+   * @returns {string}
+   */
+  getSessionIndexKey() {
+    return SESSION_INDEX_KEY;
   }
 
   /**
@@ -760,6 +770,11 @@ class RedisStorageAdapter extends StorageAdapter {
         // Update LRU tracking
         pipeline.zadd(lruKey, now, key);
 
+        // Track session tokens in an index for fast counts (idempotent)
+        if (cacheType === StorageAdapter.CACHE_TYPES.SESSION) {
+          pipeline.sadd(this.getSessionIndexKey(), key);
+        }
+
         // Update total size counter
         if (sizeLimit) {
           const sizeDelta = contentSize - oldSize;
@@ -806,6 +821,10 @@ class RedisStorageAdapter extends StorageAdapter {
         pipeline.del(redisKey);
         pipeline.del(metaKey);
         pipeline.zrem(lruKey, key);
+
+        if (cacheType === StorageAdapter.CACHE_TYPES.SESSION) {
+          pipeline.srem(this.getSessionIndexKey(), key);
+        }
 
         if (size > 0) {
           pipeline.decrby(sizeKey, size);
@@ -896,6 +915,56 @@ class RedisStorageAdapter extends StorageAdapter {
       log.error(() => `Redis list error for cache type ${cacheType}:`, error);
       return [];
     }
+  }
+
+  /**
+   * Get current session count from the index (Redis only)
+   * @returns {Promise<number>}
+   */
+  async getSessionCount() {
+    if (!this.initialized) {
+      throw new StorageUnavailableError('Storage adapter not initialized', { operation: 'getSessionCount' });
+    }
+    try {
+      return await this._executeWithRetry('session count', async () => {
+        const count = await this.client.scard(this.getSessionIndexKey());
+        return typeof count === 'number' ? count : 0;
+      });
+    } catch (error) {
+      if (error instanceof StorageUnavailableError) {
+        throw error;
+      }
+      log.error(() => `Redis session count error:`, error);
+      return 0;
+    }
+  }
+
+  /**
+   * Rebuild the session index from a list of tokens (idempotent)
+   * @param {string[]} tokens
+   * @returns {Promise<void>}
+   */
+  async resetSessionIndex(tokens = []) {
+    if (!this.initialized) {
+      throw new StorageUnavailableError('Storage adapter not initialized', { operation: 'resetSessionIndex' });
+    }
+
+    const indexKey = this.getSessionIndexKey();
+    const chunkSize = 500;
+
+    return this._executeWithRetry('reset session index', async () => {
+      const pipeline = this.client.pipeline();
+      pipeline.del(indexKey);
+
+      if (tokens.length > 0) {
+        for (let i = 0; i < tokens.length; i += chunkSize) {
+          const chunk = tokens.slice(i, i + chunkSize);
+          pipeline.sadd(indexKey, ...chunk);
+        }
+      }
+
+      await pipeline.exec();
+    });
   }
 
   /**

@@ -15,6 +15,8 @@ const { redactToken } = require('./security');
 const DECRYPTED_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 // Throttle expensive storage SCAN calls to at most once every 5 minutes
 const STORAGE_COUNT_CACHE_TTL_MS = 5 * 60 * 1000;
+const SESSION_INDEX_VERIFY_INTERVAL_MS = 3 * 60 * 60 * 1000; // 3 hours
+const SESSION_INDEX_MISMATCH_LOG_LEVEL = 'error'; // log level when mismatch found
 
 // Internal metadata keys injected into the encrypted payload to detect
 // cross-user/session contamination even when the wrapper appears valid.
@@ -424,6 +426,9 @@ class SessionManager extends EventEmitter {
             // Memory cleanup timer (for preventing memory leaks)
             this.cleanupTimer = null;
 
+            // Session index verification timer
+            this.sessionIndexVerifyTimer = null;
+
             // Track if we've made changes since last save
             this.dirty = false;
 
@@ -541,6 +546,12 @@ class SessionManager extends EventEmitter {
                 // In Redis lazy-load mode, add helpful message about cross-instance fallback
                 if (storageType === 'redis' && !sessionPreloadEnabled) {
                     log.debug(() => '[SessionManager] Using lazy-load mode: sessions load from Redis on-demand via fallback');
+                }
+
+                if (storageType === 'redis') {
+                    this.startSessionIndexVerification();
+                    // Kick off an immediate verification at startup so the first scan happens early
+                    this.verifySessionIndex().catch(err => log.error(() => ['[SessionManager] Startup session index verify failed:', err.message]));
                 }
             } catch (err) {
                 log.error(() => ['[SessionManager] Failed to load sessions from disk during init:', err.message]);
@@ -1165,18 +1176,40 @@ class SessionManager extends EventEmitter {
                 }
 
                 const adapter = await getStorageAdapter();
-                const keys = await adapter.list(StorageAdapter.CACHE_TYPES.SESSION, '*');
-                // Filter to only valid session tokens (32 hex chars)
-                const validKeys = keys.filter(token => /^[a-f0-9]{32}$/.test(token));
+                const canUseIndex = typeof adapter.getSessionCount === 'function';
+                let count = null;
 
-                // DIAGNOSTIC: Warn if list returns zero when we have in-memory sessions
-                // This indicates the SCAN pattern bug or Redis connection issue
-                if (validKeys.length === 0 && this.cache.size > 0) {
-                    log.warn(() => `[SessionManager] ALERT: Storage returned 0 sessions but ${this.cache.size} exist in memory! Check Redis SCAN pattern or connection.`);
+                if (canUseIndex && !forceRefresh) {
+                    try {
+                        count = await adapter.getSessionCount();
+                    } catch (err) {
+                        log.warn(() => `[SessionManager] Session index count failed, falling back to scan: ${err?.message || err}`);
+                        count = null;
+                    }
                 }
 
-                this.storageCountCache = { value: validKeys.length, ts: now };
-                return validKeys.length;
+                // Fallback or forced refresh: scan and rebuild index if supported
+                if (count === null || forceRefresh) {
+                    const keys = await adapter.list(StorageAdapter.CACHE_TYPES.SESSION, '*');
+                    const validKeys = keys.filter(token => /^[a-f0-9]{32}$/.test(token));
+                    count = validKeys.length;
+
+                    // DIAGNOSTIC: Warn if list returns zero when we have in-memory sessions
+                    if (count === 0 && this.cache.size > 0) {
+                        log.warn(() => `[SessionManager] ALERT: Storage returned 0 sessions but ${this.cache.size} exist in memory! Check Redis SCAN pattern or connection.`);
+                    }
+
+                    if (canUseIndex && typeof adapter.resetSessionIndex === 'function') {
+                        try {
+                            await adapter.resetSessionIndex(validKeys);
+                        } catch (err) {
+                            log.warn(() => `[SessionManager] Failed to rebuild session index: ${err?.message || err}`);
+                        }
+                    }
+                }
+
+                this.storageCountCache = { value: count, ts: now };
+                return count;
             } catch (err) {
                 log.error(() => ['[SessionManager] Failed to count storage sessions:', err.message]);
                 return 0;
@@ -1618,21 +1651,29 @@ class SessionManager extends EventEmitter {
                     return 0;
                 }
 
-                // Load session metadata (lastAccessedAt) for all sessions
+                // Load session metadata (lastAccessedAt) with bounded concurrency to avoid blocking
                 const sessionsWithMetadata = [];
-                for (const token of validTokens) {
-                    try {
-                        const sessionData = await adapter.get(token, StorageAdapter.CACHE_TYPES.SESSION);
-                        if (sessionData) {
-                            sessionsWithMetadata.push({
-                                token,
-                                lastAccessedAt: sessionData.lastAccessedAt || sessionData.createdAt || 0
-                            });
+                const CONCURRENCY = 8;
+
+                let index = 0;
+                const worker = async () => {
+                    while (index < validTokens.length) {
+                        const token = validTokens[index++];
+                        try {
+                            const sessionData = await adapter.get(token, StorageAdapter.CACHE_TYPES.SESSION);
+                            if (sessionData) {
+                                sessionsWithMetadata.push({
+                                    token,
+                                    lastAccessedAt: sessionData.lastAccessedAt || sessionData.createdAt || 0
+                                });
+                            }
+                        } catch (err) {
+                            log.debug(() => `[SessionManager] Failed to load session metadata for ${redactToken(token)}: ${err.message}`);
                         }
-                    } catch (err) {
-                        log.debug(() => `[SessionManager] Failed to load session metadata for ${redactToken(token)}: ${err.message}`);
                     }
-                }
+                };
+
+                await Promise.all(Array.from({ length: CONCURRENCY }, worker));
 
                 // Sort by lastAccessedAt (oldest first)
                 sessionsWithMetadata.sort((a, b) => a.lastAccessedAt - b.lastAccessedAt);
@@ -1706,6 +1747,56 @@ class SessionManager extends EventEmitter {
                 this.lastStorageCount = storageCount;
             } catch (err) {
                 log.error(() => ['[SessionManager] Storage limit check failed:', err.message]);
+            }
+        }
+
+        /**
+         * Periodically verify the Redis session index against actual storage keys
+         * to detect drift (e.g., TTL expirations not reflected in the index).
+         */
+        startSessionIndexVerification() {
+            if (this.sessionIndexVerifyTimer) {
+                clearInterval(this.sessionIndexVerifyTimer);
+            }
+
+            this.sessionIndexVerifyTimer = setInterval(() => {
+                this.verifySessionIndex().catch(err => log.error(() => ['[SessionManager] Session index verify failed:', err.message]));
+            }, SESSION_INDEX_VERIFY_INTERVAL_MS);
+
+            // Allow process exit
+            if (typeof this.sessionIndexVerifyTimer.unref === 'function') {
+                this.sessionIndexVerifyTimer.unref();
+            }
+        }
+
+        async verifySessionIndex() {
+            if ((process.env.STORAGE_TYPE || 'redis') !== 'redis') {
+                return;
+            }
+
+            try {
+                const adapter = await getStorageAdapter();
+                if (typeof adapter.getSessionCount !== 'function' || typeof adapter.resetSessionIndex !== 'function') {
+                    return;
+                }
+
+                const indexedCount = await adapter.getSessionCount();
+                const keys = await adapter.list(StorageAdapter.CACHE_TYPES.SESSION, '*');
+                const validKeys = keys.filter(token => /^[a-f0-9]{32}$/.test(token));
+                const actualCount = validKeys.length;
+
+                if (indexedCount !== actualCount) {
+                    const logFn = SESSION_INDEX_MISMATCH_LOG_LEVEL === 'error' ? log.error : log.warn;
+                    logFn(() => `[SessionManager] Session index mismatch: index=${indexedCount} storage=${actualCount}. Rebuilding index.`);
+                    try {
+                        await adapter.resetSessionIndex(validKeys);
+                        this.storageCountCache = { value: actualCount, ts: Date.now() };
+                    } catch (err) {
+                        log.error(() => ['[SessionManager] Failed to rebuild session index:', err.message]);
+                    }
+                }
+            } catch (err) {
+                log.error(() => ['[SessionManager] Session index verification failed:', err.message]);
             }
         }
 
