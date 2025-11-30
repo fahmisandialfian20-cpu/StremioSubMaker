@@ -547,7 +547,8 @@
     return [...new Set((list || []).map(normalizeLangKey).filter(Boolean))];
   }
 
-  function createMarkup(labels) {
+  function createMarkup(labels, meta = {}) {
+    const versionLabel = meta.version ? 'v' + meta.version : '';
     const toggle = document.createElement('button');
     toggle.className = 'subtitle-menu-toggle';
     toggle.id = 'subtitleMenuToggle';
@@ -612,7 +613,7 @@
       <div class="subtitle-menu-footer" id="subtitleMenuFooter">
         <div class="subtitle-menu-footer-info">
           <div class="subtitle-menu-footer-title">SubMaker</div>
-          <div class="subtitle-menu-footer-meta">${config.version ? 'v' + config.version : ''}</div>
+          <div class="subtitle-menu-footer-meta">${versionLabel}</div>
         </div>
         <div class="subtitle-menu-footer-stats" id="subtitleMenuFooterStats"></div>
       </div>
@@ -1564,7 +1565,7 @@
     }
 
     injectStyles();
-    const elements = createMarkup(config.labels);
+    const elements = createMarkup(config.labels, config);
 
     if (elements.toggle) {
       elements.toggle.addEventListener('click', () => toggleSubtitleMenu(elements));
