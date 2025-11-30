@@ -1644,6 +1644,7 @@ async function generateSubtitleSyncPage(subtitles, videoId, streamFilename, conf
                         <span class="label-eyebrow">Extension</span>
                         <strong id="ext-label">Waiting for extension...</strong>
                     </div>
+                    <a class="status-action" id="ext-install-link" href="https://chromewebstore.google.com/detail/submaker-xsync/lpocanpndchjkkpgchefobjionncknjn?authuser=0&hl=en" target="_blank" rel="noopener noreferrer" style="display:none;">Install xSync (Chrome/Edge)</a>
                 </div>
                 <div class="status-badge">
                     <span class="status-dot ok"></span>
@@ -2235,16 +2236,24 @@ async function generateSubtitleSyncPage(subtitles, videoId, streamFilename, conf
         const extDot = document.getElementById('ext-dot');
         const extLabel = document.getElementById('ext-label');
         const extStatus = document.getElementById('ext-status');
+        const extInstallLink = document.getElementById('ext-install-link');
+        const EXT_INSTALL_URL = 'https://chromewebstore.google.com/detail/submaker-xsync/lpocanpndchjkkpgchefobjionncknjn?authuser=0&hl=en';
 
-        function updateExtensionStatus(ready, text) {
+        function updateExtensionStatus(ready, text, tone) {
             extensionInstalled = ready;
-            if (extDot) extDot.className = 'status-dot ' + (ready ? 'ok' : 'bad');
+            const dotTone = ready ? 'ok' : (tone || 'bad');
+            if (extDot) extDot.className = 'status-dot ' + dotTone;
             if (extLabel) extLabel.textContent = ready ? (text || 'Ready') : (text || 'Extension not detected');
             if (extStatus) extStatus.title = text || '';
+            if (extInstallLink) {
+                const showInstall = !ready && dotTone === 'bad';
+                extInstallLink.style.display = showInstall ? 'inline-flex' : 'none';
+                if (showInstall) extInstallLink.href = EXT_INSTALL_URL;
+            }
         }
 
         function pingExtension() {
-            updateExtensionStatus(false, 'Pinging extension...');
+            updateExtensionStatus(false, 'Pinging extension...', 'warn');
             if (pingTimer) clearInterval(pingTimer);
             pingAttempts = 0;
             const sendPing = () => {
@@ -2254,7 +2263,7 @@ async function generateSubtitleSyncPage(subtitles, videoId, streamFilename, conf
                 window.postMessage({ type: 'SUBMAKER_PING', source: 'webpage' }, '*');
                 if (pingAttempts >= MAX_PINGS && !extensionInstalled) {
                     clearInterval(pingTimer);
-                    updateExtensionStatus(false, 'Extension not detected');
+                    updateExtensionStatus(false, 'Extension not detected', 'bad');
                 }
             };
             sendPing();

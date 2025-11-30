@@ -1127,6 +1127,7 @@ function generateSubToolboxPage(configStr, videoId, filename, config) {
             <span class="status-label">Extension</span>
             <span class="status-value" id="ext-value">Checking...</span>
           </div>
+          <a class="status-action" id="ext-install-link" href="https://chromewebstore.google.com/detail/submaker-xsync/lpocanpndchjkkpgchefobjionncknjn?authuser=0&hl=en" target="_blank" rel="noopener noreferrer" style="display:none;">Install xSync (Chrome/Edge)</a>
         </div>
         <div class="status-badge">
           <span class="status-dot ok"></span>
@@ -1282,10 +1283,12 @@ function generateSubToolboxPage(configStr, videoId, filename, config) {
       const timeEl = document.getElementById('time-value');
       const extValue = document.getElementById('ext-value');
       const extDot = document.getElementById('ext-dot');
+      const extInstallLink = document.getElementById('ext-install-link');
       let extReady = false;
       let pingTimer = null;
       let pingAttempts = 0;
       const MAX_PINGS = 6;
+      const EXT_INSTALL_URL = 'https://chromewebstore.google.com/detail/submaker-xsync/lpocanpndchjkkpgchefobjionncknjn?authuser=0&hl=en';
       function updateTime() {
         const now = new Date();
         timeEl.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -1295,6 +1298,11 @@ function generateSubToolboxPage(configStr, videoId, filename, config) {
         const toneClass = ready ? 'ok' : (tone || 'bad');
         extDot.className = 'status-dot ' + toneClass;
         extValue.textContent = text;
+        if (extInstallLink) {
+          const showInstall = !ready && toneClass === 'bad';
+          extInstallLink.style.display = showInstall ? 'inline-flex' : 'none';
+          if (showInstall) extInstallLink.href = EXT_INSTALL_URL;
+        }
       }
       function pingExtension() {
         setExtensionStatus(false, 'Pinging extension...', 'warn');
@@ -2520,6 +2528,7 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
             <span class="label-eyebrow">Extension</span>
             <strong id="ext-label">Waiting for extension...</strong>
           </div>
+          <a class="status-action" id="ext-install-link" href="https://chromewebstore.google.com/detail/submaker-xsync/lpocanpndchjkkpgchefobjionncknjn?authuser=0&hl=en" target="_blank" rel="noopener noreferrer" style="display:none;">Install xSync (Chrome/Edge)</a>
         </div>
         <div class="status-badge">
           <span class="status-dot ok"></span>
@@ -2900,6 +2909,7 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       extStatus: document.getElementById('ext-status'),
       extDot: document.getElementById('ext-dot'),
       extLabel: document.getElementById('ext-label'),
+      extInstallLink: document.getElementById('ext-install-link'),
       extractLog: document.getElementById('extract-log'),
       translateLog: document.getElementById('translate-log'),
       streamUrl: document.getElementById('stream-url'),
@@ -2926,6 +2936,7 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       extract: els.extractBtn?.textContent || 'Extract Subtitles',
       translate: els.translateBtn?.textContent || 'Translate Subtitles'
     };
+    const EXT_INSTALL_URL = 'https://chromewebstore.google.com/detail/submaker-xsync/lpocanpndchjkkpgchefobjionncknjn?authuser=0&hl=en';
 
     if (els.extractLog) els.extractLog.innerHTML = '';
     if (els.translateLog) els.translateLog.innerHTML = '';
@@ -3126,10 +3137,16 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       applyTranslateDisabled();
     }
 
-    function updateExtensionStatus(ready, text) {
+    function updateExtensionStatus(ready, text, tone) {
       state.extensionReady = ready;
-      els.extDot.className = 'status-dot ' + (ready ? 'ok' : 'bad');
+      const dotTone = ready ? 'ok' : (tone || 'bad');
+      els.extDot.className = 'status-dot ' + dotTone;
       els.extLabel.textContent = ready ? (text || 'Ready') : (text || 'Extension not detected');
+      if (els.extInstallLink) {
+        const showInstall = !ready && dotTone === 'bad';
+        els.extInstallLink.style.display = showInstall ? 'inline-flex' : 'none';
+        if (showInstall) els.extInstallLink.href = EXT_INSTALL_URL;
+      }
     }
 
     const modelCache = new Map();
@@ -3655,7 +3672,7 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
     const MAX_PING_RETRIES = 5;
 
     function sendPing() {
-      updateExtensionStatus(false, 'Pinging extension...');
+      updateExtensionStatus(false, 'Pinging extension...', 'warn');
       window.postMessage({ type: 'SUBMAKER_PING', source: 'webpage' }, '*');
 
       // Auto-retry if no response received
@@ -3667,7 +3684,7 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
           }
         }, 1000); // Retry every 1 second
       } else if (!state.extensionReady) {
-        updateExtensionStatus(false, 'Extension not detected');
+        updateExtensionStatus(false, 'Extension not detected', 'bad');
       }
     }
 
@@ -4367,6 +4384,7 @@ function generateAutoSubtitlePage(configStr, videoId, filename, config = {}) {
             <span class="label-eyebrow">Extension</span>
             <strong id="ext-label">Waiting for extension...</strong>
           </div>
+          <a class="status-action" id="ext-install-link" href="https://chromewebstore.google.com/detail/submaker-xsync/lpocanpndchjkkpgchefobjionncknjn?authuser=0&hl=en" target="_blank" rel="noopener noreferrer" style="display:none;">Install xSync (Chrome/Edge)</a>
         </div>
         <div class="status-badge">
           <span class="status-dot ok"></span>
@@ -4589,18 +4607,26 @@ function generateAutoSubtitlePage(configStr, videoId, filename, config = {}) {
       const extDot = document.getElementById('ext-dot');
       const extLabel = document.getElementById('ext-label');
       const extStatus = document.getElementById('ext-status');
+      const extInstallLink = document.getElementById('ext-install-link');
       const startBtnLabel = startBtn ? startBtn.textContent : 'Start auto-subtitles';
 
       let extensionReady = false;
       let pingRetries = 0;
       const MAX_PING_RETRIES = 5;
       let autoSubsInFlight = false;
+      const EXT_INSTALL_URL = 'https://chromewebstore.google.com/detail/submaker-xsync/lpocanpndchjkkpgchefobjionncknjn?authuser=0&hl=en';
 
-      function updateExtensionStatus(ready, text) {
+      function updateExtensionStatus(ready, text, tone) {
         extensionReady = ready;
-        if (extDot) extDot.className = 'status-dot ' + (ready ? 'ok' : 'bad');
+        const dotTone = ready ? 'ok' : (tone || 'bad');
+        if (extDot) extDot.className = 'status-dot ' + dotTone;
         if (extLabel) extLabel.textContent = ready ? (text || 'Ready') : (text || 'Extension not detected');
         if (extStatus) extStatus.title = text || '';
+        if (extInstallLink) {
+          const showInstall = !ready && dotTone === 'bad';
+          extInstallLink.style.display = showInstall ? 'inline-flex' : 'none';
+          if (showInstall) extInstallLink.href = EXT_INSTALL_URL;
+        }
       }
 
       function setAutoSubsInFlight(active) {
@@ -4621,7 +4647,7 @@ function generateAutoSubtitlePage(configStr, videoId, filename, config = {}) {
       });
 
       function sendPing() {
-        updateExtensionStatus(false, 'Pinging extension...');
+        updateExtensionStatus(false, 'Pinging extension...', 'warn');
         window.postMessage({ type: 'SUBMAKER_PING', source: 'webpage' }, '*');
 
         if (pingRetries < MAX_PING_RETRIES) {
@@ -4632,7 +4658,7 @@ function generateAutoSubtitlePage(configStr, videoId, filename, config = {}) {
             }
           }, 1000);
         } else if (!extensionReady) {
-          updateExtensionStatus(false, 'Extension not detected');
+          updateExtensionStatus(false, 'Extension not detected', 'bad');
         }
       }
 

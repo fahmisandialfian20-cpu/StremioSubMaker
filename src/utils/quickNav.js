@@ -2,7 +2,7 @@ function quickNavStyles() {
   return `
     .quick-nav {
       position: sticky;
-      top: calc(var(--theme-toggle-size, 48px) + 2rem);
+      top: 2rem;
       z-index: 10002;
       width: min(1180px, calc(100% - 56px));
       max-width: 1180px;
