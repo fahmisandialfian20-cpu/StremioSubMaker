@@ -3,7 +3,112 @@
   "messages": {
     "manifest": {
       "name": "SubMaker - Subtitle Translator",
-      "description": "All-in-one Stremio subtitles: pull from multiple providers, translate with {provider} (or your chosen provider), and deliver smooth, localized subs in your chosen languages.\n\nSource languages: {sources}\nTarget languages: {targets}"
+      "description": "Take control of your subtitles! Fetch and translate subtitles from OpenSubtitles, SubScene and SubDL with a free Gemini AI key or other AI providers, without ever leaving Stremio.\n\nSource languages: {sources}\nTarget languages: {targets}"
+    },
+    "api": {
+      "fileUpload": {
+        "missingConfig": "Missing config or videoId",
+        "loadFailed": "Failed to load file translation page"
+      }
+    },
+    "toolbox": {
+      "documentTitle": "Sub Toolbox - SubMaker",
+      "streamUnknown": "Stream filename not detected (still works)",
+      "header": {
+        "title": "SubMaker Toolbox",
+        "linked": "Linked to {id}"
+      },
+      "refresh": {
+        "title": "Jump to your latest stream",
+        "label": "Refresh stream",
+        "loading": "Refreshing...",
+        "empty": "No stream yet",
+        "error": "Refresh failed",
+        "current": "Already latest"
+      },
+      "status": {
+        "session": "Session",
+        "ready": "Ready",
+        "addon": "Addon",
+        "extension": "Extension",
+        "checking": "Checking...",
+        "localTime": "Local time",
+        "pinging": "Pinging extension...",
+        "notDetected": "Not detected",
+        "detected": "Detected"
+      },
+      "hero": {
+        "eyebrow": "Sub Toolbox",
+        "title": "Pick a tool without leaving your stream",
+        "body": "Use the Sub Toolbox button in Stremio's subtitle list. Your saved API keys, target languages, and cache come with you automatically.",
+        "primary": "Translate a file",
+        "secondary": "Adjust configs"
+      },
+      "toast": {
+        "title": "New stream detected",
+        "meta": "A different episode is playing in Stremio.",
+        "dismiss": "Dismiss notification",
+        "update": "Update"
+      },
+      "chips": {
+        "sources": "Sources",
+        "targets": "Targets",
+        "providers": "Providers",
+        "stream": "Stream"
+      },
+      "tools": {
+        "eyebrow": "Tool shelf",
+        "translate": {
+          "title": "Translate SRT files",
+          "body": "Upload .srt/.vtt/.ass files and keep cache + language preferences intact.",
+          "cta": "Translate a file"
+        },
+        "embedded": {
+          "title": "Extract + Translate",
+          "body": "Pull subtitles from the current stream or file, then translate with your provider.",
+          "cta": "Open extractor"
+        },
+        "sync": {
+          "title": "Sync subtitles",
+          "body": "Fix timing drifts with offsets or the Chrome extension and save back to your session.",
+          "cta": "Open sync studio"
+        },
+        "auto": {
+          "title": "Automatic subtitles",
+          "body": "Create subs when none exist. Uses your target language and provider settings.",
+          "cta": "Generate subs"
+        }
+      },
+      "summary": {
+        "notSet": "Not set yet"
+      },
+      "logs": {
+        "linkedChanged": "Linked stream changed. Outputs cleared; run extraction again for the new stream.",
+        "noProgress": "No extraction progress for {minutes} minute(s). Resetting extraction; please retry.",
+        "cacheSaveFailed": "Failed to save track {id} to cache: {reason}",
+        "event": "Log event",
+        "extracted": "Extracted {count} track(s).",
+        "failed": "Extraction failed: {error}",
+        "extensionMissing": "Extension not detected yet. Install SubMaker xSync and wait for detection.",
+        "pasteUrl": "Paste a stream URL first.",
+        "invalidUrl": "Invalid stream URL. Paste a full http/https link.",
+        "sentRequest": "Sent extract request ({mode}) to extension.",
+        "queueTranslation": "Queue translation",
+        "running": "{count} running",
+        "queued": "{count} queued",
+        "extracting": "Extracting via xSync…",
+        "selectSubtitle": "Select a subtitle in Step 1 outputs first.",
+        "translationQueued": "Translation already queued for {lang}.",
+        "translating": "Translating {label} -> {target}...",
+        "retranslating": "Retranslating {label} -> {target}...",
+        "binaryTrack": "Track is binary (image/bitmap); cannot translate.",
+        "translationFailed": "Translation failed",
+        "finished": "Finished {lang}",
+        "finishedCached": "Finished {lang} (cached)",
+        "translationError": "Failed {lang}: {reason}",
+        "selectTarget": "Select a target language."
+      },
+      "footnote": "Toolbox is tied to your current session and stream. Keep this tab open while streaming for the smoothest handoff."
     },
     "validation": {
       "configRequired": "Configuration is required",
@@ -89,6 +194,11 @@
       "subsourceTimeoutBody": "SubSource API did not respond in time. Try again in a few minutes or pick a different subtitle.",
       "invalidSubtitleTooSmall": "The subtitle file is too small and seems corrupted."
     },
+    "subtitleErrors": {
+      "invalidGenericReason": "The subtitle file appears to be invalid or incomplete.",
+      "downloadFailedReason": "Download failed: {reason}",
+      "addonInfoNote": "This informational subtitle was generated by the addon."
+    },
     "subtitleMenu": {
       "eyebrow": "Stream subtitles",
       "title": "Sources & Targets",
@@ -165,6 +275,84 @@
       "configure": "Configure",
       "youAreHere": "You are here"
     },
+    "config": {
+      "uiLanguageAria": "UI language",
+      "actions": {
+        "openToolbox": "Open Sub Toolbox"
+      },
+      "noTranslation": {
+        "title": "Just Fetch Subtitles (No Translation)",
+        "description": "Skip AI translation and just fetch subtitles in your chosen languages"
+      },
+      "sections": {
+        "subtitleApiTitle": "Subtitles API Keys"
+      },
+      "opensubs": {
+        "implDescription": "Choose your preferred OpenSubtitles implementation below.",
+        "implementationType": "Implementation Type",
+        "v3Title": "V3 (Default)",
+        "v3Tooltip": "V3 doesn't show all OpenSubtitles results and rate-limiting may apply.",
+        "v3Description": "Uses the official Stremio OpenSubtitles V3 addon. No authentication required, simple setup.",
+        "authTitle": "Auth (Recommended)",
+        "authDescription": "Uses your OpenSubtitles account with API key authentication. Requires username/password.",
+        "usernameLabel": "Username",
+        "passwordLabel": "Password",
+        "rateNote": "20 subtitles a day. Create a free account if you don't have one.",
+        "validateCta": "Run Test",
+        "validateTitle": "Validate OpenSubtitles credentials",
+        "showHidePassword": "Show/hide password"
+      },
+      "limits": {
+        "sourceDescription": "You can select up to {max} source language(s), but only 1 is recommended (so you have the same list order when translating). All subtitles from this language will be available for translation in the translation selector AND will be fetched (original subtitles will show up).",
+        "targetDescription": "Subtitles in target languages will be fetched AND translation buttons will appear for translating FROM the source language TO these languages. You can select up to {max} total target languages (including Learn Mode).",
+        "noTranslationDescription": "Select which languages you want to fetch subtitles in (up to {max})."
+      },
+      "validation": {
+        "sourceRequired": "Please select at least one source language",
+        "sourceRange": "Please select {min}-{max} source languages",
+        "targetLimitShort": "Please select up to {limit} target languages (including Learn Mode)",
+        "noTranslationRequired": "Please select at least one language for Just Fetch mode",
+        "noTranslationLimitShort": "Please select up to {limit} languages for Just Fetch mode",
+        "opensubsEnable": "Enable OpenSubtitles before testing credentials.",
+        "opensubsAuthMode": "Switch to Auth mode to test your credentials.",
+        "credentialsRequired": "Please enter both username and password",
+        "apiKeyRequired": "Please enter an API key",
+        "apiKeyValid": "API key is valid",
+        "testResults": "({count} test results)",
+        "connectionError": "Connection error. Please try again.",
+        "validationFailed": "Validation failed",
+        "testing": "Testing...",
+        "valid": "Valid",
+        "invalid": "Invalid",
+        "error": "Error",
+        "testCredentials": "Test Credentials",
+        "test": "Test"
+      }
+    },
+    "fileUpload": {
+      "title": "File Translation",
+      "subtitle": "Upload and translate your subtitle files",
+      "help": "Show Instructions",
+      "drop": {
+        "aria": "Upload subtitle files",
+        "browse": "Click to browse files",
+        "limit": "Select up to {max} files or drag and drop",
+        "hint": "We queue uploads and run {count} at a time to avoid rate limits.",
+        "one": "one"
+      },
+      "instructions": {
+        "title": "How It Works",
+        "formats": "Supported formats:",
+        "stepsTitle": "Steps:",
+        "step1": "Upload your subtitle file(s) (any supported format, up to {max} at once)",
+        "step2": "Select your target language",
+        "step3": "Click \"Translate\" and wait for the magic ✨",
+        "step4": "Download your translated subtitle",
+        "step5": "Drag it to Stremio 🎬",
+        "dontShow": "Don't show this again",
+        "gotIt": "Got it!"
+      }
+    },
     "xsync": {
       "popup": {
         "title": "SubMaker xSync",
@@ -229,7 +417,16 @@
       "resetFailed": "Reset failed",
       "statsReset": "Stats reset",
       "statsResetFailed": "Could not reset stats",
-      "lastSavedUnknown": "Unknown"
+      "lastSavedUnknown": "Unknown",
+      "clearStatsConfirm": "Reset popup stats (active/total sync counters)?",
+      "statusActiveCount": "{count} syncing",
+      "statusExtractingCount": "{count} extracting",
+      "themeAria": "Theme: {theme}"
+    },
+    "popup": {
+      "engineBusy": "Syncing now",
+      "engineIdle": "Standing by",
+      "themeAria": "Theme: {theme}"
     }
     }
   }

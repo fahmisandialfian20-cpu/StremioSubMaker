@@ -2129,15 +2129,15 @@ function generateFileTranslationPage(videoId, configStr, config, filename = '') 
         <header class="masthead">
             <div class="page-hero">
                 <div class="page-icon">📄</div>
-                <h1 class="page-heading">File Translation</h1>
-                <p class="page-subtitle">Upload and translate your subtitle files</p>
+                <h1 class="page-heading">${t('fileUpload.title', {}, 'File Translation')}</h1>
+                <p class="page-subtitle">${t('fileUpload.subtitle', {}, 'Upload and translate your subtitle files')}</p>
             </div>
             <div class="badge-row">
                 ${renderRefreshBadge()}
                 <div class="status-badge">
                     <span class="status-dot ok"></span>
                     <div class="status-labels">
-                        <span class="label-eyebrow">Addon</span>
+                        <span class="label-eyebrow">${t('toolbox.status.addon', {}, 'Addon')}</span>
                         <strong>v${escapeHtml(appVersion || 'n/a')}</strong>
                     </div>
                 </div>
@@ -2150,48 +2150,48 @@ function generateFileTranslationPage(videoId, configStr, config, filename = '') 
                 <div class="instructions-modal-header">
                     <div class="instructions-modal-title">
                         <span>📝</span>
-                        <span>How It Works</span>
+                        <span>${t('fileUpload.instructions.title', {}, 'How It Works')}</span>
                     </div>
                     <button class="instructions-modal-close" id="closeInstructions">×</button>
                 </div>
                 <div class="instructions-modal-content">
-                    <p><strong>✨ Supported formats:</strong> SRT, VTT, ASS, SSA</p>
+                    <p><strong>✨ ${t('fileUpload.instructions.formats', {}, 'Supported formats:')}</strong> SRT, VTT, ASS, SSA</p>
                     <br>
-                    <p><strong>📋 Steps:</strong></p>
+                    <p><strong>📋 ${t('fileUpload.instructions.stepsTitle', {}, 'Steps:')}</strong></p>
                     <ol>
-                        <li>Upload your subtitle file(s) (any supported format, up to ${maxBatchFiles} at once)</li>
-                        <li>Select your target language</li>
-                        <li>Click "Translate" and wait for the magic ✨</li>
-                        <li>Download your translated subtitle</li>
-                        <li>Drag it to Stremio 🎬</li>
+                        <li>${t('fileUpload.instructions.step1', { max: maxBatchFiles }, `Upload your subtitle file(s) (any supported format, up to ${maxBatchFiles} at once)`)}</li>
+                        <li>${t('fileUpload.instructions.step2', {}, 'Select your target language')}</li>
+                        <li>${t('fileUpload.instructions.step3', {}, 'Click "Translate" and wait for the magic ✨')}</li>
+                        <li>${t('fileUpload.instructions.step4', {}, 'Download your translated subtitle')}</li>
+                        <li>${t('fileUpload.instructions.step5', {}, 'Drag it to Stremio 🎬')}</li>
                     </ol>
                     <div class="instructions-modal-footer">
                         <label class="instructions-modal-checkbox">
                             <input type="checkbox" id="dontShowInstructions">
-                            Don't show this again
+                            ${t('fileUpload.instructions.dontShow', {}, "Don't show this again")}
                         </label>
-                        <button class="instructions-modal-btn" id="gotItBtn">Got it!</button>
+                        <button class="instructions-modal-btn" id="gotItBtn">${t('fileUpload.instructions.gotIt', {}, 'Got it!')}</button>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- Floating Help Button -->
-        <button class="help-button mario" id="showInstructions" title="Show Instructions">?</button>
+        <button class="help-button mario" id="showInstructions" title="${t('fileUpload.help', {}, 'Show Instructions')}">?</button>
 
         <div class="card">
             <form id="translationForm">
                 <div class="form-group file-drop-group">
                     <div class="file-input-wrapper">
-                        <input type="file" id="fileInput" accept=".srt,.vtt,.ass,.ssa" multiple required aria-label="Upload subtitle files">
+                        <input type="file" id="fileInput" accept=".srt,.vtt,.ass,.ssa" multiple required aria-label="${t('fileUpload.drop.aria', {}, 'Upload subtitle files')}">
                         <label for="fileInput" class="file-input-label">
                             <div class="icon">📁</div>
-                            <div class="main-text">Click to browse files</div>
-                            <div class="sub-text">Select up to ${maxBatchFiles} files or drag and drop</div>
+                            <div class="main-text">${t('fileUpload.drop.browse', {}, 'Click to browse files')}</div>
+                            <div class="sub-text">${t('fileUpload.drop.limit', { max: maxBatchFiles }, `Select up to ${maxBatchFiles} files or drag and drop`)}</div>
                         </label>
                     </div>
                     <div class="file-name" id="fileName"></div>
-                    <div class="file-hint">We queue uploads and run ${maxConcurrency === 1 ? 'one' : maxConcurrency} at a time to avoid rate limits.</div>
+                    <div class="file-hint">${t('fileUpload.drop.hint', { count: maxConcurrency === 1 ? t('fileUpload.drop.one', {}, 'one') : maxConcurrency }, `We queue uploads and run ${maxConcurrency === 1 ? 'one' : maxConcurrency} at a time to avoid rate limits.`)}</div>
                 </div>
 
                 <div class="form-group" id="sourceLangGroup" style="display: none;">

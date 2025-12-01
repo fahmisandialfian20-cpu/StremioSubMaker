@@ -453,7 +453,7 @@ async function generateSubtitleSyncPage(subtitles, videoId, streamFilename, conf
 
     // Generate language options for source (ALL languages for file upload case)
     const allAvailableLanguages = getAllLanguages();
-    let allLangOptionsHTML = '';
+    let allLangOptionsHTML = '<option value="" disabled selected>Select source language</option>';
     for (const { code, name } of allAvailableLanguages) {
         allLangOptionsHTML += `<option value="${escapeHtml(code)}">${escapeHtml(name)}</option>`;
     }
@@ -2567,6 +2567,7 @@ async function generateSubtitleSyncPage(subtitles, videoId, streamFilename, conf
         // Chrome Extension Communication
         let extensionInstalled = false;
         let pingTimer = null;
+        let pingRetryTimer = null;
         let pingAttempts = 0;
         const MAX_PINGS = 5;
         const extDot = document.getElementById('ext-dot');
@@ -2581,6 +2582,7 @@ async function generateSubtitleSyncPage(subtitles, videoId, streamFilename, conf
         const manualOffsetSummary = document.getElementById('offsetSummary');
         const fingerprintPrepassGroup = document.getElementById('fingerprintPrepassGroup');
         const fingerprintPrepassCheckbox = document.getElementById('useFingerprintPrepass');
+        const sourceLanguageSelect = document.getElementById('sourceLanguage');
 
         function setAutoSyncAvailability(enabled) {
             const primaryOptions = ['alass', 'ffsubsync', 'vosk-ctc', 'whisper-alass'];
@@ -2684,12 +2686,26 @@ async function generateSubtitleSyncPage(subtitles, videoId, streamFilename, conf
                 }
             }
             if (extStatus) extStatus.title = text || '';
+            if (ready) {
+                if (pingTimer) clearInterval(pingTimer);
+                if (pingRetryTimer) {
+                    clearTimeout(pingRetryTimer);
+                    pingRetryTimer = null;
+                }
+                setAutoSyncAvailability(true);
+            } else {
+                setAutoSyncAvailability(false);
+            }
         }
 
-        function pingExtension() {
+        function pingExtension(force = false) {
+            if (extensionInstalled && !force) return;
             updateExtensionStatus(false, 'Pinging extension...', 'warn');
-            setAutoSyncAvailability(false);
             if (pingTimer) clearInterval(pingTimer);
+            if (pingRetryTimer) {
+                clearTimeout(pingRetryTimer);
+                pingRetryTimer = null;
+            }
             pingAttempts = 0;
             const sendPing = () => {
                 if (extensionInstalled) return;
@@ -2698,6 +2714,11 @@ async function generateSubtitleSyncPage(subtitles, videoId, streamFilename, conf
                 if (pingAttempts >= MAX_PINGS && !extensionInstalled) {
                     clearInterval(pingTimer);
                     updateExtensionStatus(false, 'Extension not detected', 'bad');
+                    if (!pingRetryTimer) {
+                        pingRetryTimer = setTimeout(() => {
+                            if (!extensionInstalled) pingExtension(true);
+                        }, 8000);
+                    }
                 }
             };
             sendPing();
@@ -2745,7 +2766,15 @@ async function generateSubtitleSyncPage(subtitles, videoId, streamFilename, conf
             }
         });
 
-        // Check for extension on page load (single sequence, no retries beyond limit)
+        if (extStatus) {
+            extStatus.addEventListener('click', () => {
+                if (!extensionInstalled) {
+                    pingExtension(true);
+                }
+            });
+        }
+
+        // Kick off extension checks (will retry with a short backoff if not detected)
         setTimeout(pingExtension, 150);
 
         // Request sync from Chrome extension
@@ -3029,6 +3058,9 @@ async function generateSubtitleSyncPage(subtitles, videoId, streamFilename, conf
 
                 // Show source language selector for uploaded files
                 document.getElementById('sourceLanguageGroup').style.display = 'block';
+                if (sourceLanguageSelect) {
+                    sourceLanguageSelect.selectedIndex = 0;
+                }
 
                 enableSection('step3Section');
                 showStatus('syncStatus', 'Subtitle file loaded: ' + file.name, 'success');
@@ -3064,6 +3096,13 @@ async function generateSubtitleSyncPage(subtitles, videoId, streamFilename, conf
                 const latestStream = (streamInputEl.value || '').trim();
                 STATE.streamUrl = latestStream || STATE.streamUrl || null;
             }
+            const sourceLanguageGroup = document.getElementById('sourceLanguageGroup');
+            const needsSourceLanguage = sourceLanguageGroup && sourceLanguageGroup.style.display !== 'none';
+            const chosenSourceLanguage = needsSourceLanguage && sourceLanguageSelect ? (sourceLanguageSelect.value || '') : null;
+            if (needsSourceLanguage && !chosenSourceLanguage) {
+                showStatus('syncStatus', 'Select the subtitle language before syncing.', 'error');
+                return;
+            }
 
             try {
                 setSyncInFlight(true);
@@ -3072,6 +3111,7 @@ async function generateSubtitleSyncPage(subtitles, videoId, streamFilename, conf
 
                 if (primaryMode !== 'manual') {
                     if (!extensionInstalled) {
+                        pingExtension(true);
                         throw new Error('Autosync requires the SubMaker Chrome Extension. Please install/enable it.');
                     }
                     if (!isHttpUrl(STATE.streamUrl || '')) {
@@ -3132,15 +3172,7 @@ async function generateSubtitleSyncPage(subtitles, videoId, streamFilename, conf
 
                 // Save to cache
                 // Extract language code: use manual selection if visible (file upload), otherwise auto-detected (dropdown)
-                let sourceLanguage;
-                const sourceLanguageGroup = document.getElementById('sourceLanguageGroup');
-                if (sourceLanguageGroup && sourceLanguageGroup.style.display !== 'none') {
-                    // File was uploaded, use user-selected language
-                    sourceLanguage = document.getElementById('sourceLanguage').value;
-                } else {
-                    // Subtitle selected from dropdown, use auto-detected language
-                    sourceLanguage = STATE.selectedSubtitleLang || 'eng';
-                }
+                const sourceLanguage = (needsSourceLanguage ? chosenSourceLanguage : null) || STATE.selectedSubtitleLang || 'eng';
                 await saveSyncedSubtitle(CONFIG.videoHash, sourceLanguage, STATE.selectedSubtitleId, STATE.syncedSubtitle);
 
                 showStatus('syncStatus', 'Subtitle synced successfully!', 'success');

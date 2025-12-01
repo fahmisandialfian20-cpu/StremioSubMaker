@@ -261,6 +261,33 @@ async function getSyncedSubtitles(videoHash, languageCode) {
 }
 
 /**
+ * List all language codes that have synced subtitles for a given video hash.
+ * Falls back to scanning cache keys when indices are missing/outdated.
+ * @param {string} videoHash - Video file hash
+ * @returns {Promise<Array<string>>} - Array of language codes (normalized as stored)
+ */
+async function listSyncedLanguages(videoHash) {
+  try {
+    const adapter = await getStorageAdapter();
+    const pattern = `${videoHash}_*_`;
+    const keys = await adapter.list(StorageAdapter.CACHE_TYPES.SYNC, pattern);
+    const langs = new Set();
+
+    (keys || []).forEach((key) => {
+      const parts = (key || '').toString().split('_');
+      if (parts.length >= 3 && parts[0] === videoHash && parts[1]) {
+        langs.add(parts[1]);
+      }
+    });
+
+    return Array.from(langs);
+  } catch (error) {
+    log.warn(() => ['[Sync Cache] Failed to list languages for hash', videoHash, ':', error.message]);
+    return [];
+  }
+}
+
+/**
  * Get a specific synced subtitle
  * @param {string} videoHash - Video file hash
  * @param {string} languageCode - Language code
@@ -388,6 +415,7 @@ module.exports = {
   generateSyncCacheKey,
   saveSyncedSubtitle,
   getSyncedSubtitles,
+  listSyncedLanguages,
   getSyncedSubtitle,
   deleteSyncedSubtitle,
   getCacheStats,

@@ -391,20 +391,22 @@ function formatProviderName(name) {
     .join(' ');
 }
 
-function getLanguageSummary(config) {
+function getLanguageSummary(config, translator) {
   try {
+    const fallback = translator ? translator('toolbox.summary.notSet', {}, 'Not set yet') : 'Not set yet';
     const sources = (config.sourceLanguages || []).map(getLanguageName).filter(Boolean);
     const targets = (config.targetLanguages || []).map(getLanguageName).filter(Boolean);
     return {
-      sources: sources.length ? sources.join(', ') : 'Not set yet',
-      targets: targets.length ? targets.join(', ') : 'Not set yet'
+      sources: sources.length ? sources.join(', ') : fallback,
+      targets: targets.length ? targets.join(', ') : fallback
     };
   } catch (_) {
-    return { sources: 'Not set yet', targets: 'Not set yet' };
+    const fallback = translator ? translator('toolbox.summary.notSet', {}, 'Not set yet') : 'Not set yet';
+    return { sources: fallback, targets: fallback };
   }
 }
 
-function getProviderSummary(config) {
+function getProviderSummary(config, translator) {
   try {
     const providers = config.providers || {};
     const names = [];
@@ -429,17 +431,20 @@ function getProviderSummary(config) {
     const geminiConfigured = Boolean(config.geminiModel || config.geminiKey || config.geminiApiKey || providers.gemini);
     const geminiEnabled = providers.gemini ? providers.gemini.enabled !== false : geminiConfigured;
     if (geminiConfigured) add(formatProviderName('Gemini'), geminiEnabled);
-    return names.length ? names.join(', ') : 'Not set yet';
+    const fallback = translator ? translator('toolbox.summary.notSet', {}, 'Not set yet') : 'Not set yet';
+    return names.length ? names.join(', ') : fallback;
   } catch (_) {
-    return 'Not set yet';
+    return translator ? translator('toolbox.summary.notSet', {}, 'Not set yet') : 'Not set yet';
   }
 }
 
 function generateSubToolboxPage(configStr, videoId, filename, config) {
   const links = buildToolLinks(configStr, videoId, filename);
-  const languageSummary = getLanguageSummary(config || {});
-  const providerSummary = getProviderSummary(config || {});
-  const streamHint = filename ? escapeHtml(filename) : 'Stream filename not detected (still works)';
+  const t = getTranslator(config?.uiLanguage || 'en');
+  const languageSummary = getLanguageSummary(config || {}, t);
+  const providerSummary = getProviderSummary(config || {}, t);
+  const t = getTranslator(config?.uiLanguage || 'en');
+  const streamHint = filename ? escapeHtml(filename) : t('toolbox.streamUnknown', {}, 'Stream filename not detected (still works)');
   const videoHash = deriveVideoHash(filename, videoId);
   const devMode = (config || {}).devMode === true;
   const devDisabledClass = devMode ? '' : ' dev-disabled';
@@ -456,7 +461,7 @@ function generateSubToolboxPage(configStr, videoId, filename, config) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sub Toolbox - SubMaker</title>
+  <title>${t('toolbox.documentTitle', {}, 'Sub Toolbox - SubMaker')}</title>
   ${localeBootstrap}
   <link rel="icon" type="image/svg+xml" href="/favicon-toolbox.svg">
   <link rel="shortcut icon" href="/favicon-toolbox.svg">
@@ -1106,11 +1111,11 @@ function generateSubToolboxPage(configStr, videoId, filename, config) {
   <div id="episodeToast" class="episode-toast" role="status" aria-live="polite">
     <div class="icon">!</div>
     <div class="content">
-      <p class="title" id="episodeToastTitle">New stream detected</p>
-      <p class="meta" id="episodeToastMeta">A different episode is playing in Stremio.</p>
+      <p class="title" id="episodeToastTitle">${t('toolbox.toast.title', {}, 'New stream detected')}</p>
+      <p class="meta" id="episodeToastMeta">${t('toolbox.toast.meta', {}, 'A different episode is playing in Stremio.')}</p>
     </div>
-    <button class="close" id="episodeToastDismiss" type="button" aria-label="Dismiss notification">×</button>
-    <button class="action" id="episodeToastUpdate" type="button">Update</button>
+    <button class="close" id="episodeToastDismiss" type="button" aria-label="${t('toolbox.toast.dismiss', {}, 'Dismiss notification')}">×</button>
+    <button class="action" id="episodeToastUpdate" type="button">${t('toolbox.toast.update', {}, 'Update')}</button>
   </div>
 
   <div class="page">
@@ -1118,40 +1123,40 @@ function generateSubToolboxPage(configStr, videoId, filename, config) {
       <div class="brand">
         <img class="brand-logo" src="/logo.png" alt="SubMaker logo">
         <div>
-          <h1>SubMaker Toolbox</h1>
-          <div class="subtitle">Linked to ${escapeHtml(videoId)}</div>
+          <h1>${t('toolbox.header.title', {}, 'SubMaker Toolbox')}</h1>
+          <div class="subtitle">${t('toolbox.header.linked', { id: escapeHtml(videoId || '') }, `Linked to ${escapeHtml(videoId)}`)}</div>
         </div>
       </div>
       <div class="status-badges">
-        <button class="refresh-badge" id="refreshStreamBtn" type="button" title="Jump to your latest stream">
+        <button class="refresh-badge" id="refreshStreamBtn" type="button" title="${t('toolbox.refresh.title', {}, 'Jump to your latest stream')}">
           <span class="refresh-icon">⟳</span>
-          <span class="refresh-label">Refresh stream</span>
+          <span class="refresh-label">${t('toolbox.refresh.label', {}, 'Refresh stream')}</span>
         </button>
         <div class="status-badge accent">
           <span class="status-dot ok pulse"></span>
           <div class="labels">
-            <span class="status-label">Session</span>
-            <span class="status-value">Ready</span>
+            <span class="status-label">${t('toolbox.status.session', {}, 'Session')}</span>
+            <span class="status-value">${t('toolbox.status.ready', {}, 'Ready')}</span>
           </div>
         </div>
         <div class="status-badge">
           <span class="status-dot ok"></span>
           <div class="labels">
-            <span class="status-label">Addon</span>
+            <span class="status-label">${t('toolbox.status.addon', {}, 'Addon')}</span>
             <span class="status-value">v${escapeHtml(appVersion || 'n/a')}</span>
           </div>
         </div>
         <div class="status-badge" id="ext-badge">
           <span class="status-dot warn pulse" id="ext-dot"></span>
           <div class="labels">
-            <span class="status-label">Extension</span>
-            <a class="status-value ext-link" id="ext-value" href="https://chromewebstore.google.com/detail/submaker-xsync/lpocanpndchjkkpgchefobjionncknjn?authuser=0&hl=en" target="_blank" rel="noopener noreferrer">Checking...</a>
+            <span class="status-label">${t('toolbox.status.extension', {}, 'Extension')}</span>
+            <a class="status-value ext-link" id="ext-value" href="https://chromewebstore.google.com/detail/submaker-xsync/lpocanpndchjkkpgchefobjionncknjn?authuser=0&hl=en" target="_blank" rel="noopener noreferrer">${t('toolbox.status.checking', {}, 'Checking...')}</a>
           </div>
         </div>
         <div class="status-badge">
           <span class="status-dot ok"></span>
           <div class="labels">
-            <span class="status-label">Local time</span>
+            <span class="status-label">${t('toolbox.status.localTime', {}, 'Local time')}</span>
             <span class="status-value" id="time-value">--:--</span>
           </div>
         </div>
@@ -1160,56 +1165,56 @@ function generateSubToolboxPage(configStr, videoId, filename, config) {
 
     <section class="hero card">
       <div class="hero-content">
-        <div class="eyebrow">Sub Toolbox</div>
-        <h2>Pick a tool without leaving your stream</h2>
-        <p>Use the Sub Toolbox button in Stremio's subtitle list. Your saved API keys, target languages, and cache come with you automatically.</p>
+        <div class="eyebrow">${t('toolbox.hero.eyebrow', {}, 'Sub Toolbox')}</div>
+        <h2>${t('toolbox.hero.title', {}, 'Pick a tool without leaving your stream')}</h2>
+        <p>${t('toolbox.hero.body', {}, `Use the Sub Toolbox button in Stremio's subtitle list. Your saved API keys, target languages, and cache come with you automatically.`)}</p>
         <div class="chip-row">
-          <div class="chip">Sources <span>${escapeHtml(languageSummary.sources)}</span></div>
-          <div class="chip">Targets <span>${escapeHtml(languageSummary.targets)}</span></div>
-          <div class="chip">Providers <span>${escapeHtml(providerSummary)}</span></div>
-          <div class="chip">Stream <span>${streamHint}</span></div>
+          <div class="chip">${t('toolbox.chips.sources', {}, 'Sources')} <span>${escapeHtml(languageSummary.sources)}</span></div>
+          <div class="chip">${t('toolbox.chips.targets', {}, 'Targets')} <span>${escapeHtml(languageSummary.targets)}</span></div>
+          <div class="chip">${t('toolbox.chips.providers', {}, 'Providers')} <span>${escapeHtml(providerSummary)}</span></div>
+          <div class="chip">${t('toolbox.chips.stream', {}, 'Stream')} <span>${streamHint}</span></div>
         </div>
         <div class="cta-row">
-          <a class="button primary" href="${links.translateFiles}">Translate a file</a>
-          <a class="button ghost" href="${links.configure}">Adjust configs</a>
+          <a class="button primary" href="${links.translateFiles}">${t('toolbox.hero.primary', {}, 'Translate a file')}</a>
+          <a class="button ghost" href="${links.configure}">${t('toolbox.hero.secondary', {}, 'Adjust configs')}</a>
         </div>
       </div>
 
       <div class="tool-stack">
         <header>
-          <div class="eyebrow">Tool shelf</div>
+          <div class="eyebrow">${t('toolbox.tools.eyebrow', {}, 'Tool shelf')}</div>
         </header>
         <div class="tool-tiles">
           <a class="tool-tile" href="${links.translateFiles}">
             <div class="tool-icon">⚡</div>
             <div>
-              <div class="tool-title">Translate SRT files</div>
-              <p>Upload .srt/.vtt/.ass files and keep cache + language preferences intact.</p>
-              <span class="tool-link">Translate a file</span>
+              <div class="tool-title">${t('toolbox.tools.translate.title', {}, 'Translate SRT files')}</div>
+              <p>${t('toolbox.tools.translate.body', {}, 'Upload .srt/.vtt/.ass files and keep cache + language preferences intact.')}</p>
+              <span class="tool-link">${t('toolbox.tools.translate.cta', {}, 'Translate a file')}</span>
             </div>
           </a>
           <a class="tool-tile${devDisabledClass}" href="${devMode ? links.embeddedSubs : '#'}">
             <div class="tool-icon">🧲</div>
             <div>
-              <div class="tool-title">Extract + Translate</div>
-              <p>Pull subtitles from the current stream or file, then translate with your provider.</p>
-              <span class="tool-link">Open extractor</span>
+              <div class="tool-title">${t('toolbox.tools.embedded.title', {}, 'Extract + Translate')}</div>
+              <p>${t('toolbox.tools.embedded.body', {}, 'Pull subtitles from the current stream or file, then translate with your provider.')}</p>
+              <span class="tool-link">${t('toolbox.tools.embedded.cta', {}, 'Open extractor')}</span>
             </div>
           </a>
           <a class="tool-tile${devDisabledClass}" href="${devMode ? links.syncSubtitles : '#'}">
             <div class="tool-icon">⏱️</div>
             <div>
-              <div class="tool-title">Sync subtitles</div>
-              <p>Fix timing drifts with offsets or the Chrome extension and save back to your session.</p>
-              <span class="tool-link">Open sync studio</span>
+              <div class="tool-title">${t('toolbox.tools.sync.title', {}, 'Sync subtitles')}</div>
+              <p>${t('toolbox.tools.sync.body', {}, 'Fix timing drifts with offsets or the Chrome extension and save back to your session.')}</p>
+              <span class="tool-link">${t('toolbox.tools.sync.cta', {}, 'Open sync studio')}</span>
             </div>
           </a>
           <a class="tool-tile${devDisabledClass}" href="${devMode ? links.automaticSubs : '#'}">
             <div class="tool-icon">🤖</div>
             <div>
-              <div class="tool-title">Automatic subtitles</div>
-              <p>Create subs when none exist. Uses your target language and provider settings.</p>
-              <span class="tool-link">Generate subs</span>
+              <div class="tool-title">${t('toolbox.tools.auto.title', {}, 'Automatic subtitles')}</div>
+              <p>${t('toolbox.tools.auto.body', {}, 'Create subs when none exist. Uses your target language and provider settings.')}</p>
+              <span class="tool-link">${t('toolbox.tools.auto.cta', {}, 'Generate subs')}</span>
             </div>
           </a>
         </div>
@@ -1217,7 +1222,7 @@ function generateSubToolboxPage(configStr, videoId, filename, config) {
     </section>
 
     <div class="footnote">
-      Toolbox is tied to your current session and stream. Keep this tab open while streaming for the smoothest handoff.
+      ${t('toolbox.footnote', {}, 'Toolbox is tied to your current session and stream. Keep this tab open while streaming for the smoothest handoff.')}
     </div>
 
   </div>
@@ -1290,7 +1295,12 @@ function generateSubToolboxPage(configStr, videoId, filename, config) {
       buttonId: 'refreshStreamBtn',
       configStr: TOOLBOX.configStr,
       current: { videoId: TOOLBOX.videoId, filename: TOOLBOX.filename, videoHash: TOOLBOX.videoHash },
-      labels: { loading: 'Refreshing...', empty: 'No stream yet', error: 'Refresh failed', current: 'Already latest' },
+      labels: {
+        loading: window.t ? window.t('toolbox.refresh.loading', {}, 'Refreshing...') : 'Refreshing...',
+        empty: window.t ? window.t('toolbox.refresh.empty', {}, 'No stream yet') : 'No stream yet',
+        error: window.t ? window.t('toolbox.refresh.error', {}, 'Refresh failed') : 'Refresh failed',
+        current: window.t ? window.t('toolbox.refresh.current', {}, 'Already latest') : 'Already latest'
+      },
       buildUrl: (payload) => {
         return '/sub-toolbox?config=' + encodeURIComponent(TOOLBOX.configStr) +
           '&videoId=' + encodeURIComponent(payload.videoId || '') +
@@ -1331,7 +1341,8 @@ function generateSubToolboxPage(configStr, videoId, filename, config) {
         }
       }
       function pingExtension() {
-        setExtensionStatus(false, 'Pinging extension...', 'warn');
+        const label = window.t ? window.t('toolbox.status.pinging', {}, 'Pinging extension...') : 'Pinging extension...';
+        setExtensionStatus(false, label, 'warn');
         if (pingTimer) clearInterval(pingTimer);
         pingAttempts = 0;
         const sendPing = () => {
@@ -1340,7 +1351,8 @@ function generateSubToolboxPage(configStr, videoId, filename, config) {
           window.postMessage({ type: 'SUBMAKER_PING', source: 'webpage' }, '*');
           if (pingAttempts >= MAX_PINGS && !extReady) {
             clearInterval(pingTimer);
-            setExtensionStatus(false, 'Not detected', 'bad');
+            const notDetected = window.t ? window.t('toolbox.status.notDetected', {}, 'Not detected') : 'Not detected';
+            setExtensionStatus(false, notDetected, 'bad');
           }
         };
         sendPing();
@@ -1350,7 +1362,8 @@ function generateSubToolboxPage(configStr, videoId, filename, config) {
         const msg = event.data;
         if (!msg || msg.type !== 'SUBMAKER_PONG') return;
         if (msg.source && msg.source !== 'extension') return;
-        const version = msg.version ? 'v' + msg.version : 'Detected';
+        const detected = window.t ? window.t('toolbox.status.detected', {}, 'Detected') : 'Detected';
+        const version = msg.version ? 'v' + msg.version : detected;
         setExtensionStatus(true, version);
         if (pingTimer) clearInterval(pingTimer);
       });
@@ -2965,7 +2978,8 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       resetExtractionState(true);
       if (els.extractLog) {
         els.extractLog.innerHTML = '';
-        logExtract('Linked stream changed. Outputs cleared; run extraction again for the new stream.');
+        const label = window.t ? window.t('toolbox.logs.linkedChanged', {}, 'Linked stream changed. Outputs cleared; run extraction again for the new stream.') : 'Linked stream changed. Outputs cleared; run extraction again for the new stream.';
+        logExtract(label);
       }
       if (subtitleMenuInstance && typeof subtitleMenuInstance.updateStream === 'function') {
         subtitleMenuInstance.updateStream({
@@ -3254,11 +3268,14 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
         const queued = Math.max(0, Array.isArray(state.queue) ? state.queue.length : 0);
         if (state.translationInFlight && (running || queued)) {
           const parts = [];
-          if (running) parts.push(running + ' running');
-          if (queued) parts.push(queued + ' queued');
-          els.translateBtn.textContent = 'Queue translation (' + parts.join(', ') + ')';
+          const runningLabel = window.t ? window.t('toolbox.logs.running', { count: running }, `${running} running`) : (running + ' running');
+          const queuedLabel = window.t ? window.t('toolbox.logs.queued', { count: queued }, `${queued} queued`) : (queued + ' queued');
+          if (running) parts.push(runningLabel);
+          if (queued) parts.push(queuedLabel);
+          const baseLabel = window.t ? window.t('toolbox.logs.queueTranslation', {}, 'Queue translation') : 'Queue translation';
+          els.translateBtn.textContent = baseLabel + ' (' + parts.join(', ') + ')';
         } else if (state.translationInFlight) {
-          els.translateBtn.textContent = 'Queue translation';
+          els.translateBtn.textContent = window.t ? window.t('toolbox.logs.queueTranslation', {}, 'Queue translation') : 'Queue translation';
         } else {
           els.translateBtn.textContent = buttonLabels.translate;
         }
@@ -3270,7 +3287,8 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       extractWatchdogTimer = null;
       if (!state.extractionInFlight) return;
       const timeoutMinutes = Math.round(EXTRACT_WATCHDOG_MS / 60000);
-      logExtract('No extraction progress for ' + timeoutMinutes + ' minute(s). Resetting extraction; please retry.');
+      const label = window.t ? window.t('toolbox.logs.noProgress', { minutes: timeoutMinutes }, `No extraction progress for ${timeoutMinutes} minute(s). Resetting extraction; please retry.`) : ('No extraction progress for ' + timeoutMinutes + ' minute(s). Resetting extraction; please retry.');
+      logExtract(label);
       state.extractMessageId = null;
       state.lastProgressStatus = null;
       resetExtractionState(false);
@@ -3305,8 +3323,10 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       els.extDot.className = 'status-dot ' + dotTone;
       if (els.extLabel) {
         const label = ready
-          ? (state.extractionInFlight ? 'Extracting via xSync…' : (text || lastExtensionLabel || 'Ready'))
-          : (text || 'Extension not detected');
+          ? (state.extractionInFlight
+            ? (window.t ? window.t('toolbox.logs.extracting', {}, 'Extracting via xSync…') : 'Extracting via xSync…')
+            : (text || lastExtensionLabel || (window.t ? window.t('toolbox.status.ready', {}, 'Ready') : 'Ready')))
+          : (text || (window.t ? window.t('toolbox.logs.extensionMissing', {}, 'Extension not detected') : 'Extension not detected'));
         els.extLabel.textContent = label;
         if (ready) {
           els.extLabel.classList.add('ready');
@@ -3700,7 +3720,8 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
             })
           });
         } catch (e) {
-          logExtract('Failed to save track ' + track.id + ' to cache: ' + e.message);
+          const label = window.t ? window.t('toolbox.logs.cacheSaveFailed', { id: track.id, reason: e.message }, `Failed to save track ${track.id} to cache: ${e.message}`) : ('Failed to save track ' + track.id + ' to cache: ' + e.message);
+          logExtract(label);
         }
       }
     }
@@ -3708,12 +3729,14 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
     function scheduleTranslation(targetLang) {
       const track = state.tracks.find(t => t.id === state.selectedTrackId);
       if (!track) {
-        logTranslate('Select a subtitle in Step 1 outputs first.');
+        const label = window.t ? window.t('toolbox.logs.selectSubtitle', {}, 'Select a subtitle in Step 1 outputs first.') : 'Select a subtitle in Step 1 outputs first.';
+        logTranslate(label);
         return;
       }
       const status = state.targets[targetLang]?.status;
       if (status === 'running' || status === 'queued') {
-        logTranslate('Translation already queued for ' + targetLang + '.');
+        const label = window.t ? window.t('toolbox.logs.translationQueued', { lang: targetLang }, `Translation already queued for ${targetLang}.`) : ('Translation already queued for ' + targetLang + '.');
+        logTranslate(label);
         return;
       }
       state.targets[targetLang] = { status: 'queued', trackId: track.id };
@@ -3732,10 +3755,13 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       const isRetranslate = translatedHistory.has(historyKey) || (prior && prior.status === 'done' && String(prior.trackId) === String(track.id));
       state.targets[targetLang] = { status: 'running', trackId: track.id, retranslate: isRetranslate };
       renderTargets();
-      logTranslate((isRetranslate ? 'Retranslating ' : 'Translating ') + track.label + ' -> ' + targetLang + '...');
+      const baseKey = isRetranslate ? 'toolbox.logs.retranslating' : 'toolbox.logs.translating';
+      const translateLabel = window.t ? window.t(baseKey, { label: track.label, target: targetLang }, `${isRetranslate ? 'Retranslating' : 'Translating'} ${track.label} -> ${targetLang}...`) : ((isRetranslate ? 'Retranslating ' : 'Translating ') + track.label + ' -> ' + targetLang + '...');
+      logTranslate(translateLabel);
       if (track.binary || track.codec === 'copy') {
         state.targets[targetLang] = { status: 'failed', error: 'Binary subtitle cannot be translated' };
-        logTranslate('Track is binary (image/bitmap); cannot translate.');
+        const binaryMsg = window.t ? window.t('toolbox.logs.binaryTrack', {}, 'Track is binary (image/bitmap); cannot translate.') : 'Track is binary (image/bitmap); cannot translate.';
+        logTranslate(binaryMsg);
         state.activeTranslations--;
         renderTargets();
         renderDownloads();
@@ -3771,15 +3797,18 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
           })
         });
         const data = await resp.json();
-        if (!resp.ok || data.error) throw new Error(data.error || 'Translation failed');
+        if (!resp.ok || data.error) throw new Error(data.error || (window.t ? window.t('toolbox.logs.translationFailed', {}, 'Translation failed') : 'Translation failed'));
         translatedHistory.add(historyKey);
         state.targets[targetLang] = { status: 'done', cacheKey: data.cacheKey, trackId: track.id, retranslate: isRetranslate };
-        logTranslate('Finished ' + targetLang + (data.cached ? ' (cached)' : ''));
+        const doneKey = data.cached ? 'toolbox.logs.finishedCached' : 'toolbox.logs.finished';
+        const finishMsg = window.t ? window.t(doneKey, { lang: targetLang }, data.cached ? `Finished ${targetLang} (cached)` : `Finished ${targetLang}`) : ('Finished ' + targetLang + (data.cached ? ' (cached)' : ''));
+        logTranslate(finishMsg);
         els.reloadHint.style.display = 'block';
         renderTargets();
       } catch (e) {
         state.targets[targetLang] = { status: 'failed', error: e.message };
-        logTranslate('Failed ' + targetLang + ': ' + e.message);
+        const failMsg = window.t ? window.t('toolbox.logs.translationError', { lang: targetLang, reason: e.message }, `Failed ${targetLang}: ${e.message}`) : ('Failed ' + targetLang + ': ' + e.message);
+        logTranslate(failMsg);
         renderTargets();
       } finally {
         state.activeTranslations--;
@@ -3814,7 +3843,8 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
         updateExtensionStatus(true, 'Ready (v' + (msg.version || '-') + ')');
       } else if (msg.type === 'SUBMAKER_DEBUG_LOG') {
         const level = (msg.level || 'info').toUpperCase();
-        logExtract('[' + level + '] ' + (msg.text || 'Log event'));
+        const text = msg.text || (window.t ? window.t('toolbox.logs.event', {}, 'Log event') : 'Log event');
+        logExtract('[' + level + '] ' + text);
       } else if (msg.type === 'SUBMAKER_EXTRACT_PROGRESS') {
         refreshExtractionWatchdog();
         // Deduplicate consecutive identical progress messages to prevent spam
@@ -3849,10 +3879,12 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
           renderDownloads();
           const batchId = Date.now();
           persistOriginals(batchId);
-          logExtract('Extracted ' + state.tracks.length + ' track(s).');
+          const label = window.t ? window.t('toolbox.logs.extracted', { count: state.tracks.length }, `Extracted ${state.tracks.length} track(s).`) : ('Extracted ' + state.tracks.length + ' track(s).');
+          logExtract(label);
         } else {
           resetExtractionState(true);
-          logExtract('Extraction failed: ' + (msg.error || 'unknown error'));
+          const label = window.t ? window.t('toolbox.logs.failed', { error: msg.error || 'unknown error' }, `Extraction failed: ${msg.error || 'unknown error'}`) : ('Extraction failed: ' + (msg.error || 'unknown error'));
+          logExtract(label);
           setStep2Enabled(false);
         }
         requestExtensionReset('extract-finished');
@@ -3872,10 +3904,12 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       const tick = () => {
         if (state.extensionReady) return;
         pingRetries += 1;
-        updateExtensionStatus(false, 'Pinging extension...', 'warn');
+        const label = window.t ? window.t('toolbox.status.pinging', {}, 'Pinging extension...') : 'Pinging extension...';
+        updateExtensionStatus(false, label, 'warn');
         window.postMessage({ type: 'SUBMAKER_PING', source: 'webpage' }, '*');
         if (pingRetries >= MAX_PING_RETRIES && !state.extensionReady) {
-          updateExtensionStatus(false, 'Extension not detected', 'bad');
+          const notDetected = window.t ? window.t('toolbox.logs.extensionMissing', {}, 'Extension not detected') : 'Extension not detected';
+          updateExtensionStatus(false, notDetected, 'bad');
           return;
         }
         pingTimer = setTimeout(tick, 2000);
@@ -3885,17 +3919,20 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
 
     function requestExtraction() {
       if (!state.extensionReady) {
-        logExtract('Extension not detected yet. Install SubMaker xSync and wait for detection.');
+        const label = window.t ? window.t('toolbox.logs.extensionMissing', {}, 'Extension not detected yet. Install SubMaker xSync and wait for detection.') : 'Extension not detected yet. Install SubMaker xSync and wait for detection.';
+        logExtract(label);
         return;
       }
       if (state.extractionInFlight) return;
       const streamUrl = (els.streamUrl.value || '').trim();
       if (!streamUrl) {
-        logExtract('Paste a stream URL first.');
+        const label = window.t ? window.t('toolbox.logs.pasteUrl', {}, 'Paste a stream URL first.') : 'Paste a stream URL first.';
+        logExtract(label);
         return;
       }
       if (!new RegExp('^https?://', 'i').test(streamUrl)) {
-        logExtract('Invalid stream URL. Paste a full http/https link.');
+        const label = window.t ? window.t('toolbox.logs.invalidUrl', {}, 'Invalid stream URL. Paste a full http/https link.') : 'Invalid stream URL. Paste a full http/https link.';
+        logExtract(label);
         return;
       }
       resetExtractionState(true);
@@ -3917,7 +3954,8 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
           videoHash: getVideoHash()
         }
       }, '*');
-      logExtract('Sent extract request (' + mode + ') to extension.');
+      const label = window.t ? window.t('toolbox.logs.sentRequest', { mode }, `Sent extract request (${mode}) to extension.`) : ('Sent extract request (' + mode + ') to extension.');
+      logExtract(label);
     }
 
     // Event bindings
@@ -3925,7 +3963,8 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
     els.translateBtn.onclick = () => {
       const targetLang = state.selectedTargetLang;
       if (!targetLang) {
-        logTranslate('Select a target language.');
+        const label = window.t ? window.t('toolbox.logs.selectTarget', {}, 'Select a target language.') : 'Select a target language.';
+        logTranslate(label);
         return;
       }
       scheduleTranslation(targetLang);
@@ -4864,10 +4903,12 @@ function generateAutoSubtitlePage(configStr, videoId, filename, config = {}) {
         const tick = () => {
           if (extensionReady) return;
           pingRetries += 1;
-          updateExtensionStatus(false, 'Pinging extension...', 'warn');
+          const label = window.t ? window.t('toolbox.status.pinging', {}, 'Pinging extension...') : 'Pinging extension...';
+          updateExtensionStatus(false, label, 'warn');
           window.postMessage({ type: 'SUBMAKER_PING', source: 'webpage' }, '*');
           if (pingRetries >= MAX_PING_RETRIES && !extensionReady) {
-            updateExtensionStatus(false, 'Extension not detected', 'bad');
+            const notDetected = window.t ? window.t('toolbox.logs.extensionMissing', {}, 'Extension not detected') : 'Extension not detected';
+            updateExtensionStatus(false, notDetected, 'bad');
             return;
           }
           pingTimer = setTimeout(tick, 2000);

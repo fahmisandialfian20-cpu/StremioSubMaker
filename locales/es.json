@@ -3,7 +3,136 @@
   "messages": {
     "manifest": {
       "name": "SubMaker - Traductor de subtítulos",
-      "description": "Subtítulos todo en uno para Stremio: reúne varias fuentes, traduce con {provider} (o el proveedor que elijas) y entrega subtítulos pulidos y localizados en tus idiomas preferidos.\n\nIdiomas origen: {sources}\nIdiomas destino: {targets}"
+      "description": "¡Toma el control de tus subtítulos! Obtén y traduce subtítulos de OpenSubtitles, SubScene y SubDL con una clave gratuita de Gemini AI u otros proveedores de IA, sin salir de Stremio.\n\nIdiomas origen: {sources}\nIdiomas destino: {targets}"
+    },
+    "api": {
+      "fileUpload": {
+        "missingConfig": "Falta config o videoId",
+        "loadFailed": "No se pudo cargar la página de traducción de archivos"
+      }
+    },
+    "fileUpload": {
+      "title": "Traducción de archivos",
+      "subtitle": "Sube y traduce tus archivos de subtítulos",
+      "help": "Mostrar instrucciones",
+      "drop": {
+        "aria": "Subir archivos de subtítulos",
+        "browse": "Haz clic para buscar archivos",
+        "limit": "Selecciona hasta {max} archivos o arrastra y suelta",
+        "hint": "Ponemos en cola las subidas y ejecutamos {count} a la vez para evitar límites.",
+        "one": "uno"
+      },
+      "instructions": {
+        "title": "Cómo funciona",
+        "formats": "Formatos compatibles:",
+        "stepsTitle": "Pasos:",
+        "step1": "Sube tus archivos de subtítulos (cualquier formato compatible, hasta {max} a la vez)",
+        "step2": "Selecciona tu idioma de destino",
+        "step3": "Haz clic en \"Traducir\" y espera la magia ✨",
+        "step4": "Descarga tu subtítulo traducido",
+        "step5": "Arrástralo a Stremio 🎬",
+        "dontShow": "No mostrar de nuevo",
+        "gotIt": "¡Entendido!"
+      }
+    },
+    "toolbox": {
+      "documentTitle": "Sub Toolbox - SubMaker",
+      "streamUnknown": "Nombre de archivo de la emisión no detectado (sigue funcionando)",
+      "header": {
+        "title": "SubMaker Toolbox",
+        "linked": "Vinculado a {id}"
+      },
+      "refresh": {
+        "title": "Ir a tu emisión más reciente",
+        "label": "Actualizar emisión",
+        "loading": "Actualizando...",
+        "empty": "Sin emisión aún",
+        "error": "Falló la actualización",
+        "current": "Ya es la última"
+      },
+      "status": {
+        "session": "Sesión",
+        "ready": "Listo",
+        "addon": "Addon",
+        "extension": "Extensión",
+        "checking": "Comprobando...",
+        "localTime": "Hora local",
+        "pinging": "Haciendo ping a la extensión...",
+        "notDetected": "No detectada",
+        "detected": "Detectada"
+      },
+      "hero": {
+        "eyebrow": "Sub Toolbox",
+        "title": "Elige una herramienta sin salir de tu emisión",
+        "body": "Usa el botón Sub Toolbox en la lista de subtítulos de Stremio. Tus API keys, idiomas destino y caché llegan automáticamente.",
+        "primary": "Traducir un archivo",
+        "secondary": "Ajustar configuración"
+      },
+      "toast": {
+        "title": "Nuevo stream detectado",
+        "meta": "Se está reproduciendo un episodio diferente en Stremio.",
+        "dismiss": "Descartar notificación",
+        "update": "Actualizar"
+      },
+      "chips": {
+        "sources": "Orígenes",
+        "targets": "Destinos",
+        "providers": "Proveedores",
+        "stream": "Emisión"
+      },
+      "tools": {
+        "eyebrow": "Estante de herramientas",
+        "translate": {
+          "title": "Traducir archivos SRT",
+          "body": "Sube archivos .srt/.vtt/.ass y conserva la caché y las preferencias de idioma.",
+          "cta": "Traducir un archivo"
+        },
+        "embedded": {
+          "title": "Extraer + Traducir",
+          "body": "Extrae subtítulos de la emisión o archivo actual y tradúcelos con tu proveedor.",
+          "cta": "Abrir extractor"
+        },
+        "sync": {
+          "title": "Sincronizar subtítulos",
+          "body": "Corrige desajustes de tiempo con offsets o la extensión de Chrome y guarda en tu sesión.",
+          "cta": "Abrir estudio de sync"
+        },
+        "auto": {
+          "title": "Subtítulos automáticos",
+          "body": "Crea subtítulos cuando no existan. Usa tus idiomas destino y proveedor configurado.",
+          "cta": "Generar subtítulos"
+        }
+      },
+      "summary": {
+        "notSet": "Aún sin configurar"
+      },
+      "logs": {
+        "linkedChanged": "La emisión vinculada cambió. Se limpiaron las salidas; vuelve a extraer para la nueva emisión.",
+        "noProgress": "Sin progreso de extracción por {minutes} minuto(s). Restableciendo extracción; vuelve a intentarlo.",
+        "cacheSaveFailed": "No se pudo guardar la pista {id} en caché: {reason}",
+        "event": "Evento de registro",
+        "extracted": "Se extrajeron {count} pista(s).",
+        "failed": "La extracción falló: {error}",
+        "extensionMissing": "Extensión aún no detectada. Instala SubMaker xSync y espera la detección.",
+        "pasteUrl": "Pega primero una URL de emisión.",
+        "invalidUrl": "URL de emisión inválida. Pega un enlace http/https completo.",
+        "sentRequest": "Se envió una solicitud de extracción ({mode}) a la extensión.",
+        "queueTranslation": "Poner traducción en cola",
+        "running": "{count} en ejecución",
+        "queued": "{count} en cola",
+        "extracting": "Extrayendo vía xSync…",
+        "selectSubtitle": "Selecciona un subtítulo en las salidas del Paso 1 primero.",
+        "translationQueued": "La traducción ya está en cola para {lang}.",
+        "translating": "Traduciendo {label} -> {target}...",
+        "retranslating": "Retraduciendo {label} -> {target}...",
+        "binaryTrack": "La pista es binaria (imagen/bitmap); no se puede traducir.",
+        "translationFailed": "La traducción falló",
+        "finished": "Terminado {lang}",
+        "finishedCached": "Terminado {lang} (en caché)",
+        "translationError": "Falló {lang}: {reason}",
+        "selectTarget": "Selecciona un idioma de destino."
+      },
+      "footnote": "La Toolbox está ligada a tu sesión y emisión actual. Mantén esta pestaña abierta durante el streaming para un traspaso fluido."
     },
     "validation": {
       "configRequired": "Se requiere la configuración",
@@ -88,6 +217,11 @@
       "subsourceTimeoutTitle": "Error de descarga en SubSource (timeout)",
       "subsourceTimeoutBody": "La API de SubSource no respondió a tiempo. Intenta de nuevo en unos minutos o elige otro subtítulo.",
       "invalidSubtitleTooSmall": "El archivo de subtítulos es demasiado pequeño y parece dañado."
+    },
+    "subtitleErrors": {
+      "invalidGenericReason": "El archivo de subtítulos parece inválido o incompleto.",
+      "downloadFailedReason": "Descarga fallida: {reason}",
+      "addonInfoNote": "Este subtítulo informativo fue generado por el addon."
     },
     "subtitleMenu": {
       "eyebrow": "Subtítulos del stream",
@@ -229,7 +363,16 @@
       "resetFailed": "Falló el restablecimiento",
       "statsReset": "Estadísticas reiniciadas",
       "statsResetFailed": "No se pudieron reiniciar las estadísticas",
-      "lastSavedUnknown": "Desconocido"
+      "lastSavedUnknown": "Desconocido",
+      "clearStatsConfirm": "¿Restablecer las estadísticas del popup (contadores de sincronización activa/total)?",
+      "statusActiveCount": "{count} sincronizando",
+      "statusExtractingCount": "{count} extrayendo",
+      "themeAria": "Tema: {theme}"
+    },
+    "popup": {
+      "engineBusy": "Sincronizando ahora",
+      "engineIdle": "En espera",
+      "themeAria": "Tema: {theme}"
     }
     }
   }

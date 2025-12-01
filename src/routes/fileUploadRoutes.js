@@ -1,4 +1,5 @@
 const { generateFileTranslationPage } = require('../utils/fileUploadPageGenerator');
+const { getTranslator, loadLocale, DEFAULT_LANG } = require('../utils/i18n');
 
 /**
  * Registers routes for the file-upload translation page.
@@ -35,6 +36,8 @@ function registerFileUploadRoutes(app, { log, resolveConfigGuarded, computeConfi
 
     // Actual file translation upload page (standalone, not under /addon route)
     app.get('/file-upload', async (req, res) => {
+        const lang = (req.query.lang || req.query.uiLang || '').toString().split('-')[0] || DEFAULT_LANG;
+        const t = getTranslator(lang);
         try {
             // CRITICAL: Prevent caching to avoid cross-user config contamination (config/session in query)
             setNoStore(res);
@@ -42,7 +45,7 @@ function registerFileUploadRoutes(app, { log, resolveConfigGuarded, computeConfi
             const { config: configStr, videoId, filename } = req.query;
 
             if (!configStr || !videoId) {
-                return res.status(400).send('Missing config or videoId');
+                return res.status(400).send(t('api.fileUpload.missingConfig', {}, 'Missing config or videoId'));
             }
 
             const config = await resolveConfigGuarded(configStr, req, res, '[File Upload Page] config');
@@ -58,7 +61,11 @@ function registerFileUploadRoutes(app, { log, resolveConfigGuarded, computeConfi
         } catch (error) {
             if (respondStorageUnavailable && respondStorageUnavailable(res, error, '[File Upload Page]')) return;
             log.error(() => '[File Upload Page] Error:', error);
-            res.status(500).send('Failed to load file translation page');
+            const uiLang = (() => {
+                try { return loadLocale(req.query.lang || req.query.uiLang || DEFAULT_LANG).lang || DEFAULT_LANG; } catch (_) { return DEFAULT_LANG; }
+            })();
+            const tx = getTranslator(uiLang);
+            res.status(500).send(tx('api.fileUpload.loadFailed', {}, 'Failed to load file translation page'));
         }
     });
 }
