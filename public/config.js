@@ -215,7 +215,7 @@
             labelKey: 'config.uiLanguages.en.label',
             flagKey: 'config.uiLanguages.en.flag',
             fallbackLabel: 'English',
-            fallbackFlag: '🇺🇸'
+            fallbackFlag: 'US'
         },
         {
             value: 'es',
@@ -223,6 +223,20 @@
             flagKey: 'config.uiLanguages.es.flag',
             fallbackLabel: 'Spanish',
             fallbackFlag: 'ES'
+        },
+        {
+            value: 'pt-br',
+            labelKey: 'config.uiLanguages.pt-br.label',
+            flagKey: 'config.uiLanguages.pt-br.flag',
+            fallbackLabel: 'Portuguese (Brazil)',
+            fallbackFlag: 'BR'
+        },
+        {
+            value: 'ar',
+            labelKey: 'config.uiLanguages.ar.label',
+            flagKey: 'config.uiLanguages.ar.flag',
+            fallbackLabel: 'Arabic',
+            fallbackFlag: 'SA'
         }
     ];
     const KEY_OPTIONAL_PROVIDERS = new Set(['googletranslate']);

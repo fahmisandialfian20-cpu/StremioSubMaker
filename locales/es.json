@@ -487,6 +487,14 @@
         "es": {
           "label": "Español",
           "flag": "ES"
+        },
+        "pt-br": {
+          "label": "Portugués (Brasil)",
+          "flag": "BR"
+        },
+        "ar": {
+          "label": "Árabe",
+          "flag": "SA"
         }
       },
       "heroTitle": "SubMaker",

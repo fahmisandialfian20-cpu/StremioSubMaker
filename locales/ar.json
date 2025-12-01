@@ -1,0 +1,1452 @@
+{
+  "_comment_do_not_translate": [
+    "SubMaker",
+    "Sub Toolbox",
+    "Toolbox",
+    "Tool shelf",
+    "Learn Mode",
+    "Learn Mode labels (e.g., Learn {language})",
+    "Learn (Language) entries (\"Learn <Language>\")",
+    "SubMaker xSync",
+    "SubMaker Link",
+    "OpenSubtitles",
+    "SubScene",
+    "SubDL",
+    "SubSource",
+    "Gemini (all model names)",
+    "Stremio",
+    "Addon",
+    "Extension",
+    "Autosync"
+  ],
+  "lang": "ar",
+  "messages": {
+    "common": {
+      "selectOption": "اختر خياراً"
+    },
+    "manifest": {
+      "name": "SubMaker - مترجم الترجمات",
+      "description": "تحكم في ترجماتك! اجلب وترجم ملفات الترجمة من OpenSubtitles و SubScene و SubDL باستخدام مفتاح Gemini AI مجاني أو مزودي ذكاء اصطناعي آخرين، دون مغادرة Stremio أبدًا.\n\nلغات المصدر: {sources}\nلغات الهدف: {targets}"
+    },
+    "api": {
+      "fileUpload": {
+        "missingConfig": "الإعدادات أو videoId مفقود",
+        "loadFailed": "فشل تحميل صفحة ترجمة الملفات"
+      }
+    },
+    "server": {
+      "errors": {
+        "storageUnavailable": "تخزين الجلسة غير متاح مؤقتاً، يرجى إعادة المحاولة.",
+        "configPayloadTooLarge": "حجم بيانات الإعدادات كبير جداً",
+        "originNotAllowed": "المصدر غير مسموح به",
+        "stremioOnly": "تم رفض الوصول. يجب الوصول إلى هذه الإضافة من خلال Stremio.",
+        "stremioHint": "إذا كنت تستخدم Stremio وترى هذا الخطأ، يرجى الإبلاغ عنه كخطأ برمجي.",
+        "browserCorsBlocked": "الطلبات عبر النطاقات (Cross-origin) المستندة إلى المتصفح لمسار API هذا غير مسموح بها. يرجى استخدام عميل Stremio.",
+        "invalidConfigId": "معرف تكوين الإضافة غير صالح",
+        "languagesFailed": "فشل في الحصول على اللغات",
+        "localeFailed": "فشل تحميل اللغة المحلية",
+        "missingConfig": "الإعدادات مفقودة",
+        "invalidConfig": "إعدادات غير صالحة أو منتهية الصلاحية",
+        "streamActivityFailed": "فشل قراءة نشاط البث",
+        "apiKeyRequired": "مفتاح API مطلوب",
+        "invalidSessionToken": "رمز الجلسة غير صالح أو منتهي الصلاحية",
+        "modelsFailed": "فشل جلب النماذج: {reason}",
+        "cloudflareTokenRequired": "رمز Cloudflare Workers AI مطلوب",
+        "cloudflareAccountRequired": "معرف حساب Cloudflare Workers AI مطلوب. قدم مفتاح API بصيغة ACCOUNT_ID|TOKEN.",
+        "cloudflareCredentialsMissing": "بيانات اعتماد Cloudflare Workers AI مفقودة. استخدم الصيغة ACCOUNT_ID|TOKEN.",
+        "unsupportedProvider": "مزود غير مدعوم",
+        "requestTimedOut": "انتهت مهلة الطلب (7 ثوانٍ)",
+        "invalidApiKeyAuth": "مفتاح API غير صالح - فشلت المصادقة",
+        "requestFailed": "فشل الطلب",
+        "invalidApiKey": "مفتاح API غير صالح",
+        "usernamePasswordRequired": "اسم المستخدم وكلمة المرور مطلوبان",
+        "noTokenReceived": "لم يتم استلام أي رمز - قد تكون بيانات الاعتماد غير صالحة",
+        "invalidCredentials": "اسم المستخدم أو كلمة المرور غير صالحة",
+        "invalidRequestFormat": "تنسيق الطلب غير صالح",
+        "sessionCreateFailed": "فشل إنشاء الجلسة",
+        "sessionUpdateFailed": "فشل تحديث الجلسة",
+        "sessionStatsFailed": "فشل الحصول على إحصائيات الجلسة",
+        "sessionTokenFormat": "تنسيق رمز الجلسة غير صالح",
+        "sessionNotFound": "الجلسة غير موجودة",
+        "sessionValidateFailed": "فشل التحقق من الجلسة",
+        "sessionFetchFailed": "فشل جلب تكوين الجلسة",
+        "sessionNotFoundReason": "الجلسة غير موجودة أو منتهية الصلاحية",
+        "sessionConfigCorrupted": "حمولة التكوين كانت فارغة أو تالفة (empty_config_00)",
+        "translateFileMissingContent": "محتوى الترجمة مطلوب",
+        "translateFileMissingTarget": "لغة الهدف مطلوبة",
+        "translateFileMissingConfig": "الإعدادات مطلوبة",
+        "translateFileError": "فشلت الترجمة: {reason}",
+        "subtitleNotFound": "ملف الترجمة غير موجود",
+        "errorSubtitleUnavailable": "ملف الترجمة (الخطأ) غير متاح",
+        "subtitleSelectorFailed": "فشل تحميل محدد الترجمات",
+        "translationInProgress": "الترجمة قيد التقدم بالفعل؛ بانتظار الطلب الأساسي.",
+        "translationInvalidContent": "أعادت الترجمة محتوى غير صالح",
+        "translationFailed": "فشلت الترجمة: {reason}",
+        "learnFailed": "فشل بناء ترجمات التعلم",
+        "subToolboxLoadFailed": "فشل تحميل صندوق أدوات الترجمة",
+        "missingConfigOrVideo": "الإعدادات أو videoId مفقود",
+        "subToolboxPageFailed": "فشل تحميل صفحة صندوق أدوات الترجمة",
+        "embeddedPageFailed": "فشل تحميل صفحة الترجمات المدمجة",
+        "autoSubsPageFailed": "فشل تحميل صفحة الترجمات التلقائية",
+        "configPageFailed": "فشل تحميل صفحة الإعدادات",
+        "subtitleSyncPageFailed": "فشل تحميل صفحة مزامنة الترجمة",
+        "syncedSubtitleNotFound": "الترجمة المتزامنة غير موجودة",
+        "downloadSyncedFailed": "فشل تحميل الترجمة المتزامنة",
+        "invalidEmbeddedParams": "معلمات الترجمة المدمجة غير صالحة",
+        "translatedEmbeddedMissing": "الترجمة المدمجة المترجمة غير موجودة",
+        "downloadEmbeddedFailed": "فشل تحميل الترجمة المدمجة",
+        "originalEmbeddedMissing": "الترجمة المدمجة الأصلية غير موجودة",
+        "downloadEmbeddedOriginalFailed": "فشل تحميل الترجمة المدمجة الأصلية",
+        "missingFields": "حقول مطلوبة مفقودة",
+        "missingOrInvalidFields": "حقول مطلوبة مفقودة أو غير صالحة",
+        "embeddedTooLarge": "الترجمة المدمجة كبيرة جداً",
+        "subtitleTooLarge": "محتوى الترجمة كبير جداً",
+        "originalEmbeddedRequired": "الترجمة المدمجة الأصلية مطلوبة: أرسل المحتوى أو قم بتمكين KEEP_EMBEDDED_ORIGINALS=true",
+        "saveSyncedFailed": "فشل حفظ الترجمة المتزامنة",
+        "saveEmbeddedFailed": "فشل حفظ الترجمة المدمجة",
+        "translateEmbeddedFailed": "فشل ترجمة الترجمة المدمجة: {reason}",
+        "manifestFailed": "فشل إنشاء manifest",
+        "subtitleUnavailable": "خطأ: الترجمة غير متاحة",
+        "translationUnavailable": "خطأ: الترجمة غير متاحة",
+        "fileTranslationPageFailed": "فشل تحميل صفحة ترجمة الملفات",
+        "internalServerError": "خطأ داخلي في الخادم"
+      },
+      "session": {
+        "configRequired": "الإعدادات مطلوبة",
+        "usingBase64Localhost": "استخدام ترميز base64 للمضيف المحلي (localhost)",
+        "tokenRequired": "رمز الجلسة مطلوب",
+        "createdBase64Localhost": "تم إنشاء رمز base64 جديد للمضيف المحلي (localhost)",
+        "expiredCreated": "الجلسة منتهية أو غير موجودة، تم إنشاء جلسة جديدة",
+        "updateSuccess": "تم تحديث تكوين الجلسة بنجاح"
+      },
+      "validation": {
+        "apiError": "خطأ API: {reason}",
+        "apiKeyValid": "مفتاح API صالح",
+        "apiKeyAppearsValid": "يبدو أن مفتاح API صالح",
+        "credentialsValid": "بيانات الاعتماد صالحة"
+      },
+      "sync": {
+        "saveSuccess": "تم حفظ الترجمة المتزامنة بنجاح"
+      },
+      "selector": {
+        "title": "اختر الترجمة لترجمتها",
+        "heading": "ترجم إلى {target}",
+        "subheader": "اختر ترجمة من {sources} لترجمتها",
+        "empty": "لا توجد ترجمات متاحة للغة {sources}"
+      }
+    },
+    "apiErrors": {
+      "rateLimit": "تم تجاوز حد المعدل لخدمة {service}. يرجى الانتظار بضع دقائق والمحاولة مرة أخرى.",
+      "serviceUnavailable": "خدمة {service} غير متاحة مؤقتاً. يرجى المحاولة مرة أخرى خلال بضع دقائق.",
+      "databaseUnavailable": "قاعدة بيانات خادم الترجمات غير متاحة مؤقتاً. جاري تجربة الترجمة التالية...",
+      "authFailed": "فشلت المصادقة. يرجى التحقق من بيانات اعتماد API الخاصة بك.",
+      "notFound": "المورد غير موجود. قد يكون المحتوى المطلوب قد تمت إزالته.",
+      "serverError": "أعادت خدمة {service} خطأ في الخادم. يرجى المحاولة مرة أخرى لاحقاً.",
+      "opensubsQuota": "تم الوصول إلى الحد اليومي للتحميل من OpenSubtitles (20 كل 24 ساعة). حاول مرة أخرى بعد منتصف الليل بتوقيت UTC.",
+      "invalidRequest": "طلب غير صالح. يرجى التحقق من الإعدادات.",
+      "timeout": "انتهت مهلة الطلب. يرجى المحاولة مرة أخرى.",
+      "network": "فشل الاتصال بالشبكة. يرجى التحقق من اتصال الإنترنت الخاص بك.",
+      "dns": "لا يمكن الوصول للخدمة. فشل بحث DNS."
+    },
+    "toolbox": {
+      "documentTitle": "صندوق أدوات الترجمة - SubMaker",
+      "streamUnknown": "لم يتم اكتشاف اسم ملف البث (لا يزال يعمل)",
+      "header": {
+        "title": "صندوق أدوات SubMaker",
+        "linked": "مرتبط بـ {id}"
+      },
+      "refresh": {
+        "title": "انتقل إلى آخر بث قمت بتشغيله",
+        "label": "تحديث البث",
+        "loading": "جاري التحديث...",
+        "empty": "لا يوجد بث حتى الآن",
+        "error": "فشل التحديث",
+        "current": "الأحدث بالفعل"
+      },
+      "status": {
+        "session": "الجلسة",
+        "ready": "جاهز",
+        "addon": "الإضافة",
+        "extension": "الامتداد (Extension)",
+        "checking": "جاري التحقق...",
+        "localTime": "التوقيت المحلي",
+        "pinging": "جاري الاتصال بالامتداد...",
+        "notDetected": "لم يتم الاكتشاف",
+        "detected": "تم الاكتشاف"
+      },
+      "hero": {
+        "eyebrow": "صندوق أدوات الترجمة",
+        "title": "اختر أداة دون مغادرة البث",
+        "body": "استخدم زر صندوق الأدوات في قائمة ترجمات Stremio. ستنتقل معك مفاتيح API المحفوظة، ولغات الهدف، والذاكرة المؤقتة تلقائياً.",
+        "primary": "ترجمة ملف",
+        "secondary": "ضبط الإعدادات"
+      },
+      "toast": {
+        "title": "تم اكتشاف بث جديد",
+        "meta": "يتم تشغيل حلقة مختلفة في Stremio.",
+        "dismiss": "تجاهل الإشعار",
+        "update": "تحديث"
+      },
+      "chips": {
+        "sources": "المصادر",
+        "targets": "الأهداف",
+        "providers": "المزودين",
+        "stream": "البث"
+      },
+      "tools": {
+        "eyebrow": "رف الأدوات",
+        "translate": {
+          "title": "ترجمة ملفات SRT",
+          "body": "ارفع ملفات .srt/.vtt/.ass مع الحفاظ على الذاكرة المؤقتة وتفضيلات اللغة.",
+          "cta": "ترجمة ملف"
+        },
+        "embedded": {
+          "title": "استخراج + ترجمة",
+          "body": "سحب الترجمات من البث أو الملف الحالي، ثم ترجمتها باستخدام المزود الخاص بك.",
+          "cta": "فتح المستخرج"
+        },
+        "sync": {
+          "title": "مزامنة الترجمات",
+          "body": "إصلاح انحراف التوقيت باستخدام الإزاحات أو امتداد Chrome وحفظها مرة أخرى في جلستك.",
+          "cta": "فتح استوديو المزامنة"
+        },
+        "auto": {
+          "title": "ترجمات تلقائية",
+          "body": "إنشاء ترجمات عند عدم وجودها. يستخدم لغة الهدف وإعدادات المزود الخاصة بك.",
+          "cta": "توليد ترجمات"
+        }
+      },
+      "summary": {
+        "notSet": "لم يتم التعيين بعد"
+      },
+      "logs": {
+        "linkedChanged": "تم تغيير البث المرتبط. تم مسح المخرجات؛ قم بتشغيل الاستخراج مرة أخرى للبث الجديد.",
+        "noProgress": "لا يوجد تقدم في الاستخراج لمدة {minutes} دقيقة/دقائق. إعادة تعيين الاستخراج؛ يرجى المحاولة مرة أخرى.",
+        "cacheSaveFailed": "فشل حفظ المسار {id} في الذاكرة المؤقتة: {reason}",
+        "event": "سجل الحدث",
+        "extracted": "تم استخراج {count} مسار (مسارات).",
+        "failed": "فشل الاستخراج: {error}",
+        "extensionMissing": "لم يتم اكتشاف الامتداد بعد. قم بتثبيت SubMaker xSync وانتظر الاكتشاف.",
+        "pasteUrl": "الصق رابط البث أولاً.",
+        "invalidUrl": "رابط بث غير صالح. الصق رابط http/https كامل.",
+        "sentRequest": "تم إرسال طلب استخراج ({mode}) إلى الامتداد.",
+        "queueTranslation": "جدولة الترجمة",
+        "running": "{count} قيد التشغيل",
+        "queued": "{count} في الانتظار",
+        "extracting": "جاري الاستخراج عبر xSync...",
+        "selectSubtitle": "اختر ترجمة في مخرجات الخطوة 1 أولاً.",
+        "translationQueued": "الترجمة مجدولة بالفعل للغة {lang}.",
+        "translating": "جاري ترجمة {label} -> {target}...",
+        "retranslating": "جاري إعادة ترجمة {label} -> {target}...",
+        "binaryTrack": "المسار ثنائي (صورة/نقطي)؛ لا يمكن ترجمته.",
+        "translationFailed": "فشلت الترجمة",
+        "finished": "اكتمل {lang}",
+        "finishedCached": "اكتمل {lang} (من الذاكرة المؤقتة)",
+        "translationError": "فشل {lang}: {reason}",
+        "selectTarget": "اختر لغة الهدف."
+      },
+      "downloads": {
+        "selectPrompt": "اختر ترجمة في مخرجات الخطوة 1 لفتح هذه الخطوة.",
+        "trackLabel": "المسار {id}",
+        "lang": "اللغة: {lang}",
+        "codec": "الترميز: {codec}",
+        "meta": "اللغة: {lang} - الترميز: {codec} - الحجم: {size}",
+        "original": "تحميل الأصل",
+        "translated": "تحميل المترجم",
+        "unknownSize": "حجم غير معروف",
+        "unitB": "بايت",
+        "unitKB": "كيلوبايت",
+        "unitMB": "ميجابايت",
+        "unitGB": "جيجابايت",
+        "download": "تحميل",
+        "selected": "محدد",
+        "useForStep2": "استخدام للخطوة 2",
+        "translatedLabel": "المترجم {lang} (المسار {track})"
+      },
+      "autoSubs": {
+        "documentTitle": "ترجمات تلقائية - SubMaker",
+        "heroTitle": "ترجمات تلقائية",
+        "heroSubtitle": "توليد ترجمات باستخدام Whisper ثم ترجمتها",
+        "badges": {
+          "hash": "تجزئة (Hash)",
+          "versionFallback": "غير متاح",
+          "pending": "قيد الانتظار"
+        },
+        "extension": {
+          "waiting": "بانتظار الامتداد...",
+          "notDetected": "لم يتم اكتشاف الامتداد",
+          "ready": "جاهز",
+          "readyVersion": "جاهز (v{version})",
+          "readyWithVersion": "جاهز (v{version})"
+        },
+        "sections": {
+          "setup": "ربط البث وتجهيز النموذج",
+          "run": "تشغيل المسار ومراجعة المخرجات"
+        },
+        "steps": {
+          "step1Chip": "الخطوة 1",
+          "step1Title": "إدخال الصوت أو الفيديو",
+          "streamLabel": "رابط البث / الملف",
+          "streamPlaceholder": "https://example.com/video.mkv",
+          "streamNote": "سنقوم بجلب واستخراج الصوت؛ التدفقات المحمية/DRM لن تعمل.",
+          "prefill": "استخدام معرف البث المقدم",
+          "clear": "مسح",
+          "step2Chip": "الخطوة 2",
+          "step2Title": "اللغة + النموذج",
+          "sourceLabel": "لغة المصدر (اختياري)",
+          "autoDetect": "كشف تلقائي",
+          "targetLabel": "لغة الهدف",
+          "modelLabel": "نموذج Whisper",
+          "modelTiny": "tiny (الأسرع)",
+          "modelSmall": "small",
+          "modelMedium": "medium (متوازن)",
+          "modelTurbo": "turbo (GPU)",
+          "diarization": "تمييز المتحدثين (Diarization)",
+          "translateOutput": "ترجم إلى لغات الهدف",
+          "step3Chip": "الخطوة 3",
+          "step3Title": "تشغيل المسار",
+          "pipeline": "سنقوم بالربط: جلب -> تجزئة -> تفريغ صوتي -> محاذاة -> ترجمة (اختياري) -> تسليم SRT.",
+          "step4Chip": "الخطوة 4",
+          "step4Title": "المخرجات",
+          "generatedSrt": "ملف SRT المولد",
+          "downloads": "التحميلات",
+          "downloadsNote": "سنقوم بتمكين التحميلات بعد انتهاء المسار.",
+          "fetchPill": "جلب البث",
+          "transcribePill": "تفريغ صوتي",
+          "alignPill": "محاذاة + طوابع زمنية",
+          "translatePill": "ترجمة",
+          "deliverPill": "جاهز للتسليم"
+        },
+        "actions": {
+          "start": "بدء الترجمات التلقائية",
+          "preview": "معاينة الخطة",
+          "progress": "التقدم",
+          "downloadSrt": "تحميل SRT",
+          "downloadVtt": "تحميل VTT"
+        },
+        "options": {
+          "addTargets": "أضف لغات الهدف في الإعدادات"
+        },
+        "status": {
+          "awaiting": "بانتظار الإدخال...",
+          "running": "جاري التشغيل...",
+          "ok": "تم",
+          "fetching": "جاري جلب البث...",
+          "transcribing": "جاري التفريغ الصوتي باستخدام Whisper ({model})",
+          "aligning": "جاري محاذاة وتنظيف الطوابع الزمنية",
+          "translating": "جاري الترجمة إلى {target}",
+          "skipTranslate": "تخطي الترجمة",
+          "preparing": "تجهيز التحميلات",
+          "sample": "1\n00:00:00,000 --> 00:00:02,000\n[عينة ترجمة مولدة بواسطة Whisper]\n",
+          "done": "تم. جاهز للتحميل.",
+          "previewPlan": "المسار: جلب -> تفريغ صوتي -> محاذاة -> ترجمة -> تسليم.",
+          "noOutput": "لا توجد مخرجات بعد.",
+          "translateFallbackTarget": "الأهداف"
+        }
+      },
+      "footnote": "صندوق الأدوات مرتبط بجلستك والبث الحالي. اترك علامة التبويب هذه مفتوحة أثناء البث لأفضل تجربة."
+    },
+    "validation": {
+      "configRequired": "الإعدادات مطلوبة",
+      "mainProviderMissing": "يجب اختيار المزود الرئيسي",
+      "mainProviderGeminiMissing": "مفتاح Gemini API والنموذج مطلوبان للمزود الرئيسي",
+      "mainProviderConfigured": "مفتاح API، والنموذج، وحالة التمكين مطلوبة للمزود الرئيسي '{provider}'",
+      "secondaryMissing": "يجب اختيار المزود الثانوي عند التمكين",
+      "secondaryDifferent": "يجب أن يكون المزود الثانوي مختلفاً عن المزود الرئيسي",
+      "secondaryGemini": "مفتاح Gemini API والنموذج مطلوبان للمزود الثانوي",
+      "secondaryConfigured": "مفتاح API، والنموذج، وحالة التمكين مطلوبة للمزود الثانوي '{provider}'",
+      "atLeastOneProvider": "يجب تمكين مزود ذكاء اصطناعي واحد على الأقل مع مفتاح API ونموذج",
+      "secondaryTwoProviders": "يتطلب المزود الثانوي تكوين اثنين من مزودي الذكاء الاصطناعي بمفاتيح API",
+      "noTranslationMissing": "يجب اختيار لغة واحدة على الأقل لعدم الترجمة (جلب فقط)",
+      "noTranslationLimit": "الحد الأقصى المسموح به للغات عدم الترجمة هو {limit}",
+      "sourceMissing": "يجب اختيار لغة مصدر واحدة على الأقل",
+      "sourceLimit": "الحد الأقصى المسموح به للغات المصدر هو {limit}",
+      "targetMissing": "يجب اختيار لغة هدف واحدة على الأقل",
+      "targetLimit": "الحد الأقصى المسموح به لإجمالي لغات الهدف هو {limit} (بما في ذلك وضع التعلم)",
+      "learnTargetMissing": "يتطلب وضع التعلم لغة هدف واحدة على الأقل",
+      "sessionTokenError": "خطأ في التكوين: رمز الجلسة غير موجود أو منتهي الصلاحية. يرجى إعادة تكوين الإضافة للاستمرار في استخدامها."
+    },
+    "subtitle": {
+      "loadingTitle": "الترجمة قيد التنفيذ",
+      "loadingBody": "انقر لإعادة التحميل. ستظهر النتائج الجزئية بمجرد جاهزيتها.",
+      "loadingTail": "أعد تحميل هذه الترجمة لاحقاً للحصول على المزيد",
+      "infoNote": "هذه الترجمة الإعلامية تم توليدها بواسطة الإضافة.",
+      "sessionErrorTitle": "خطأ في التكوين",
+      "sessionErrorBody": "رمز الجلسة الخاص بك غير موجود أو انتهت صلاحيته.",
+      "sessionErrorAdvice": "يرجى إعادة تكوين وتثبيت الإضافة.",
+      "sessionErrorQuickFix": "إصلاح سريع: افتح هذا الرابط لإعادة التثبيت بإعدادات جديدة:",
+      "sessionErrorToken": "تم إنشاء إعدادات جديدة. استخدم هذا الرمز لإعادة التثبيت:",
+      "sessionErrorFooter": "هناك خطأ ما أو أن تحديثاً قد كسر إعدادات SubMaker الخاصة بك. نعتذر! يرجى إعادة تكوين وتثبيت الإضافة.",
+      "osAuthFailTitle": "فشل تسجيل الدخول إلى OpenSubtitles",
+      "osAuthFailBody": "يرجى إصلاح اسم المستخدم/كلمة المرور في إعدادات الإضافة",
+      "osQuotaTitle": "تم الوصول إلى الحد اليومي للتحميل من OpenSubtitles",
+      "osQuotaBody": "لقد قمت بتحميل 20 ترجمة مسموح بها في آخر 24 ساعة. انتظر حتى منتصف الليل بتوقيت UTC (00:00) أو قم بالتغيير إلى V3 في صفحة الإعدادات.",
+      "osAuthMissingTitle": "بيانات اعتماد OpenSubtitles مطلوبة",
+      "osAuthMissingBody": "أضف اسم مستخدم/كلمة مرور OpenSubtitles في إعدادات الإضافة أو قم بالتبديل إلى V3 (لا يتطلب تسجيل دخول).",
+      "osV3RateTitle": "خطأ تحميل OpenSubtitles V3 (429)",
+      "osV3RateBody": "طلبات كثيرة جداً لخدمة V3. يرجى الانتظار بضع دقائق والمحاولة مرة أخرى.",
+      "osV3UnavailableTitle": "خطأ تحميل OpenSubtitles V3 (503)",
+      "osV3UnavailableBody": "الخدمة غير متاحة مؤقتاً. حاول مرة أخرى خلال بضع دقائق.",
+      "invalidSubtitleTitle": "تم اكتشاف مشكلة في الترجمة",
+      "providerDownloadFailTitle": "فشل تحميل {service}",
+      "providerDownloadFailBody": "{reason}\\nجرب ترجمة مختلفة أو مزوداً آخر.",
+      "concurrencyLimitTitle": "عدد كبير جداً من الترجمات المتزامنة لهذا المستخدم (الحد: {limit}).",
+      "concurrencyLimitBody": "يرجى الانتظار حتى تنتهي إحداها، ثم حاول مرة أخرى.",
+      "translationFailed": "فشلت الترجمة",
+      "translationUnexpected": "حدث خطأ غير متوقع أثناء الترجمة.",
+      "translationRetry": "حدث خطأ غير متوقع.\\nانقر على هذه الترجمة مرة أخرى لإعادة المحاولة.",
+      "translationAuth": "فشلت الترجمة: خطأ في المصادقة (403)",
+      "translationAuthBody": "مفتاح Gemini API غير صالح أو مرفوض.\\nيرجى التحقق من صحة مفتاح API.",
+      "translationAuthRetry": "قم بتحديث مفتاح Gemini API في إعدادات الإضافة،\\nثم أعد تثبيت الإضافة وحاول مرة أخرى.",
+      "translationOverload": "فشلت الترجمة: الخدمة مثقلة (503)",
+      "translationOverloadBody": "واجهة Gemini API مثقلة بالطلبات مؤقتاً.\\nعادةً ما يكون هذا مؤقتاً ويتم حله خلال دقائق.",
+      "translationOverloadRetry": "(503) الخدمة غير متاحة - انتظر لحظة لتعافي Gemini،\\nثم انقر على هذه الترجمة مرة أخرى لإعادة المحاولة.",
+      "translationRateLimit": "فشلت الترجمة: تم الوصول إلى حد الاستخدام (429)",
+      "translationRateLimitBody": "تم تجاوز حد استخدام Gemini API الخاص بك.\\nقد يكون هذا حداً للمعدل أو حداً للحصة.",
+      "translationRateLimitRetry": "(429) حد معدل/حصة API - تقوم Gemini API بتقييد طلبات مفتاح API الخاص بك.\\nانتظر بضع دقائق، ثم انقر مرة أخرى لإعادة المحاولة.",
+      "translationTooLarge": "فشلت الترجمة: المحتوى كبير جداً",
+      "translationTooLargeBody": "ملف الترجمة كبير جداً للترجمة الواحدة.\\nحاول النظام تقسيمه ولكنه لا يزال يتجاوز الحدود.",
+      "translationTooLargeRetry": "(MAX_TOKENS) حاول ترجمة ملف ترجمة مختلف.\\nقد يساعد نموذج آخر. يرجى إعلامنا إذا استمرت المشكلة.",
+      "translationFiltered": "فشلت الترجمة: تمت تصفية المحتوى",
+      "translationFilteredBody": "تم حظر محتوى الترجمة بواسطة مرشحات الأمان.\\nهذا نادر وعادة ما يكون إيجابياً كاذباً.",
+      "translationFilteredRetry": "(PROHIBITED_CONTENT) تمت تصفية محتوى الترجمة بواسطة Gemini.\\nيرجى إعادة المحاولة، أو تجربة ترجمة مختلفة من القائمة.",
+      "translationInvalidSource": "فشلت الترجمة: ملف المصدر غير صالح",
+      "translationInvalidSourceBody": "يبدو أن ملف الترجمة المصدر تالف أو غير صالح.\\nقد يكون صغيراً جداً أو به مشاكل في التنسيق.",
+      "translationInvalidSourceRetry": "(CORRUPT_SOURCE) يرجى إعادة المحاولة أو تجربة ترجمة مختلفة من القائمة.",
+      "translationMultiProvider": "فشل كل من المزود الرئيسي والثانوي في ترجمة هذه الدفعة.",
+      "osRateLimitTitle": "تم الوصول إلى حد معدل OpenSubtitles (429)",
+      "osAuthRateLimited": "تقوم OpenSubtitles بتقييد معدل حسابك. انتظر بضع دقائق، ثم أعد المحاولة أو قم بالتبديل إلى V3 في إعدادات الإضافة.",
+      "osAuthMissingRateLimited": "وضع مصادقة OpenSubtitles نشط بدون بيانات اعتماد، لذلك تصل التنزيلات إلى حد المعدل الأساسي. أضف اسم المستخدم/كلمة المرور أو قم بالتبديل إلى V3 (بدون تسجيل دخول).",
+      "providerRateLimitTitle": "تم الوصول إلى حد معدل {service} (429)",
+      "providerRateLimitBody": "طلبات كثيرة جداً في فترة قصيرة.\\nيرجى الانتظار بضع دقائق والمحاولة مرة أخرى.",
+      "providerAuthErrorTitle": "خطأ في المصادقة",
+      "providerAuthErrorBody": "رفضت {service} مفتاح API أو بيانات الاعتماد الخاصة بك",
+      "notAvailableTitle": "الترجمة غير متاحة (Error 404)",
+      "notAvailableBody": "يحدث هذا غالباً مع الترجمات التي تمت إزالتها.\\nيرجى تجربة ترجمة مختلفة من القائمة",
+      "providerUnavailableTitle": "مزود الترجمة غير متاح مؤقتاً (Error 503)",
+      "providerUnavailableBody": "يرجى المحاولة مرة أخرى خلال بضع دقائق أو تجربة ترجمة مختلفة.",
+      "subsourceTimeoutTitle": "فشل تحميل SubSource (انتهاء المهلة)",
+      "subsourceTimeoutBody": "لم تستجب واجهة SubSource API في الوقت المناسب. حاول مرة أخرى خلال بضع دقائق أو اختر ترجمة مختلفة.",
+      "invalidSubtitleTooSmall": "ملف الترجمة صغير جداً ويبدو تالفاً."
+    },
+    "subtitleErrors": {
+      "invalidGenericReason": "يبدو أن ملف الترجمة غير صالح أو غير مكتمل.",
+      "downloadFailedReason": "فشل التحميل: {reason}",
+      "addonInfoNote": "هذه الترجمة الإعلامية تم توليدها بواسطة الإضافة."
+    },
+    "subtitleMenu": {
+      "eyebrow": "ترجمات البث",
+      "title": "المصادر والأهداف",
+      "waiting": "بانتظار الجلب الأول",
+      "toggleTitle": "ترجمات البث",
+      "refreshTitle": "تحديث قائمة الترجمات",
+      "closeTitle": "إغلاق قائمة الترجمات",
+      "makeLanguage": "إنشاء {language}",
+      "learnLanguage": "تعلم {language}",
+      "group": {
+        "source": "لغات المصدر",
+        "target": "لغات الهدف",
+        "translation": "الترجمة",
+        "other": "إدخالات أخرى"
+      },
+      "actions": {
+        "translate": "ترجمة",
+        "translateThis": "ترجم هذه الترجمة",
+        "download": "تحميل الترجمة المترجمة",
+        "downloadShort": "تحميل",
+        "translating": "جاري الترجمة...",
+        "retry": "إعادة المحاولة"
+      },
+      "status": {
+        "waitingStream": "بانتظار بث مرتبط قبل تحميل الترجمات.",
+        "loading": "جاري تحميل الترجمات...",
+        "none": "لا تتوفر ترجمات لهذا البث بعد.",
+        "loaded": "تم تحميل {count} إدخال ترجمة.",
+        "translationReady": "الترجمة جاهزة لـ {label}.",
+        "translationInProgress": "الترجمة قيد التقدم لـ {label}.",
+        "translationFailed": "فشلت الترجمة: {reason}",
+        "translationFailedShort": "فشلت الترجمة. إعادة المحاولة؟",
+        "downloadFailed": "فشل التحميل: {reason}",
+        "stillProcessing": "ما زال قيد المعالجة. يرجى إعادة المحاولة قريباً."
+      },
+      "meta": {
+        "refreshing": "جاري التحديث...",
+        "updated": "تم التحديث {time}",
+        "justNow": "الآن",
+        "secondsAgo": "منذ {seconds} ثانية"
+      }
+    },
+    "config": {
+      "uiLanguageLabel": "الواجهة",
+      "uiLanguageAria": "لغة واجهة المستخدم",
+      "uiLanguages": {
+        "en": {
+          "label": "الإنجليزية",
+          "flag": "US"
+        },
+        "es": {
+          "label": "الإسبانية",
+          "flag": "ES"
+        },
+        "pt-br": {
+          "label": "البرتغالية (البرازيل)",
+          "flag": "BR"
+        },
+        "ar": {
+          "label": "العربية",
+          "flag": "SA"
+        }
+      },
+      "heroTitle": "SubMaker",
+      "heroSubtitle": "ترجمة ترجمات مدعومة بالذكاء الاصطناعي",
+      "documentTitle": "SubMaker - الإعدادات",
+      "quickStatsStatus": "الحالة",
+      "quickStatsConfigure": "إعدادات",
+      "quickStatsToolbox": "الأدوات",
+      "quickStatsLastSave": "آخر حفظ",
+      "quickActionHelp": "مساعدة",
+      "partials": {
+        "loadError": "فشل تحميل {src} ({status})",
+        "loadFallback": "فشل تحميل {src}"
+      },
+      "footer": {
+        "love": "صُنع بـ <span class=\"footer-heart\">\u2764\ufe0f</span> لمستخدمي Stremio في كل مكان",
+        "thanks": "شكراً لاستخدامك SubMaker! دعمك يساعد في جعل المحتوى متاحاً للجميع."
+      },
+      "actions": {
+        "openToolbox": "فتح صندوق الأدوات",
+        "save": "حفظ الإعدادات",
+        "install": "تثبيت في Stremio",
+        "copy": "نسخ رابط التثبيت",
+        "installLabel": "رابط التثبيت"
+      },
+      "overlays": {
+        "keyboardHint": "اضغط <span class=\"kbd\">?</span> لاختصارات لوحة المفاتيح",
+        "shared": {
+          "dontShow": "لا تظهر هذا مرة أخرى",
+          "gotIt": "فهمت!"
+        },
+        "instructions": {
+          "title": "كيفية استخدام SubMaker",
+          "usageTitle": "تعليمات الاستخدام:",
+          "step1": "أضف مفاتيح API المطلوبة إلى قسم <strong>\"مصادر الترجمات\"</strong>.",
+          "step2": "أضف مفتاح Gemini API إلى <strong>قسم الذكاء الاصطناعي</strong>.",
+          "step3": "اختر <strong>لغات المصدر</strong>.",
+          "step4": "اختر <strong>لغات الهدف</strong>.",
+          "step5": "<strong>تثبيت على Stremio</strong>.",
+          "stremioTitle": "سيقوم Stremio بـ:",
+          "stremioBody": "1. جلب جميع ترجمات لغات المصدر والهدف من المصادر.<br>2. إنشاء أزرار <strong>\"إنشاء [لغة الهدف]\"</strong> داخل قائمة الترجمات.<br>3. جميع قوائم ترجمة \"إنشاء\" تكون بنفس ترتيب قائمة لغة المصدر.",
+          "whenTitle": "عند النقر على ترجمة:",
+          "whenBody": "عند النقر على ترجمة داخل قوائم \"إنشاء\"، ستبدأ الترجمة.<br>بعد 20-30 ثانية، أعد تحميل نفس إدخال الترجمة.<br>سيتم تحميله <strong>مترجماً</strong>!",
+          "quickTip": "<strong>نصيحة سريعة:</strong> إذا بدت الترجمة غير صحيحة، أو معطلة، أو غير متزامنة، انقر نقراً ثلاثياً سريعاً على تلك الترجمة في القائمة لفرض إعادة ترجمة جديدة.",
+          "ps": "<b>ملاحظة:</b><br>يتم تسليم الترجمة الجزئية في دفعات حتى تتمكن من بدء المشاهدة فوراً تقريباً.<br>قد تستغرق الترجمة الكاملة من <strong>30 ثانية إلى 5 دقائق</strong> حسب طول الفيلم/الحلقة.",
+          "onlyOneSource": "<em>*يوصى بمصدر لغة واحد فقط:*</em>",
+          "onlyOneSourceBody": "عند إنشاء قوائم ترجمة \"إنشاء\"، فإنها تُحمل قائمة الترجمات بنفس ترتيب لغة المصدر.<br>وهذا يعني أنه يمكنك اختبار ترجمات لغة المصدر للتأكد من المزامنة الصحيحة وفقط عندها اختر نفس الترجمة في قائمة الترجمة بدلاً من ترجمة ملفات غير متزامنة."
+        },
+        "toolbox": {
+          "title": "\ud83e\uddf0 تعليمات صندوق الأدوات",
+          "beta": "بيتا: ميزات صندوق أدوات جديدة قادمة قريباً.<br>حالياً، استمتع بترجمة دفعات ملفات SRT بسلاسة مع جميع إعدادات ومزودي الذكاء الاصطناعي الخاصين بك.",
+          "howTitle": "\ud83d\ude80 كيفية استخدام صندوق الأدوات:",
+          "step1": "قم بتمكين <strong>\"صندوق الأدوات\"</strong> في صفحة الإعدادات قبل التثبيت.",
+          "step2": "في Stremio، افتح قائمة الترجمات وانقر على <strong>\"صندوق الأدوات\"</strong>.",
+          "step3": "انقر بزر الماوس الأيمن على البث/الفيديو المشغل في Stremio واختر <strong>\"تحميل الترجمات\"</strong> لتشغيل صندوق الأدوات في متصفحك.",
+          "step4": "اختر أداة: استخراج وترجمة الترجمات المدمجة، ترجمة ملفات الترجمة، مزامنة الترجمات، أو الترجمات التلقائية.",
+          "step5": "تفتح كل أداة في متصفحك باستخدام جلسة SubMaker وإعدادات مزود الذكاء الاصطناعي المحفوظة.",
+          "step6": "اتبع الخطوات التي تظهر على الشاشة، ثم اسحب النتيجة مرة أخرى إلى Stremio إذا لزم الأمر."
+        },
+        "reset": {
+          "title": "إعادة تعيين جميع الإعدادات",
+          "intro": "<strong>سيؤدي هذا إلى إعادة تعيين كل شيء حرفياً لهذا الموقع:</strong>",
+          "item1": "- التخزين المحلي، تخزين الجلسة، التكوين المخزن مؤقتاً والرموز",
+          "item2": "- Service worker وجميع ذاكرات التخزين المؤقت",
+          "item3": "- أي بيانات موقع مخزنة بواسطة هذا التطبيق",
+          "footer": "سيتم إعادة تحميل الصفحة بعد ذلك.",
+          "cancel": "إلغاء",
+          "confirm": "إعادة تعيين كل شيء"
+        }
+      },
+      "noTranslation": {
+        "title": "جلب الترجمات فقط (بدون ترجمة)",
+        "description": "تخطي الترجمة بالذكاء الاصطناعي وجلب الترجمات فقط باللغات المختارة"
+      },
+      "sections": {
+        "subtitleApiTitle": "مفاتيح API للترجمات"
+      },
+      "opensubs": {
+        "implDescription": "اختر تطبيق OpenSubtitles المفضل لديك أدناه.",
+        "implementationType": "نوع التنفيذ",
+        "v3Title": "V3 (الافتراضي)",
+        "v3Tooltip": "لا يُظهر V3 جميع نتائج OpenSubtitles وقد يتم تطبيق حدود المعدل.",
+        "v3Description": "يستخدم إضافة Stremio OpenSubtitles V3 الرسمية. لا يتطلب مصادقة، إعداد بسيط.",
+        "authTitle": "المصادقة (موصى به)",
+        "authDescription": "يستخدم حساب OpenSubtitles الخاص بك مع مصادقة مفتاح API. يتطلب اسم مستخدم/كلمة مرور.",
+        "usernameLabel": "اسم المستخدم",
+        "passwordLabel": "كلمة المرور",
+        "usernamePlaceholder": "أدخل اسم مستخدم OpenSubtitles",
+        "passwordPlaceholder": "أدخل كلمة مرور OpenSubtitles",
+        "rateNote": "20 ترجمة في اليوم. أنشئ حساباً مجانياً إذا لم يكن لديك واحد.",
+        "validateCta": "تشغيل الاختبار",
+        "validateTitle": "التحقق من بيانات اعتماد OpenSubtitles",
+        "showHidePassword": "إظهار/إخفاء كلمة المرور",
+        "pingHint": "قم بتشغيل اختبار سريع (Ping) قبل الحفظ للتحقق من بيانات اعتمادك."
+      },
+      "limits": {
+        "sourceDescription": "يمكنك اختيار ما يصل إلى {max} لغة/لغات مصدر، ولكن يوصى بواحدة فقط (بحيث يكون لديك نفس ترتيب القائمة عند الترجمة). ستكون جميع الترجمات من هذه اللغة متاحة للترجمة في محدد الترجمة وسيتم جلبها (ستظهر الترجمات الأصلية).",
+        "targetDescription": "سيتم جلب الترجمات باللغات المستهدفة وستظهر أزرار الترجمة للترجمة من لغة المصدر إلى هذه اللغات. يمكنك اختيار ما يصل إلى {max} لغات هدف إجمالاً (بما في ذلك وضع التعلم).",
+        "noTranslationDescription": "حدد اللغات التي تريد جلب الترجمات بها (حتى {max})."
+      },
+      "validation": {
+        "sourceRequired": "يرجى اختيار لغة مصدر واحدة على الأقل",
+        "sourceRange": "يرجى اختيار {min}-{max} لغات مصدر",
+        "targetLimitShort": "يرجى اختيار ما يصل إلى {limit} لغات هدف (شاملة وضع التعلم)",
+        "noTranslationRequired": "يرجى اختيار لغة واحدة على الأقل لوضع الجلب فقط",
+        "noTranslationLimitShort": "يرجى اختيار ما يصل إلى {limit} لغات لوضع الجلب فقط",
+        "opensubsEnable": "قم بتمكين OpenSubtitles قبل اختبار بيانات الاعتماد.",
+        "opensubsAuthMode": "قم بالتبديل إلى وضع المصادقة (Auth) لاختبار بيانات اعتمادك.",
+        "credentialsRequired": "يرجى إدخال اسم المستخدم وكلمة المرور",
+        "apiKeyRequired": "يرجى إدخال مفتاح API",
+        "apiKeyValid": "مفتاح API صالح",
+        "testResults": "({count} نتائج الاختبار)",
+        "connectionError": "خطأ في الاتصال. يرجى المحاولة مرة أخرى.",
+        "validationFailed": "فشل التحقق",
+        "testing": "جاري الاختبار...",
+        "valid": "صالح",
+        "invalid": "غير صالح",
+        "error": "خطأ",
+        "testCredentials": "اختبار بيانات الاعتماد",
+        "test": "اختبار",
+        "targetRequired": "يرجى اختيار لغة هدف واحدة على الأقل",
+        "learnRequired": "يرجى اختيار لغة تعلم واحدة على الأقل",
+        "geminiKeyRequired": "مفتاح Gemini API مطلوب",
+        "geminiModelRequired": "يرجى اختيار نموذج Gemini",
+        "mainProviderEnable": "مكّن {provider} لاستخدامه كمزود رئيسي",
+        "mainProviderKeyRequired": "مفتاح API مطلوب لـ {provider}",
+        "mainProviderModelRequired": "اختر نموذجاً لـ {provider}",
+        "mainProviderRequired": "اختر مزوداً رئيسياً",
+        "opensubsAuthCredentials": "تتطلب مصادقة OpenSubtitles اسم المستخدم وكلمة المرور. أدخل بيانات الاعتماد أو بدّل إلى V3 (لا حاجة لتسجيل الدخول).",
+        "providerKeyMissing": "{provider} ممكّن لكن مفتاح API مفقود",
+        "providersMinimum": "أضف مزود ذكاء اصطناعي واحداً على الأقل ومكّنه (مفتاح API مطلوب ما لم يكن المزود لا يحتاج مفتاحاً)",
+        "secondaryGeminiConfigured": "يجب أن يكون لدى Gemini مفتاح API صالح ونموذج عند اختياره كمزود ثانوي",
+        "secondaryGeminiKey": "مفتاح Gemini API مطلوب عندما يكون Gemini هو المزود الثانوي",
+        "secondaryGeminiModel": "يرجى اختيار نموذج Gemini للمزود الثانوي",
+        "secondaryProviderDifferent": "يجب أن يكون المزود الثانوي مختلفاً عن المزود الرئيسي",
+        "secondaryProviderEnable": "مكّن {provider} لاستخدامه كمزود ثانوي",
+        "secondaryProviderKey": "مفتاح API مطلوب لـ {provider} (المزود الثانوي)",
+        "secondaryProviderModel": "اختر نموذجاً لـ {provider} (المزود الثانوي)",
+        "secondaryProviderRequired": "اختر مزوداً ثانوياً أو عطل مفتاح التبديل الاحتياطي",
+        "secondaryProvidersCount": "يتطلب المزود الثانوي تكوين اثنين من مزودي الذكاء الاصطناعي (رئيسي واحتياطي)",
+        "subdlKeyRequired": "SubDL ممكّن لكن مفتاح API مفقود",
+        "subsourceKeyRequired": "SubSource ممكّن لكن مفتاح API مفقود",
+        "subtitleProviderRequired": "يرجى تمكين مزود ترجمة واحد على الأقل"
+      },
+      "alerts": {
+        "sessionLost": "تم فقدان جلسة التكوين. يرجى إعادة التكوين والحفظ لإنشاء جلسة جديدة.",
+        "loadLanguagesFailed": "فشل تحميل اللغات: {reason}",
+        "loadLanguagesExhausted": "فشل تحميل اللغات بعد {retries} محاولات: {reason}. يرجى تحديث الصفحة.",
+        "sourceLimit": "يمكنك اختيار ما يصل إلى {limit} لغات مصدر فقط",
+        "targetLimit": "يمكنك اختيار ما يصل إلى {limit} لغات هدف إجمالاً (شاملة وضع التعلم)",
+        "noTranslationLimit": "يمكنك اختيار ما يصل إلى {limit} لغات فقط في وضع الجلب فقط",
+        "saveConfigFirst": "احفظ إعداداتك أولاً لفتح صندوق أدوات الترجمة.",
+        "betaOn": "الوضع التجريبي مفعّل",
+        "betaOff": "الوضع التجريبي متوقف",
+        "missingCfWorkers": "يجب أن يكون مفتاح Cloudflare Workers AI بصيغة ACCOUNT_ID|TOKEN",
+        "missingProviderKey": "أضف مفتاح API لـ {provider} لتحميل النماذج",
+        "configurationSaved": "تم حفظ الإعدادات! يمكنك الآن تثبيت الإضافة في Stremio.",
+        "configurationUpdated": "تم تحديث الإعدادات! التغييرات ستصبح سارية المفعول فوراً في Stremio.",
+        "installUrlCopied": "تم نسخ رابط التثبيت إلى الحافظة!",
+        "loadModelsFailed": "فشل تحميل النماذج لـ {provider}: {reason}",
+        "loadModelsSuccess": "تم تحميل {count} نماذج لـ {provider}",
+        "newVersionDetected": "تم اكتشاف إصدار جديد",
+        "noTranslationTrimmed": "تم الاحتفاظ بأول {limit} لغات فقط لوضع الجلب فقط.",
+        "openingStremio": "جاري فتح Stremio...",
+        "saveFailed": "فشل حفظ الإعدادات: {reason}",
+        "sessionExpiredCreated": "انتهت صلاحية الجلسة. تم إنشاء جلسة جديدة - يرجى إعادة تثبيت الإضافة في Stremio.",
+        "sessionExpiredCreating": "انتهت صلاحية الجلسة. جاري إنشاء جلسة جديدة...",
+        "sessionNetworkError": "خطأ في الشبكة أثناء تحديث الجلسة. جاري إنشاء جلسة جديدة...",
+        "sessionUpdateFailed": "فشل تحديث الجلسة. جاري إنشاء جلسة جديدة...",
+        "targetsTrimmed": "تم الاحتفاظ بأول {limit} لغات هدف فقط (مجتمعة مع وضع التعلم)."
+      },
+      "providers": {
+        "subsource": {
+          "title": "SubSource",
+          "description": "احصل على مفتاح API المجاني الخاص بك من",
+          "linkLabel": "SubSource.net",
+          "placeholder": "أدخل مفتاح SubSource API",
+          "validateTitle": "التحقق من مفتاح API",
+          "validateCta": "اختبار",
+          "toggleLabel": "تمكين SubSource"
+        },
+        "subdl": {
+          "title": "SubDL",
+          "description": "احصل على مفتاح API المجاني الخاص بك من",
+          "linkLabel": "SubDL.com",
+          "placeholder": "أدخل مفتاح SubDL API",
+          "validateTitle": "التحقق من مفتاح API",
+          "validateCta": "اختبار",
+          "toggleLabel": "تمكين SubDL"
+        }
+      },
+      "providersUi": {
+        "loadModels": "تحميل النماذج",
+        "loadModelsTitle": "جلب النماذج",
+        "selectModel": "اختر النموذج",
+        "loadingModels": "جاري تحميل النماذج...",
+        "cfworkersLoadModels": "أضف ACCOUNT_ID|TOKEN لتحميل النماذج",
+        "noFallbackProviders": "لا يوجد مزودين احتياطيين متاحين",
+        "useDefaultModel": "استخدام النموذج الافتراضي",
+        "main": {
+          "label": "المزود الرئيسي",
+          "description": "اختر مزود الذكاء الاصطناعي الممكّن لاستخدامه عند تكوين مزودين متعددين."
+        },
+        "secondary": {
+          "label": "المزود الثانوي<br><span class=\"label-description\">إذا أخطأ المزود الرئيسي (429/503/محظور/آخر)، أعد محاولة الدفعة الفاشلة مع هذا المزود، ثم استمر مع المزود الرئيسي.</span>"
+        },
+        "fallback": {
+          "label": "المزود الاحتياطي",
+          "description": "يستخدم فقط عندما يعيد المزود الرئيسي خطأ. يعمل كبديل بسلاسة."
+        },
+        "placeholders": {
+          "openai": "مفتاح OpenAI API",
+          "anthropic": "مفتاح Anthropic API",
+          "xai": "مفتاح XAI API",
+          "deepseek": "مفتاح DeepSeek API",
+          "deepl": "مفتاح توثيق DeepL",
+          "mistral": "مفتاح Mistral API",
+          "cfworkers": "ACCOUNT_ID|TOKEN",
+          "openrouter": "مفتاح OpenRouter API"
+        },
+        "selectProvider": "اختر المزود",
+        "deeplHint": "المفاتيح المجانية تستخدم تلقائياً api-free.deepl.com. يتم تعيين رموز اللغة تلقائياً من اختياراتك.",
+        "cfworkersHint": "استخدم ACCOUNT|TOKEN لتعيين معرف الحساب بشكل صريح.",
+        "noKeyNeeded": "لا حاجة لمفتاح API",
+        "googleWeb": "ويب (ثابت)",
+        "googleHint": "يستخدم نقطة نهاية الويب العامة لترجمة Google (قد تكون غير مستقرة)."
+      },
+      "gemini": {
+        "title": "مفاتيح API للترجمة بالذكاء الاصطناعي",
+        "apiKey": {
+          "label": "مفتاح Gemini API",
+          "helper": "احصل على مفتاح API المجاني الخاص بك من",
+          "linkLabel": "Google AI Studio",
+          "placeholder": "أدخل مفتاح Gemini API الخاص بك",
+          "validateTitle": "التحقق من مفتاح API",
+          "validateCta": "اختبار"
+        },
+        "model": {
+          "label": "نموذج الترجمة",
+          "helper": "نموذج الذكاء الاصطناعي للترجمات",
+          "options": {
+            "flashLite": "Gemini 2.5 Flash-Lite",
+            "flash": "Gemini 2.5 Flash",
+            "pro": "Gemini 2.5 Pro (بطيء)"
+          },
+          "hintTitle": "ترجمة سيئة/معطلة أو غير متزامنة؟",
+          "hintBody": "انقر ثلاث مرات بسرعة على الترجمة لفرض إعادة الترجمة.",
+          "betaTitle": "\u26a1 استخدام 2.5 Pro لا يزال في مرحلة بيتا.",
+          "betaAdvice": "إذا واجهت مشاكل في الترجمة، استخدم Flash-Lite.",
+          "rateWarningTitle": "\u26a0\ufe0f قيود الفئة المجانية:",
+          "rateWarningBody": "إذا كنت تستخدم مفتاح API مجاني، قد يطلق Gemini 2.5 Pro حدود المعدل (HTTP 429). على الأرجح ستتمكن فقط من ترجمة ترجمة واحدة في كل مرة."
+        }
+      },
+      "noTranslationCard": {
+        "title": "اللغات",
+        "label": "لغات الترجمة",
+        "search": "بحث عن اللغات...",
+        "quickPopular": "شائع",
+        "quickAll": "الكل",
+        "quickClear": "مسح"
+      },
+      "languageCards": {
+        "search": "بحث عن اللغات...",
+        "quickPopular": "شائع",
+        "quickAll": "الكل",
+        "quickClear": "مسح",
+        "sourceTitle": "لغات المصدر",
+        "sourceLabel": "* لغات المصدر للترجمات",
+        "targetTitle": "لغات الهدف",
+        "targetLabel": "* لغات الهدف للترجمات",
+        "learnTitle": "تعلم لغات الهدف",
+        "learnLabel": "اختر لغات وضع التعلم",
+        "learnDescription": "ينشئ إدخالات \"تعلم (اللغة)\" التي تخرج WebVTT مزدوج اللغة مع سطور المصدر والمترجم لتعلم اللغة. اختر لغات \"تعلم\" المستهدفة أعلاه بعد التمكين."
+      },
+      "learnMode": {
+        "label": "وضع التعلم",
+        "description": "يضيف إدخالات \"تعلم (اللغة)\" التي تخرج WebVTT مزدوج اللغة مع سطور المصدر والمترجم لتعلم اللغة.",
+        "orderLabel": "ترتيب ترجمة وضع التعلم",
+        "orderDescription": "اختر اللغة التي تظهر في أعلى وأسفل الشاشة.",
+        "sourceTop": "المصدر بالأعلى - الهدف بالأسفل",
+        "targetTop": "الهدف بالأعلى - المصدر بالأسفل"
+      },
+      "translationSettings": {
+        "title": "إعدادات الترجمة",
+        "workflow": {
+          "label": "سير عمل الترجمة",
+          "description": "يوصى بالتبديل بين الأوضاع إذا كان لديك مشاكل في مزامنة الترجمة. سير عمل الترجمة الرئيسي لدينا يزيل الطوابع الزمنية ويرسل الترجمات مرقمة إلى الذكاء الاصطناعي، ثم يعيد بناء SRT بالطوابع الزمنية الأصلية. \"إرسال الطوابع الزمنية إلى الذكاء الاصطناعي\" يرسل الترجمات مع الأكواد الزمنية ويثق في الذكاء الاصطناعي لإعادة الطوابع الزمنية الصحيحة. أضيف لضمان مستقبل الإضافة.",
+          "original": "الطوابع الزمنية الأصلية (الافتراضي)",
+          "ai": "إرسال الطوابع الزمنية إلى الذكاء الاصطناعي"
+        },
+        "promptStyle": {
+          "label": "نمط الموجه (Prompt)",
+          "description": "اختر بين الحفاظ الصارم على الهيكل أو التكيف مع التدفق الطبيعي",
+          "options": {
+            "natural": "طبيعي - يكيّف الهيكل لتدفق اللغة الهدف الطبيعي",
+            "strict": "صارم - يحافظ على التوقيت والهيكل بدقة"
+          }
+        },
+        "database": {
+          "label": "قاعدة بيانات SubMaker",
+          "description": "اختر كيفية التعامل مع قاعدة بيانات ترجمة SubMaker. تخزن قاعدة البيانات الرئيسية الترجمات مؤقتاً بشكل دائم لتقليل استخدام API. وضع التجاوز يفرض ترجمات جديدة ويخزنها مؤقتاً (12 ساعة).",
+          "use": "استخدام قاعدة بيانات SubMaker",
+          "bypass": "تجاوز الذاكرة المؤقتة (فرض إعادة الترجمة)",
+          "noteTitle": "\u26a0\ufe0f وضع التجاوز مطلوب:"
+        },
+        "chunking": {
+          "label": "استراتيجية التقسيم",
+          "description": "دفعات متعددة ترسل الترجمات في طلبات منفصلة (أجزاء). دفعة واحدة تترجم ملف الترجمة بالكامل دفعة واحدة (لا تزال تقسم تلقائياً إلى جزأين أو 3 عند 50k و 100k+ رمز). دفعة واحدة لا تزال تبث المخرجات الجزئية أثناء المعالجة (من خلال تدفق الرموز) وتقدم ترجمات سياقية أفضل. قد يسبب أخطاء MAX_OUTPUT. قد تواجه العناوين الطويلة مشاكل مزامنة أكثر.",
+          "multiple": "دفعات متعددة (الافتراضي)",
+          "single": "دفعة واحدة"
+        }
+      },
+      "multiProvider": {
+        "label": "مزودون متعددون (بيتا)",
+        "description": "يمكّن مزودين متعددين وإعدادات المعلمات المتقدمة."
+      },
+      "otherSettings": {
+        "title": "إعدادات أخرى",
+        "subToolbox": {
+          "label": "تمكين \"صندوق أدوات الترجمة\" (ألفا)",
+          "description": "يظهر إدخال صندوق أدوات الترجمة في ترجمات Stremio للوصول عبر المتصفح إلى جميع الأدوات. (اقرأ التعليمات بعد التمكين)"
+        },
+        "mobileMode": {
+          "label": "وضع الهاتف (إصلاح/حل بديل)",
+          "description": "يقوم Stremio بعمل طلب واحد فقط للترجمات ويخزنه مؤقتاً، لذا لا يمكن تسليم الترجمات جزئياً في Android. وضع الهاتف يحتفظ بطلبات الترجمة ويرسل الترجمة النهائية فقط عندما تكون جاهزة. استخدم هذا إذا كنت تشاهد على Android/iOS. لا ترجمات جزئية، ولا رسائل تحميل. قد يجمد البث حتى تصبح الترجمة جاهزة. يوصى بـ Flash-lite. انتظر 1-3 دقائق، إذا لم يتم التحميل تلقائياً قم بتبديل الترجمات ذهاباً وإياباً لتحميل الترجمة."
+        },
+        "betaMode": {
+          "label": "الوضع التجريبي (Beta)",
+          "description": "يفتح الميزات التجريبية مثل المزودين المتعددين والإعدادات المتقدمة."
+        },
+        "devMode": {
+          "label": "وضع المطور"
+        }
+      },
+      "advancedGemini": {
+        "title": "إعدادات متقدمة (Gemini)",
+        "infoTitle": "ضبط سلوك Gemini:",
+        "infoBody": "تجاوز نموذج Gemini الافتراضي ومعلمات العينات.",
+        "cacheNotePrefix": "عند تغيير أي إعداد لـ Gemini من الإعدادات الافتراضية،",
+        "cacheNoteStrong": "يتم تمكين تجاوز الذاكرة المؤقتة تلقائياً",
+        "cacheNoteSuffix": "لضمان عدم تلويث ترجماتك التجريبية لقاعدة البيانات المشتركة.",
+        "model": {
+          "label": "تجاوز نموذج الترجمة",
+          "description": "تجاوز النموذج الافتراضي. اتركه فارغاً لاستخدام النظام الافتراضي (gemini-flash-latest).",
+          "default": "استخدام النموذج الافتراضي"
+        },
+        "thinking": {
+          "label": "ميزانية التفكير (استدلال موسع)",
+          "description": "0 = معطل، -1 = ديناميكي (ضبط تلقائي)، أو عدد رموز ثابت (1-32768). القيم الأعلى = استدلال أعمق ولكن أبطأ."
+        },
+        "temperature": {
+          "label": "الحرارة (الإبداع)",
+          "description": "يتحكم في العشوائية (0.0-2.0). أقل = أكثر حتمية، أعلى = أكثر إبداعاً. الافتراضي: 0.8"
+        },
+        "topP": {
+          "label": "Top-P (Nucleus Sampling)",
+          "description": "عتبة الاحتمال (0.0-1.0). أقل = أكثر تركيزاً، أعلى = أكثر تنوعاً. الافتراضي: 0.95"
+        },
+        "batchContext": {
+          "label": "تمكين سياق الدفعة (تجريبي)",
+          "description": "تضمين السياق المحيط الأصلي والترجمات السابقة عند معالجة الدفعات. يحسن ترابط الترجمة ولكنه قد يكسر المخرجات ويزيد من استخدام الرموز. معطل افتراضياً."
+        },
+        "contextSize": {
+          "label": "حجم السياق",
+          "description": "عدد الإدخالات المحيطة لتضمينها كسياق (1-10). الافتراضي: 3"
+        }
+      },
+      "providerAdvanced": {
+        "title": "معلمات متقدمة",
+        "intro": "ضبط إعدادات التوليد لكل مزود ممكّن. تنطبق هذه في وضع المزودين المتعددين فقط.",
+        "empty": "قم بتمكين مزود أعلاه لفتح معلماته.",
+        "labels": {
+          "temperature": "الحرارة (Temperature)",
+          "topP": "Top-P",
+          "maxTokens": "الحد الأقصى لرموز الإخراج",
+          "timeout": "مهلة الطلب (ثواني)",
+          "retries": "أقصى عدد للمحاولات",
+          "reasoning": "جهد الاستدلال",
+          "thinking": "ميزانية التفكير (رموز)",
+          "formality": "الرسمية",
+          "preserveFormatting": "الحفاظ على التنسيق",
+          "preserveFormattingHint": "الحفاظ على فواصل الأسطر، وحالة الأحرف، والعلامات (Tags)"
+        },
+        "reasoningDefaults": {
+          "none": "لا شيء (افتراضي - للنماذج غير الاستدلالية)",
+          "low": "منخفض (أسرع)",
+          "medium": "متوسط (متوازن)",
+          "high": "مرتفع (استدلال أعمق)"
+        },
+        "formality": {
+          "default": "افتراضي",
+          "more": "أكثر رسمية",
+          "less": "أقل رسمية"
+        },
+        "providers": {
+          "openai": {
+            "title": "معلمات OpenAI",
+            "description": "ينطبق على OpenAI ونقاط النهاية المتوافقة"
+          },
+          "anthropic": {
+            "title": "معلمات Anthropic",
+            "description": "ضبط Claude / Anthropic API"
+          },
+          "xai": {
+            "title": "معلمات XAI (Grok)",
+            "description": "ضبط Grok API"
+          },
+          "deepseek": {
+            "title": "معلمات DeepSeek",
+            "description": "نقاط نهاية دردشة DeepSeek"
+          },
+          "deepl": {
+            "title": "معلمات DeepL",
+            "description": "الرسمية والتحكم بالتنسيق",
+            "footer": "لغات بيتا تمكّن تلقائياً quality_optimized وتعطل latency_optimized."
+          },
+          "mistral": {
+            "title": "معلمات Mistral",
+            "description": "ضبط Mistral API"
+          },
+          "cfworkers": {
+            "title": "معلمات Cloudflare Workers AI",
+            "description": "استخدم صيغة ACCOUNT_ID|TOKEN"
+          },
+          "openrouter": {
+            "title": "معلمات OpenRouter",
+            "description": "توجيه OpenRouter"
+          }
+        }
+      },
+      "dev": {
+        "title": "مطور"
+      },
+      "reset": {
+        "hint": "هل تواجه مشاكل؟ إعادة تعيين الإعدادات للافتراضي ->",
+        "cta": "إعادة تعيين"
+      }
+    },
+    "nav": {
+      "refresh": "تحديث البث",
+      "refreshTitle": "انتقل إلى آخر بث قمت بتشغيله",
+      "refreshLoading": "جاري التحديث...",
+      "refreshEmpty": "لا يوجد بث حديث",
+      "refreshError": "فشل التحديث",
+      "refreshCurrent": "الأحدث بالفعل",
+      "refreshMissing": "بيانات البث مفقودة",
+      "streamDetected": "تم اكتشاف بث جديد",
+      "mobileMenu": "فتح القائمة",
+      "subToolbox": "صندوق الأدوات",
+      "translateFiles": "ترجمة الملفات",
+      "embeddedSubs": "استخراج الترجمات",
+      "syncSubtitles": "مزامنة الترجمات",
+      "automaticSubs": "ترجمات تلقائية",
+      "configure": "إعدادات",
+      "youAreHere": "أنت هنا"
+    },
+    "fileUpload": {
+      "title": "ترجمة الملفات",
+      "documentTitle": "ترجمة الملفات - SubMaker",
+      "subtitle": "رفع وترجمة ملفات الترجمة الخاصة بك",
+      "help": "إظهار التعليمات",
+      "themeToggle": "تبديل المظهر",
+      "drop": {
+        "aria": "رفع ملفات الترجمة",
+        "browse": "انقر لاستعراض الملفات",
+        "limit": "اختر حتى {max} ملفات أو قم بالسحب والإفلات",
+        "hint": "نقوم بجدولة الرفع وتشغيل {count} في المرة الواحدة لتجنب حدود المعدل.",
+        "one": "واحد"
+      },
+      "instructions": {
+        "title": "كيف يعمل",
+        "formats": "التنسيقات المدعومة:",
+        "stepsTitle": "الخطوات:",
+        "step1": "ارفع ملف(ات) الترجمة الخاصة بك (أي تنسيق مدعوم، حتى {max} في المرة الواحدة)",
+        "step2": "اختر لغة الهدف",
+        "step3": "انقر على \"ترجمة\" وانتظر السحر",
+        "step4": "حمّل الترجمة المترجمة الخاصة بك",
+        "step5": "اسحبها إلى Stremio",
+        "dontShow": "لا تظهر هذا مرة أخرى",
+        "gotIt": "فهمت!"
+      },
+      "options": {
+        "title": "خيارات الترجمة",
+        "provider": {
+          "label": "مزود الترجمة",
+          "helper": "اختر أي مزود مكون لاستخدامه لهذه الترجمة."
+        },
+        "flow": {
+          "label": "تدفق الترجمة",
+          "helper": "اختر بين دفعات متعددة أو تشغيل دفعة واحدة.",
+          "multiple": "دفعات متعددة (موصى به)",
+          "single": "دفعة واحدة (الكل مرة واحدة)"
+        },
+        "timing": {
+          "label": "استراتيجية الطوابع الزمنية",
+          "helper": "قرر كيفية التعامل مع الطوابع الزمنية أثناء الترجمة.",
+          "rebuild": "إعادة بناء الطوابع الزمنية",
+          "ai": "إرسال الطوابع الزمنية إلى الذكاء الاصطناعي"
+        }
+      },
+      "advanced": {
+        "title": "إعدادات متقدمة",
+        "highlightTitle": "ضبط سلوك الذكاء الاصطناعي لهذه الترجمة فقط:",
+        "highlightBody": "تجاوز النموذج والمعلمات.",
+        "highlightNote": "هذه الإعدادات مؤقتة ولن يتم حفظها في إعداداتك.",
+        "model": {
+          "label": "تجاوز نموذج الترجمة",
+          "helper": "تجاوز النموذج الافتراضي لهذه الترجمة فقط.",
+          "useConfigured": "استخدام النموذج المكون (من إعداداتك)",
+          "useConfiguredWith": "استخدام النموذج المكون ({model})"
+        },
+        "thinking": {
+          "label": "ميزانية التفكير (استدلال موسع)",
+          "helper": "0 = معطل، -1 = ديناميكي (ضبط تلقائي)، أو عدد رموز ثابت (1-32768)."
+        },
+        "temperature": {
+          "label": "الحرارة (الإبداع)",
+          "helper": "يتحكم في العشوائية (0.0-2.0). أقل = حتمي، أعلى = إبداعي. الافتراضي: 0.8"
+        },
+        "reasoning": {
+          "label": "جهد الاستدلال",
+          "helper": "ينطبق على نماذج OpenAI ذات القدرة الاستدلالية. اتركه فارغاً للافتراضي.",
+          "default": "لا شيء (استخدم افتراضي المزود)",
+          "low": "منخفض",
+          "medium": "متوسط",
+          "high": "مرتفع"
+        },
+        "topP": {
+          "label": "Top-P (Nucleus Sampling)",
+          "helper": "عتبة الاحتمال (0.0-1.0). أقل = مركز، أعلى = متنوع. الافتراضي: 0.95"
+        },
+        "topK": {
+          "label": "Top-K (Token Selection)",
+          "helper": "عدد أفضل الرموز للنظر فيها (1-100). الافتراضي: 40"
+        },
+        "maxTokens": {
+          "label": "الحد الأقصى لرموز الإخراج",
+          "helper": "الحد الأقصى للرموز في الإخراج (1-200000). الافتراضيات تتبع مزودك المختار."
+        },
+        "formality": {
+          "label": "الرسمية",
+          "helper": "إعداد خاص بـ DeepL للتحكم بالنبرة.",
+          "default": "افتراضي",
+          "more": "أكثر رسمية",
+          "less": "أقل رسمية"
+        },
+        "preserveFormatting": {
+          "label": "الحفاظ على التنسيق",
+          "helper": "الحفاظ على فواصل الأسطر، وحالة الأحرف، والعلامات (DeepL فقط).",
+          "toggle": "الحفاظ على التنسيق"
+        },
+        "timeout": {
+          "label": "مهلة الترجمة (ثواني)",
+          "helper": "الحد الأقصى للانتظار للترجمة (5-600). الافتراضيات تتبع مزودك المختار."
+        },
+        "retries": {
+          "label": "أقصى عدد للمحاولات",
+          "helper": "عدد محاولات إعادة المحاولة لهذه الترجمة (0-5). الافتراضي: 2"
+        },
+      "reset": "إعادة تعيين للافتراضيات",
+        "modelStatus": {
+          "unavailable": "تجاوز النموذج غير متاح لترجمة Google",
+          "fetching": "جاري جلب النماذج...",
+          "loaded": "تم تحميل النماذج!",
+          "failed": "فشل جلب النماذج"
+        }
+      },
+      "toast": {
+        "title": "تم اكتشاف بث جديد",
+        "meta": "يتم تشغيل حلقة مختلفة في Stremio.",
+        "dismiss": "تجاهل الإشعار",
+        "update": "تحديث"
+      },
+      "source": {
+        "label": "لغة المصدر",
+        "helper": "مطلوب لـ DeepL؛ اختر اللغة الأصلية للترجمة أو اترك الكشف التلقائي.",
+        "auto": "كشف تلقائي (موصى به)"
+      },
+      "target": {
+        "label": "لغة الهدف",
+        "helper": "اختر اللغة للترجمة إليها",
+        "placeholder": "اختر لغة..."
+      },
+      "languageToggle": {
+        "showAll": "إظهار جميع اللغات"
+      },
+      "files": {
+        "single": "الملفات المحددة: {name}",
+        "multi": "{count} ملفات محددة: {preview}{extra}"
+      },
+      "actions": {
+        "start": "بدء الترجمة"
+      },
+      "progress": {
+        "headline": "جاري ترجمة ملف الترجمة الخاص بك...",
+        "subtext": "تعمل الترجمات المجدولة واحدة تلو الأخرى لاحترام حدود المعدل.",
+        "button": "جاري الترجمة...",
+        "active": "جاري ترجمة {name}",
+        "detail": "المهمة {position} من {total}. تشغيل {concurrent} في المرة الواحدة.",
+        "subtitle": "ترجمة"
+      },
+      "refresh": {
+        "loading": "جاري التحديث...",
+        "empty": "لا يوجد بث حتى الآن",
+        "error": "فشل التحديث",
+        "current": "الأحدث بالفعل"
+      },
+      "queue": {
+        "title": "قائمة انتظار الرفع",
+        "subtitle": "تعمل الملفات بالتتابع لتجنب خنق الترجمة.",
+        "empty": "لا ملفات في قائمة الانتظار",
+        "download": "تحميل",
+        "untitled": "بدون عنوان",
+        "options": {
+          "addTargets": "أضف لغات الهدف في الإعدادات"
+        },
+        "status": {
+          "pending": "في الانتظار",
+          "processing": "قيد المعالجة",
+          "completed": "تم",
+          "failed": "فشل"
+        },
+        "summary": {
+          "processing": "{count} قيد التقدم",
+          "pending": "{count} في الانتظار",
+          "completed": "{count} تم",
+          "failed": "{count} فشل",
+          "ready": "قائمة الانتظار جاهزة"
+        },
+        "meta": {
+          "single": "دفعة واحدة",
+          "multi": "دفعات متعددة",
+          "timingAi": "إرسال طوابع زمنية للذكاء الاصطناعي",
+          "timingRebuild": "إعادة بناء الطوابع الزمنية",
+          "target": "{target}"
+        },
+        "limitFull": "لديك بالفعل {max} ملفات في قائمة الانتظار. امسحها لإضافة المزيد.",
+        "limitPartial": "تمت إضافة أول {available} ملفات فقط للبقاء ضمن حد قائمة الانتظار البالغ {max}."
+      },
+      "result": {
+        "title": "اكتملت الترجمة!",
+        "body": "تمت ترجمة ملف الترجمة الخاص بك بنجاح.",
+        "download": "تحميل الترجمة المترجمة",
+        "translateAnother": "ترجم واحدة أخرى",
+        "finished": "انتهى: {name}"
+      },
+      "reset": {
+        "text": "إعادة تعيين صفحة ترجمة الملفات للافتراضيات ->",
+        "action": "إعادة تعيين"
+      },
+      "resetModal": {
+        "title": "إعادة تعيين ترجمة الملفات",
+        "lead": "سيؤدي هذا إلى إعادة تعيين كل شيء لهذه الأداة:",
+        "bullet1": "مسح المهام المجدولة، التحديدات، وأي نتائج تم تحميلها",
+        "bullet2": "إزالة التفضيلات المحفوظة (المظاهر، النصائح المتجاهلة) لهذه الصفحة",
+        "bullet3": "سيتم إعادة تحميلك على نفس صفحة ترجمة الملفات بعد ذلك.",
+        "cancel": "إلغاء",
+        "action": "إعادة تعيين كل شيء",
+        "busy": "جاري إعادة التعيين...",
+        "closeAria": "إغلاق مربع حوار إعادة التعيين"
+      },
+      "provider": {
+        "using": "استخدام {main}{mainModel} من إعدادات SubMaker المحفوظة.",
+        "withFallback": "استخدام {main}{mainModel} مع احتياطي {fallback}{fallbackModel}."
+      },
+      "errors": {
+        "configMissing": "رمز التكوين مفقود. افتح هذه الصفحة مرة أخرى من Stremio أو صفحة الإعدادات.",
+        "noFiles": "يرجى اختيار ملف ترجمة واحد على الأقل (SRT, VTT, ASS, SSA).",
+        "reviewSelections": "يرجى مراجعة اختياراتك.",
+        "translationFailed": "فشلت الترجمة: {error}",
+        "warningPrefix": "تحذير: ",
+        "targetMissing": "يرجى اختيار لغة الهدف",
+        "sourceMissing": "يرجى اختيار لغة المصدر لترجمات DeepL"
+      }
+    },
+    "sync": {
+      "documentTitle": "استوديو مزامنة الترجمات - SubMaker",
+      "title": "استوديو مزامنة الترجمات",
+      "subtitle": "مزامنة الترجمات تلقائياً مع الفيديو الخاص بك باستخدام تحليل الصوت",
+      "sectionHeading": "اربط البث الخاص بك، اختر ترجمة، وقم بالمزامنة",
+      "badges": {
+        "addon": "الإضافة",
+        "extension": "الامتداد (Extension)",
+        "hash": "تجزئة (Hash)",
+        "extensionWaiting": "بانتظار الامتداد..."
+      },
+      "meta": {
+        "linkedStream": "بث مرتبط",
+        "titleLabel": "العنوان",
+        "videoIdLabel": "معرف الفيديو",
+        "episodeLabel": "الحلقة",
+        "fileLabel": "الملف",
+        "waiting": "بانتظار بث مرتبط...",
+        "noStream": "لا يوجد بث مرتبط",
+        "videoIdUnavailable": "معرف الفيديو غير متاح",
+        "linkedFallback": "بث مرتبط",
+        "episodeFallback": "حلقة"
+      },
+      "instructions": {
+        "help": "إظهار التعليمات",
+        "title": "تعليمات مزامنة الترجمة",
+        "methods": "طرق المزامنة",
+        "items": {
+          "manual": "إزاحة يدوية: ضبط توقيت الترجمة يدوياً بمللي ثانية موجبة/سالبة عندما لا ترغب في تشغيل المزامنة التلقائية.",
+          "fingerprint": "تمرير بصمة سريع: فحص بصمة ffsubsync الخشن لتثبيت الإزاحة الكبيرة قبل المسح العميق (مفعل افتراضياً).",
+          "alass": "ALASS (صوت -> ترجمة): مراسي wasm سريعة مقابل الصوت؛ اختر ملفات تعريف سريعة/متوازنة/عميقة/كاملة للتغطية.",
+          "ffsubsync": "FFSubSync (صوت -> ترجمة): محاذاة الصوت المدركة للانحراف عبر ffsubsync-wasm؛ اختر مسحاً خفيفاً، أو متوازناً، أو عميقاً، أو كاملاً.",
+          "vosk": "Vosk CTC/DTW (نص -> صوت): محاذاة نص الترجمة قسرياً مباشرة مع الصوت باستخدام Vosk logits + DTW، رائع للتوقيتات المكسورة أو الإزاحات الكبيرة.",
+          "whisper": "Whisper + ALASS (ترجمة -> ترجمة): محاذاة نص Whisper مع تمرير تنقيح ALASS؛ استخدم ملفات تعريف خفيفة/متوازنة/عميقة/كاملة للتحكم في حجم المسح."
+        },
+        "note": "اختر محركاً أساسياً أولاً، ثم اختر ملف تعريف المسح الخاص به. تتكيف التغطية مع وقت التشغيل المكتشف بحيث يمكن للحالات الثقيلة الحصول على مسح أعمق.",
+        "dontShow": "لا تظهر هذا مرة أخرى",
+        "gotIt": "فهمت",
+        "closeAria": "إغلاق التعليمات"
+      },
+      "toast": {
+        "title": "تم اكتشاف بث جديد",
+        "meta": "يتم تشغيل حلقة مختلفة في Stremio.",
+        "update": "تحديث",
+        "dismiss": "تجاهل الإشعار"
+      },
+      "step1": {
+        "chip": "الخطوة 1",
+        "title": "توفير معلومات البث",
+        "linkedLabel": "بث مرتبط",
+        "streamLabel": "رابط البث:",
+        "placeholder": "الصق رابط البث هنا (مثلاً، http://... أو magnet:...)",
+        "infoTitle": "مزامنة الترجمات:",
+        "infoBody": "تحتاج المزامنة التلقائية إلى رابط البث وامتداد xSync؛ الإزاحات اليدوية تعمل بدونهم.",
+        "continue": "متابعة لاختيار الترجمة"
+      },
+      "step2": {
+        "chip": "الخطوة 2",
+        "title": "اختر الترجمة للمزامنة",
+        "selectLabel": "اختر من {title} ترجمات تم جلبها:",
+        "selectPlaceholder": "اختر ترجمة",
+        "uploadTitle": "أو اسحب وأفلت ملف .srt الخاص بك هنا",
+        "uploadSubtitle": "انقر لاستعراض الملفات",
+        "sourceLabel": "لغة المصدر:",
+        "sourcePlaceholder": "اختر لغة المصدر",
+        "translateToggle": "ترجمة الترجمة بعد المزامنة",
+        "targetLabel": "لغة الهدف:",
+        "subtitleOption": "{language} - ترجمة #{index}"
+      },
+      "step3": {
+        "chip": "الخطوة 3",
+        "title": "مزامنة الترجمة",
+        "primaryLabel": "الوضع الأساسي:",
+        "secondaryLabel": "ملف تعريف المسح:",
+        "primaryOptions": {
+          "manual": "ضبط الإزاحة اليدوية",
+          "alass": "ALASS (صوت -> ترجمة)",
+          "ffsubsync": "FFSubSync (صوت -> ترجمة)",
+          "vosk": "Vosk CTC/DTW (نص -> صوت)",
+          "whisper": "Whisper + ALASS (ترجمة -> ترجمة)"
+        },
+        "manualLabel": "الإزاحة الزمنية (مللي ثانية):",
+        "offsetHotkeys": "مفاتيح الاختصار: يسار/يمين = +/-100ms؛ Shift+يسار/يمين = +/-500ms؛ 0 = إعادة تعيين",
+        "offsetHintPositive": "قيم موجبة = تأخير الترجمات (تظهر لاحقاً)",
+        "offsetHintNegative": "قيم سالبة = تقديم الترجمات (تظهر مبكراً)",
+        "offsetButtons": {
+          "minus1000": "-1ث",
+          "minus500": "-500ms",
+          "minus100": "-100ms",
+          "reset": "إعادة تعيين",
+          "plus100": "+100ms",
+          "plus500": "+500ms",
+          "plus1000": "+1ث"
+        },
+        "start": "تطبيق المزامنة",
+        "startBusy": "جاري المزامنة...",
+        "progress": "جاري مزامنة الترجمات...",
+        "options": {
+          "addTargets": "أضف لغات الهدف في الإعدادات"
+        },
+        "status": {
+          "noStream": "لا يوجد بث مرتبط. الإزاحات اليدوية جيدة، لكن المزامنة التلقائية ستحتاج إلى رابط بث http(s).",
+          "invalidStream": "تتطلب المزامنة التلقائية رابط بث http(s) صالح. الإزاحات اليدوية يمكن أن تعمل بدونه.",
+          "linked": "رابط البث مرتبط للمزامنة التلقائية.",
+          "needSubtitle": "يرجى اختيار ترجمة أولاً",
+          "needLanguage": "اختر لغة الترجمة قبل المزامنة.",
+          "extensionRequired": "تتطلب المزامنة التلقائية امتداد SubMaker Chrome Extension. يرجى تثبيته/تمكينه.",
+          "urlRequired": "تتطلب المزامنة التلقائية رابط بث http(s) صالح. يرجى لصقه في الخطوة 1.",
+          "profileRequired": "اختر ملف تعريف المسح قبل بدء المزامنة التلقائية.",
+          "success": "تمت مزامنة الترجمة بنجاح!",
+          "failed": "فشلت المزامنة: {reason}",
+          "extensionSyncFailed": "فشلت مزامنة الامتداد",
+          "timeout": "انتهت مهلة مزامنة الامتداد",
+          "fetchSubtitleFailed": "فشل جلب الترجمة"
+        },
+        "progressApplying": "جاري تطبيق الإزاحة: {ms}ms...",
+        "progressComplete": "اكتملت المزامنة!",
+        "autosync": {
+          "generic": "مزامنة تلقائية",
+          "starting": "جاري بدء {mode} ({primary}){plan}...",
+          "complete": "اكتمل {mode}!"
+        }
+      },
+      "step4": {
+        "title": "معاينة وتحميل",
+        "downloadSynced": "تحميل الترجمة المتزامنة",
+        "downloadTranslated": "تحميل الترجمة المترجمة"
+      },
+      "offset": {
+        "onTime": "في الوقت المحدد",
+        "direction": {
+          "later": "لاحقاً",
+          "earlier": "أبكر"
+        }
+      },
+      "auto": {
+        "fingerprintLabel": "تمرير بصمة سريع (موصى به)",
+        "fingerprintDescription": "يشغل تمرير إزاحة ffsubsync خشن سريع على نوافذ الصوت الأولى قبل المحرك المختار. عطل هذا فقط إذا كان الصوت مكتوماً، أو مقطوعاً بشدة، أو إذا كنت تريد تخطي القفزة الإضافية."
+      },
+      "refresh": {
+        "loading": "جاري التحديث...",
+        "empty": "لا يوجد بث حتى الآن",
+        "error": "فشل التحديث",
+        "current": "الأحدث بالفعل"
+      },
+      "upload": {
+        "invalidFile": "يرجى اختيار ملف .srt صالح",
+        "loaded": "تم تحميل ملف الترجمة: {name}"
+      },
+      "plan": {
+        "summary": "الخطة: {plan}",
+        "fullRuntimeSeconds": "مسح وقت التشغيل الكامل ({seconds}ث)",
+        "fullRuntime": "مسح وقت التشغيل الكامل",
+        "windowCountSeconds": "{count} x {seconds}ث",
+        "windowCount": "{count} نوافذ",
+        "coverageDetected": "~{pct}% من وقت التشغيل المكتشف",
+        "coverageTarget": "~{pct}% التغطية المستهدفة",
+        "fingerprint": "تمرير بصمة مسبق",
+        "fingerprintSkipped": "يتم تخطي تمرير البصمة المسبق عندما يكون FFSubSync هو المحرك الأساسي."
+      },
+      "logs": {
+        "estimatedRuntime": "وقت تشغيل الترجمة المقدر (من الترجمة الحالية): {duration}",
+        "generic": "سجل الحدث",
+        "sentRequest": "تم إرسال طلب مزامنة ({mode}){summary} إلى الامتداد."
+      },
+      "modes": {
+        "alass": {
+          "description": "مراسي صوت -> ترجمة عبر alass-wasm."
+        },
+        "ffsubsync": {
+          "description": "محاذاة صوت -> ترجمة عبر ffsubsync-wasm."
+        },
+        "vosk": {
+          "description": "نص -> صوت (Vosk CTC logits + DTW)."
+        },
+        "whisper": {
+          "description": "ترجمة -> ترجمة (نص Whisper + تنقيح ALASS)."
+        }
+      },
+      "presets": {
+        "alass": {
+          "rapid": {
+            "label": "مراسي سريعة (~8-10%)",
+            "description": "4-6 نوافذ مراسي قصيرة لتثبيت الانحراف السريع."
+          },
+          "balanced": {
+            "label": "مراسي متوازنة (~14-18%)",
+            "description": "6-9 نوافذ عند ~60ث لتحولات معدل البت الأصعب."
+          },
+          "deep": {
+            "label": "مراسي عميقة (~26-32%)",
+            "description": "9-14 نافذة عند ~75ث للانحراف الثقيل/الإعلانات."
+          },
+          "complete": {
+            "label": "كامل (وقت التشغيل الكامل)",
+            "description": "مسح وقت التشغيل الكامل بمراسي alass."
+          }
+        },
+        "ffsubsync": {
+          "light": {
+            "label": "مسح خفيف (~6-8%)",
+            "description": "4-6 نوافذ (~60ث) لالتقاط الانحرافات الواضحة بسرعة."
+          },
+          "balanced": {
+            "label": "مسح متوازن (~12-16%)",
+            "description": "6-10 نوافذ (~80ث) لأنماط الانحراف المختلطة."
+          },
+          "deep": {
+            "label": "مسح عميق (~22-28%)",
+            "description": "9-14 نافذة (~100ث) للتصحيح العدواني."
+          },
+          "complete": {
+            "label": "كامل (وقت التشغيل الكامل)",
+            "description": "مسح ffsubsync لوقت التشغيل الكامل لأقصى دقة."
+          }
+        },
+        "vosk": {
+          "light": {
+            "label": "Vosk خفيف (~10-12%)",
+            "description": "تمرير CTC/DTW سريع للإزاحات الكبيرة والتوقيتات المكسورة."
+          },
+          "balanced": {
+            "label": "Vosk متوازن (~16-20%)",
+            "description": "يضيف المزيد من المراسي للإعلانات/الانحراف مع البقاء سريعاً."
+          },
+          "deep": {
+            "label": "Vosk عميق (~26-32%)",
+            "description": "مراسي كثيفة للصوت المزعج أو الترجمات الفوضوية."
+          },
+          "complete": {
+            "label": "Vosk كامل (وقت التشغيل الكامل)",
+            "description": "محاذاة Vosk CTC/DTW لوقت التشغيل الكامل عندما تكون الدقة حرجة."
+          }
+        },
+        "whisper": {
+          "light": {
+            "label": "مسح خفيف (~5-7%)",
+            "description": "3-5 نوافذ Whisper (~70ث) للتحقق من الانحراف."
+          },
+          "balanced": {
+            "label": "مسح متوازن (~12-16%)",
+            "description": "5-8 نوافذ (~85ث) للعروض النموذجية مع الإعلانات."
+          },
+          "deep": {
+            "label": "مسح عميق (~22-28%)",
+            "description": "8-12 نافذة (~100ث) للانحرافات العنيدة."
+          },
+          "complete": {
+            "label": "كامل (وقت التشغيل الكامل)",
+            "description": "نص كامل + محاذاة عندما تحتاج لكل شيء."
+          }
+        }
+      },
+      "primary": {
+        "manual": "إزاحة يدوية: اكتب الإزاحة بالمللي ثانية التي تحتاجها.",
+        "alass": "ALASS يربط الترجمة بالصوت للمحاذاة السريعة دون اتصال.",
+        "ffsubsync": "FFSubSync يكتشف الانحرافات/الإعلانات مباشرة من موجة الصوت.",
+        "vosk": "Vosk CTC/DTW يحاذي نص الترجمة قسرياً مباشرة مع الصوت.",
+        "whisper": "محاذاة نص Whisper مع تمرير تنقيح ALASS."
+      },
+      "extension": {
+        "ready": "جاهز",
+        "notDetected": "لم يتم اكتشاف الامتداد",
+        "pinging": "جاري الاتصال بالامتداد...",
+        "readyVersion": "جاهز (v{version})",
+        "detected": "تم اكتشاف الامتداد (v{version})",
+        "unlocked": "محركات المزامنة مفتوحة (ALASS / FFSubSync / Vosk CTC/DTW / Whisper + ALASS)"
+      },
+      "translate": {
+        "inProgress": "جاري ترجمة ملف الترجمة... قد يستغرق هذا 1-5 دقائق.",
+        "failed": "فشلت الترجمة",
+        "success": "اكتملت الترجمة!",
+        "error": "فشلت الترجمة: {reason}"
+      },
+      "errors": {
+        "saveFailed": "فشل حفظ الترجمة المتزامنة"
+      }
+    }
+  }
+}

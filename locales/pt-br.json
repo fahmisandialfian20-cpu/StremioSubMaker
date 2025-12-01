@@ -1,0 +1,1452 @@
+{
+  "_comment_do_not_translate": [
+    "SubMaker",
+    "Sub Toolbox",
+    "Toolbox",
+    "Tool shelf",
+    "Learn Mode",
+    "Learn Mode labels (e.g., Learn {language})",
+    "Learn (Language) entries (\"Learn <Language>\")",
+    "SubMaker xSync",
+    "SubMaker Link",
+    "OpenSubtitles",
+    "SubScene",
+    "SubDL",
+    "SubSource",
+    "Gemini (all model names)",
+    "Stremio",
+    "Addon",
+    "Extension",
+    "Autosync"
+  ],
+  "lang": "pt-br",
+  "messages": {
+    "common": {
+      "selectOption": "Selecione uma opção"
+    },
+    "manifest": {
+      "name": "SubMaker - Tradutor de Legendas",
+      "description": "Assuma o controle das suas legendas! Busque e traduza legendas do OpenSubtitles, SubScene e SubDL com uma chave gratuita do Gemini AI ou outros provedores de IA, sem nunca sair do Stremio.\n\nIdiomas de origem: {sources}\nIdiomas de destino: {targets}"
+    },
+    "api": {
+      "fileUpload": {
+        "missingConfig": "Configuração ou videoId ausente",
+        "loadFailed": "Falha ao carregar a página de tradução de arquivo"
+      }
+    },
+    "server": {
+      "errors": {
+        "storageUnavailable": "Armazenamento de sessão temporariamente indisponível, por favor tente novamente.",
+        "configPayloadTooLarge": "Payload de configuração muito grande",
+        "originNotAllowed": "Origem não permitida",
+        "stremioOnly": "Acesso negado. Este addon deve ser acessado através do Stremio.",
+        "stremioHint": "Se você está usando o Stremio e vendo este erro, por favor reporte como um bug.",
+        "browserCorsBlocked": "Requisições baseadas em navegador de origem cruzada (CORS) para esta rota de API não são permitidas. Por favor, use o cliente Stremio.",
+        "invalidConfigId": "Identificador de configuração do addon inválido",
+        "languagesFailed": "Falha ao obter idiomas",
+        "localeFailed": "Falha ao carregar localidade",
+        "missingConfig": "Configuração ausente",
+        "invalidConfig": "Configuração inválida ou expirada",
+        "streamActivityFailed": "Falha ao ler atividade do stream",
+        "apiKeyRequired": "Chave da API é obrigatória",
+        "invalidSessionToken": "Token de sessão inválido ou expirado",
+        "modelsFailed": "Falha ao buscar modelos: {reason}",
+        "cloudflareTokenRequired": "Token do Cloudflare Workers AI é obrigatório",
+        "cloudflareAccountRequired": "ID da conta do Cloudflare Workers AI é obrigatório. Forneça a chave da API como ACCOUNT_ID|TOKEN.",
+        "cloudflareCredentialsMissing": "Credenciais do Cloudflare Workers AI ausentes. Use ACCOUNT_ID|TOKEN.",
+        "unsupportedProvider": "Provedor não suportado",
+        "requestTimedOut": "Tempo limite da requisição esgotado (7s)",
+        "invalidApiKeyAuth": "Chave da API inválida - falha na autenticação",
+        "requestFailed": "Requisição falhou",
+        "invalidApiKey": "Chave da API inválida",
+        "usernamePasswordRequired": "Nome de usuário e senha são obrigatórios",
+        "noTokenReceived": "Nenhum token recebido - credenciais podem ser inválidas",
+        "invalidCredentials": "Nome de usuário ou senha inválidos",
+        "invalidRequestFormat": "Formato de requisição inválido",
+        "sessionCreateFailed": "Falha ao criar sessão",
+        "sessionUpdateFailed": "Falha ao atualizar sessão",
+        "sessionStatsFailed": "Falha ao obter estatísticas da sessão",
+        "sessionTokenFormat": "Formato de token de sessão inválido",
+        "sessionNotFound": "Sessão não encontrada",
+        "sessionValidateFailed": "Falha ao validar sessão",
+        "sessionFetchFailed": "Falha ao buscar configuração da sessão",
+        "sessionNotFoundReason": "Sessão não encontrada ou expirada",
+        "sessionConfigCorrupted": "O payload de configuração estava vazio ou corrompido (empty_config_00)",
+        "translateFileMissingContent": "Conteúdo da legenda é obrigatório",
+        "translateFileMissingTarget": "Idioma de destino é obrigatório",
+        "translateFileMissingConfig": "Configuração é obrigatória",
+        "translateFileError": "Tradução falhou: {reason}",
+        "subtitleNotFound": "Legenda não encontrada",
+        "errorSubtitleUnavailable": "Legenda de erro indisponível",
+        "subtitleSelectorFailed": "Falha ao carregar seletor de legendas",
+        "translationInProgress": "Tradução já em andamento; aguardando solicitação primária.",
+        "translationInvalidContent": "A tradução retornou conteúdo inválido",
+        "translationFailed": "Tradução falhou: {reason}",
+        "learnFailed": "Falha ao construir legendas de aprendizado (Learn Mode)",
+        "subToolboxLoadFailed": "Falha ao carregar o Sub Toolbox",
+        "missingConfigOrVideo": "Configuração ou videoId ausente",
+        "subToolboxPageFailed": "Falha ao carregar página do Sub Toolbox",
+        "embeddedPageFailed": "Falha ao carregar página de legendas embutidas",
+        "autoSubsPageFailed": "Falha ao carregar página de legendas automáticas",
+        "configPageFailed": "Falha ao carregar página de configuração",
+        "subtitleSyncPageFailed": "Falha ao carregar página de sincronização de legendas",
+        "syncedSubtitleNotFound": "Legenda sincronizada não encontrada",
+        "downloadSyncedFailed": "Falha ao baixar legenda sincronizada",
+        "invalidEmbeddedParams": "Parâmetros de legenda embutida inválidos",
+        "translatedEmbeddedMissing": "Legenda embutida traduzida não encontrada",
+        "downloadEmbeddedFailed": "Falha ao baixar legenda embutida",
+        "originalEmbeddedMissing": "Legenda embutida original não encontrada",
+        "downloadEmbeddedOriginalFailed": "Falha ao baixar legenda embutida original",
+        "missingFields": "Campos obrigatórios ausentes",
+        "missingOrInvalidFields": "Campos obrigatórios ausentes ou inválidos",
+        "embeddedTooLarge": "Legenda embutida é muito grande",
+        "subtitleTooLarge": "Conteúdo da legenda é muito grande",
+        "originalEmbeddedRequired": "Legenda embutida original necessária: envie conteúdo ou habilite KEEP_EMBEDDED_ORIGINALS=true",
+        "saveSyncedFailed": "Falha ao salvar legenda sincronizada",
+        "saveEmbeddedFailed": "Falha ao salvar legenda embutida",
+        "translateEmbeddedFailed": "Falha ao traduzir legenda embutida: {reason}",
+        "manifestFailed": "Falha ao gerar manifesto",
+        "subtitleUnavailable": "ERRO: Legenda indisponível",
+        "translationUnavailable": "ERRO: Tradução indisponível",
+        "fileTranslationPageFailed": "Falha ao carregar página de tradução de arquivo",
+        "internalServerError": "Erro interno do servidor"
+      },
+      "session": {
+        "configRequired": "Configuração é obrigatória",
+        "usingBase64Localhost": "Usando codificação base64 para localhost",
+        "tokenRequired": "Token de sessão é obrigatório",
+        "createdBase64Localhost": "Criado novo token base64 para localhost",
+        "expiredCreated": "Sessão expirada ou não encontrada, criada nova sessão",
+        "updateSuccess": "Configuração da sessão atualizada com sucesso"
+      },
+      "validation": {
+        "apiError": "Erro na API: {reason}",
+        "apiKeyValid": "Chave da API é válida",
+        "apiKeyAppearsValid": "Chave da API parece válida",
+        "credentialsValid": "Credenciais são válidas"
+      },
+      "sync": {
+        "saveSuccess": "Legenda sincronizada salva com sucesso"
+      },
+      "selector": {
+        "title": "Selecione a Legenda para Traduzir",
+        "heading": "Traduzir para {target}",
+        "subheader": "Selecione uma legenda {sources} para traduzir",
+        "empty": "Nenhuma legenda {sources} disponível"
+      }
+    },
+    "apiErrors": {
+      "rateLimit": "Limite de taxa do {service} excedido. Por favor, aguarde alguns minutos e tente novamente.",
+      "serviceUnavailable": "{service} temporariamente indisponível. Por favor, tente novamente em alguns minutos.",
+      "databaseUnavailable": "Banco de dados do servidor de legendas temporariamente indisponível. Tentando a próxima legenda...",
+      "authFailed": "Falha na autenticação. Verifique suas credenciais da API.",
+      "notFound": "Recurso não encontrado. O conteúdo solicitado pode ter sido removido.",
+      "serverError": "{service} retornou um erro de servidor. Por favor, tente novamente mais tarde.",
+      "opensubsQuota": "Limite diário de download do OpenSubtitles atingido (20 a cada 24h). Tente novamente após a meia-noite UTC.",
+      "invalidRequest": "Requisição inválida. Por favor, verifique sua configuração.",
+      "timeout": "Tempo limite da requisição esgotado. Por favor, tente novamente.",
+      "network": "Falha na conexão de rede. Verifique sua conexão com a internet.",
+      "dns": "Não é possível alcançar o serviço. Falha na busca DNS."
+    },
+    "toolbox": {
+      "documentTitle": "Sub Toolbox - SubMaker",
+      "streamUnknown": "Nome do arquivo do stream não detectado (ainda funciona)",
+      "header": {
+        "title": "SubMaker Toolbox",
+        "linked": "Vinculado a {id}"
+      },
+      "refresh": {
+        "title": "Ir para seu último stream",
+        "label": "Atualizar stream",
+        "loading": "Atualizando...",
+        "empty": "Nenhum stream ainda",
+        "error": "Falha na atualização",
+        "current": "Já é o mais recente"
+      },
+      "status": {
+        "session": "Sessão",
+        "ready": "Pronto",
+        "addon": "Addon",
+        "extension": "Extensão",
+        "checking": "Verificando...",
+        "localTime": "Hora local",
+        "pinging": "Pingando extensão...",
+        "notDetected": "Não detectada",
+        "detected": "Detectada"
+      },
+      "hero": {
+        "eyebrow": "Sub Toolbox",
+        "title": "Escolha uma ferramenta sem sair do seu stream",
+        "body": "Use o botão Sub Toolbox na lista de legendas do Stremio. Suas chaves de API salvas, idiomas de destino e cache vêm com você automaticamente.",
+        "primary": "Traduzir um arquivo",
+        "secondary": "Ajustar configurações"
+      },
+      "toast": {
+        "title": "Novo stream detectado",
+        "meta": "Um episódio diferente está tocando no Stremio.",
+        "dismiss": "Dispensar notificação",
+        "update": "Atualizar"
+      },
+      "chips": {
+        "sources": "Fontes",
+        "targets": "Destinos",
+        "providers": "Provedores",
+        "stream": "Stream"
+      },
+      "tools": {
+        "eyebrow": "Prateleira de Ferramentas",
+        "translate": {
+          "title": "Traduzir arquivos SRT",
+          "body": "Faça upload de arquivos .srt/.vtt/.ass e mantenha cache + preferências de idioma intactos.",
+          "cta": "Traduzir um arquivo"
+        },
+        "embedded": {
+          "title": "Extrair + Traduzir",
+          "body": "Extraia legendas do stream ou arquivo atual e traduza com seu provedor.",
+          "cta": "Abrir extrator"
+        },
+        "sync": {
+          "title": "Sincronizar legendas",
+          "body": "Corrija desvios de tempo com deslocamentos ou a extensão do Chrome e salve de volta na sua sessão.",
+          "cta": "Abrir estúdio de sincronização"
+        },
+        "auto": {
+          "title": "Legendas automáticas",
+          "body": "Crie legendas quando nenhuma existir. Usa suas configurações de idioma de destino e provedor.",
+          "cta": "Gerar legendas"
+        }
+      },
+      "summary": {
+        "notSet": "Ainda não definido"
+      },
+      "logs": {
+        "linkedChanged": "Stream vinculado alterado. Saídas limpas; execute a extração novamente para o novo stream.",
+        "noProgress": "Nenhum progresso de extração por {minutes} minuto(s). Reiniciando extração; por favor, tente novamente.",
+        "cacheSaveFailed": "Falha ao salvar faixa {id} no cache: {reason}",
+        "event": "Evento de log",
+        "extracted": "Extraiu {count} faixa(s).",
+        "failed": "Extração falhou: {error}",
+        "extensionMissing": "Extensão não detectada ainda. Instale o SubMaker xSync e aguarde a detecção.",
+        "pasteUrl": "Cole uma URL de stream primeiro.",
+        "invalidUrl": "URL de stream inválida. Cole um link http/https completo.",
+        "sentRequest": "Enviou requisição de extração ({mode}) para a extensão.",
+        "queueTranslation": "Enfileirar tradução",
+        "running": "{count} rodando",
+        "queued": "{count} na fila",
+        "extracting": "Extraindo via xSync...",
+        "selectSubtitle": "Selecione uma legenda nas saídas do Passo 1 primeiro.",
+        "translationQueued": "Tradução já na fila para {lang}.",
+        "translating": "Traduzindo {label} -> {target}...",
+        "retranslating": "Retraduzindo {label} -> {target}...",
+        "binaryTrack": "Faixa é binária (imagem/bitmap); não é possível traduzir.",
+        "translationFailed": "Tradução falhou",
+        "finished": "Finalizado {lang}",
+        "finishedCached": "Finalizado {lang} (cache)",
+        "translationError": "Falhou {lang}: {reason}",
+        "selectTarget": "Selecione um idioma de destino."
+      },
+      "downloads": {
+        "selectPrompt": "Selecione uma legenda nas saídas do Passo 1 para desbloquear este passo.",
+        "trackLabel": "Faixa {id}",
+        "lang": "Idioma: {lang}",
+        "codec": "Codec: {codec}",
+        "meta": "Idioma: {lang} - Codec: {codec} - Tam: {size}",
+        "original": "Baixar original",
+        "translated": "Baixar traduzida",
+        "unknownSize": "tamanho desconhecido",
+        "unitB": "B",
+        "unitKB": "KB",
+        "unitMB": "MB",
+        "unitGB": "GB",
+        "download": "Baixar",
+        "selected": "Selecionado",
+        "useForStep2": "Usar para o Passo 2",
+        "translatedLabel": "Traduzida {lang} (faixa {track})"
+      },
+      "autoSubs": {
+        "documentTitle": "Legendas Automáticas - SubMaker",
+        "heroTitle": "Legendas Automáticas",
+        "heroSubtitle": "Gerar legendas com Whisper e traduzir",
+        "badges": {
+          "hash": "Hash",
+          "versionFallback": "n/a",
+          "pending": "pendente"
+        },
+        "extension": {
+          "waiting": "Aguardando extensão...",
+          "notDetected": "Extensão não detectada",
+          "ready": "Pronta",
+          "readyVersion": "Pronta (v{version})",
+          "readyWithVersion": "Pronta (v{version})"
+        },
+        "sections": {
+          "setup": "Vincular um stream & preparar o modelo",
+          "run": "Executar pipeline & revisar saída"
+        },
+        "steps": {
+          "step1Chip": "Passo 1",
+          "step1Title": "Vídeo ou áudio de entrada",
+          "streamLabel": "URL do Stream / arquivo",
+          "streamPlaceholder": "https://exemplo.com/video.mkv",
+          "streamNote": "Buscaremos e extrairemos o áudio; streams protegidos/DRM não funcionarão.",
+          "prefill": "Usar id de stream fornecido",
+          "clear": "Limpar",
+          "step2Chip": "Passo 2",
+          "step2Title": "Idioma + modelo",
+          "sourceLabel": "Idioma de origem (opcional)",
+          "autoDetect": "Auto-detectar",
+          "targetLabel": "Idioma de destino",
+          "modelLabel": "Modelo Whisper",
+          "modelTiny": "tiny (mais rápido)",
+          "modelSmall": "small",
+          "modelMedium": "medium (equilibrado)",
+          "modelTurbo": "turbo (GPU)",
+          "diarization": "Diarização de falantes",
+          "translateOutput": "Traduzir para idiomas de destino",
+          "step3Chip": "Passo 3",
+          "step3Title": "Executar pipeline",
+          "pipeline": "Vamos processar: buscar -> segmentar -> transcrever -> alinhar -> traduzir (opcional) -> entregar SRT.",
+          "step4Chip": "Passo 4",
+          "step4Title": "Saída",
+          "generatedSrt": "SRT Gerado",
+          "downloads": "Downloads",
+          "downloadsNote": "Habilitaremos os downloads após o pipeline terminar.",
+          "fetchPill": "Buscar stream",
+          "transcribePill": "Transcrever",
+          "alignPill": "Alinhar + timestamps",
+          "translatePill": "Traduzir",
+          "deliverPill": "Pronto para entregar"
+        },
+        "actions": {
+          "start": "Iniciar legendas automáticas",
+          "preview": "Prévia do plano",
+          "progress": "Progresso",
+          "downloadSrt": "Baixar SRT",
+          "downloadVtt": "Baixar VTT"
+        },
+        "options": {
+          "addTargets": "Adicionar idiomas de destino em Configurar"
+        },
+        "status": {
+          "awaiting": "Aguardando entrada...",
+          "running": "Executando...",
+          "ok": "OK",
+          "fetching": "Buscando stream...",
+          "transcribing": "Transcrevendo com Whisper ({model})",
+          "aligning": "Alinhando e limpando timestamps",
+          "translating": "Traduzindo para {target}",
+          "skipTranslate": "Pulando tradução",
+          "preparing": "Preparando downloads",
+          "sample": "1\n00:00:00,000 --> 00:00:02,000\n[Exemplo de legenda gerada pelo Whisper]\n",
+          "done": "Feito. Pronto para baixar.",
+          "previewPlan": "Pipeline: buscar -> transcrever -> alinhar -> traduzir -> entregar.",
+          "noOutput": "Nenhuma saída ainda.",
+          "translateFallbackTarget": "destinos"
+        }
+      },
+      "footnote": "O Toolbox está vinculado à sua sessão e stream atual. Mantenha esta aba aberta enquanto assiste para uma transição mais suave."
+    },
+    "validation": {
+      "configRequired": "Configuração é obrigatória",
+      "mainProviderMissing": "Provedor principal deve ser selecionado",
+      "mainProviderGeminiMissing": "Chave da API Gemini e modelo são obrigatórios para o provedor principal",
+      "mainProviderConfigured": "Chave da API, modelo e status ativado são obrigatórios para o provedor principal '{provider}'",
+      "secondaryMissing": "Provedor secundário deve ser selecionado quando ativado",
+      "secondaryDifferent": "Provedor secundário deve ser diferente do provedor principal",
+      "secondaryGemini": "Chave da API Gemini e modelo são obrigatórios para o provedor secundário",
+      "secondaryConfigured": "Chave da API, modelo e status ativado são obrigatórios para o provedor secundário '{provider}'",
+      "atLeastOneProvider": "Pelo menos um provedor de IA deve ser ativado com uma chave de API e modelo",
+      "secondaryTwoProviders": "O Provedor Secundário requer dois provedores de IA configurados com chaves de API",
+      "noTranslationMissing": "Pelo menos um idioma sem tradução deve ser selecionado",
+      "noTranslationLimit": "Máximo de {limit} idiomas sem tradução permitidos",
+      "sourceMissing": "Pelo menos um idioma de origem deve ser selecionado",
+      "sourceLimit": "Máximo de {limit} idiomas de origem permitidos",
+      "targetMissing": "Pelo menos um idioma de destino deve ser selecionado",
+      "targetLimit": "Máximo de {limit} idiomas de destino totais permitidos (incluindo Learn Mode)",
+      "learnTargetMissing": "Learn Mode requer pelo menos um idioma de destino",
+      "sessionTokenError": "Erro de Configuração: Token de sessão não encontrado ou expirado. Por favor, reconfigure o addon para continuar usando."
+    },
+    "subtitle": {
+      "loadingTitle": "TRADUÇÃO EM ANDAMENTO",
+      "loadingBody": "Clique para recarregar. Resultados parciais aparecerão conforme ficarem prontos.",
+      "loadingTail": "Recarregue esta legenda mais tarde para obter mais",
+      "infoNote": "Esta legenda informativa foi gerada pelo addon.",
+      "sessionErrorTitle": "Erro de Configuração",
+      "sessionErrorBody": "Seu token de sessão não foi encontrado ou expirou.",
+      "sessionErrorAdvice": "Por favor, reconfigure e reinstale o addon.",
+      "sessionErrorQuickFix": "Correção rápida: Abra este link para reinstalar com nova configuração:",
+      "sessionErrorToken": "Uma nova configuração foi criada. Use este token para reinstalar:",
+      "sessionErrorFooter": "Algo está errado ou uma atualização quebrou sua configuração do SubMaker. Desculpe! Por favor, reconfigure e reinstale o addon.",
+      "osAuthFailTitle": "Falha no login do OpenSubtitles",
+      "osAuthFailBody": "Por favor, corrija seu nome de usuário/senha na configuração do addon",
+      "osQuotaTitle": "Limite diário de download do OpenSubtitles atingido",
+      "osQuotaBody": "Você baixou as 20 legendas permitidas nas últimas 24 horas. Aguarde até a meia-noite UTC (00:00) ou mude para V3 na página de configuração.",
+      "osAuthMissingTitle": "Credenciais do OpenSubtitles necessárias",
+      "osAuthMissingBody": "Adicione seu nome de usuário/senha do OpenSubtitles na configuração do addon ou mude para V3 (sem login necessário).",
+      "osV3RateTitle": "Erro de download OpenSubtitles V3 (429)",
+      "osV3RateBody": "Muitas requisições ao serviço V3. Por favor, aguarde alguns minutos e tente novamente.",
+      "osV3UnavailableTitle": "Erro de download OpenSubtitles V3 (503)",
+      "osV3UnavailableBody": "Serviço temporariamente indisponível. Tente novamente em alguns minutos.",
+      "invalidSubtitleTitle": "Problema de Legenda Detectado",
+      "providerDownloadFailTitle": "Falha no download do {service}",
+      "providerDownloadFailBody": "{reason}\\nTente uma legenda ou provedor diferente.",
+      "concurrencyLimitTitle": "Muitas traduções simultâneas para este usuário (limite: {limit}).",
+      "concurrencyLimitBody": "Por favor, aguarde uma terminar e tente novamente.",
+      "translationFailed": "Tradução Falhou",
+      "translationUnexpected": "Um erro inesperado ocorreu durante a tradução.",
+      "translationRetry": "Um erro inesperado ocorreu.\\nClique nesta legenda novamente para tentar a tradução de novo.",
+      "translationAuth": "Tradução Falhou: Erro de Autenticação (403)",
+      "translationAuthBody": "Sua chave da API Gemini é inválida ou foi rejeitada.\\nPor favor, verifique se sua chave da API está correta.",
+      "translationAuthRetry": "Atualize sua chave da API Gemini na configuração do addon,\\ndepois reinstale o addon e tente novamente.",
+      "translationOverload": "Tradução Falhou: Serviço Sobrecarregado (503)",
+      "translationOverloadBody": "A API do Gemini está temporariamente sobrecarregada com requisições.\\nIsso geralmente é temporário e se resolve em minutos.",
+      "translationOverloadRetry": "(503) Serviço Indisponível - Aguarde um momento para o Gemini se recuperar,\\nentão clique nesta legenda novamente para tentar a tradução de novo.",
+      "translationRateLimit": "Tradução Falhou: Limite de Uso Atingido (429)",
+      "translationRateLimitBody": "Seu limite de uso da API Gemini foi excedido.\\nIsso pode ser um limite de taxa ou limite de cota.",
+      "translationRateLimitRetry": "(429) Limite de Taxa/Cota da API - A API do Gemini está limitando as requisições da sua chave.\\nAguarde alguns minutos e clique novamente para tentar de novo.",
+      "translationTooLarge": "Tradução Falhou: Conteúdo Muito Grande",
+      "translationTooLargeBody": "O arquivo de legenda é muito grande para uma única tradução.\\nO sistema tentou dividir em partes, mas ainda excedeu os limites.",
+      "translationTooLargeRetry": "(MAX_TOKENS) Tente traduzir um arquivo de legenda diferente.\\nOutro modelo pode ajudar. Por favor, nos avise se isso persistir.",
+      "translationFiltered": "Tradução Falhou: Conteúdo Filtrado",
+      "translationFilteredBody": "O conteúdo da legenda foi bloqueado por filtros de segurança.\\nIsso é raro e geralmente é um falso positivo.",
+      "translationFilteredRetry": "(PROHIBITED_CONTENT) O conteúdo da legenda foi filtrado pelo Gemini.\\nPor favor, tente novamente ou tente uma legenda diferente da lista.",
+      "translationInvalidSource": "Tradução Falhou: Arquivo de Origem Inválido",
+      "translationInvalidSourceBody": "O arquivo de legenda de origem parece corrompido ou inválido.\\nPode ser muito pequeno ou ter problemas de formatação.",
+      "translationInvalidSourceRetry": "(CORRUPT_SOURCE) Por favor, tente novamente ou tente uma legenda diferente da lista.",
+      "translationMultiProvider": "Ambos os provedores, principal e secundário, falharam ao traduzir este lote.",
+      "osRateLimitTitle": "Limite de taxa do OpenSubtitles atingido (429)",
+      "osAuthRateLimited": "O OpenSubtitles está limitando a taxa da sua conta. Aguarde alguns minutos e tente novamente ou mude para V3 na configuração do addon.",
+      "osAuthMissingRateLimited": "O modo OpenSubtitles Auth está ativo sem credenciais, então os downloads atingiram o limite básico de taxa. Adicione seu nome de usuário/senha ou mude para V3 (sem login).",
+      "providerRateLimitTitle": "Limite de taxa do {service} atingido (429)",
+      "providerRateLimitBody": "Muitas requisições em um curto período.\\nPor favor, aguarde alguns minutos e tente novamente.",
+      "providerAuthErrorTitle": "Erro de Autenticação",
+      "providerAuthErrorBody": "{service} rejeitou sua chave de API ou credenciais",
+      "notAvailableTitle": "Legenda Não Disponível (Erro 404)",
+      "notAvailableBody": "Isso geralmente acontece com legendas que foram removidas.\\nPor favor, tente uma legenda diferente da lista",
+      "providerUnavailableTitle": "Provedor de legendas temporariamente indisponível (Erro 503)",
+      "providerUnavailableBody": "Por favor, tente novamente em alguns minutos ou tente uma legenda diferente.",
+      "subsourceTimeoutTitle": "Download do SubSource falhou (tempo limite)",
+      "subsourceTimeoutBody": "A API do SubSource não respondeu a tempo. Tente novamente em alguns minutos ou escolha uma legenda diferente.",
+      "invalidSubtitleTooSmall": "O arquivo de legenda é muito pequeno e parece corrompido."
+    },
+    "subtitleErrors": {
+      "invalidGenericReason": "O arquivo de legenda parece ser inválido ou incompleto.",
+      "downloadFailedReason": "Download falhou: {reason}",
+      "addonInfoNote": "Esta legenda informativa foi gerada pelo addon."
+    },
+    "subtitleMenu": {
+      "eyebrow": "Legendas do stream",
+      "title": "Fontes & Destinos",
+      "waiting": "Aguardando primeira busca",
+      "toggleTitle": "Legendas do stream",
+      "refreshTitle": "Atualizar lista de legendas",
+      "closeTitle": "Fechar lista de legendas",
+      "makeLanguage": "Criar {language}",
+      "learnLanguage": "Learn {language}",
+      "group": {
+        "source": "Idiomas de Origem",
+        "target": "Idiomas de Destino",
+        "translation": "Tradução",
+        "other": "Outras Entradas"
+      },
+      "actions": {
+        "translate": "Traduzir",
+        "translateThis": "Traduzir esta legenda",
+        "download": "Baixar legenda traduzida",
+        "downloadShort": "Baixar",
+        "translating": "Traduzindo...",
+        "retry": "Tentar novamente"
+      },
+      "status": {
+        "waitingStream": "Aguardando um stream vinculado antes de carregar legendas.",
+        "loading": "Carregando legendas...",
+        "none": "Nenhuma legenda disponível para este stream ainda.",
+        "loaded": "Carregadas {count} entradas de legendas.",
+        "translationReady": "Tradução pronta para {label}.",
+        "translationInProgress": "Tradução em andamento para {label}.",
+        "translationFailed": "Tradução falhou: {reason}",
+        "translationFailedShort": "Tradução falhou. Tentar novamente?",
+        "downloadFailed": "Download falhou: {reason}",
+        "stillProcessing": "Ainda processando. Por favor, tente novamente em breve."
+      },
+      "meta": {
+        "refreshing": "Atualizando...",
+        "updated": "Atualizado {time}",
+        "justNow": "agora mesmo",
+        "secondsAgo": "{seconds}s atrás"
+      }
+    },
+    "config": {
+      "uiLanguageLabel": "Interface",
+      "uiLanguageAria": "Idioma da interface",
+      "uiLanguages": {
+        "en": {
+          "label": "Inglês",
+          "flag": "US"
+        },
+        "es": {
+          "label": "Espanhol",
+          "flag": "ES"
+        },
+        "pt-br": {
+          "label": "Português (Brasil)",
+          "flag": "BR"
+        },
+        "ar": {
+          "label": "Árabe",
+          "flag": "SA"
+        }
+      },
+      "heroTitle": "SubMaker",
+      "heroSubtitle": "Tradução de Legendas com IA",
+      "documentTitle": "SubMaker - Configurar",
+      "quickStatsStatus": "Status",
+      "quickStatsConfigure": "Configurar",
+      "quickStatsToolbox": "Toolbox",
+      "quickStatsLastSave": "Último Salvo",
+      "quickActionHelp": "Ajuda",
+      "partials": {
+        "loadError": "Falha ao carregar {src} ({status})",
+        "loadFallback": "Falha ao carregar {src}"
+      },
+      "footer": {
+        "love": "Feito com <span class=\"footer-heart\">\u2764\ufe0f</span> para usuários do Stremio em todo o lugar",
+        "thanks": "Obrigado por usar o SubMaker! Seu apoio ajuda a tornar o conteúdo acessível a todos."
+      },
+      "actions": {
+        "openToolbox": "Abrir Sub Toolbox",
+        "save": "Salvar Configuração",
+        "install": "Instalar no Stremio",
+        "copy": "Copiar URL de Instalação",
+        "installLabel": "URL de Instalação"
+      },
+      "overlays": {
+        "keyboardHint": "Pressione <span class=\"kbd\">?</span> para atalhos de teclado",
+        "shared": {
+          "dontShow": "Não mostre isso novamente",
+          "gotIt": "Entendi!"
+        },
+        "instructions": {
+          "title": "Como usar o SubMaker",
+          "usageTitle": "Instruções de Uso:",
+          "step1": "Adicione as chaves de API desejadas na seção <strong>\"Fontes de Legendas\"</strong>.",
+          "step2": "Adicione uma Chave de API Gemini na <strong>seção de IA</strong>.",
+          "step3": "Selecione os <strong>idiomas de origem</strong>.",
+          "step4": "Selecione os <strong>idiomas de destino</strong>.",
+          "step5": "<strong>Instale no Stremio</strong>.",
+          "stremioTitle": "O Stremio irá:",
+          "stremioBody": "1. Buscar todas as legendas dos idiomas de Origem e Destino das fontes.<br>2. Criar botões <strong>\"Criar [Idioma de Destino]\"</strong> dentro da lista de legendas.<br>3. Todas as listas de tradução \"Criar\" estão na mesma ordem da lista de idiomas de Origem.",
+          "whenTitle": "Quando você clica em uma legenda:",
+          "whenBody": "Quando uma legenda é clicada dentro das listas de tradução \"Criar\", ela iniciará a tradução.<br>Após 20-30 segundos, recarregue a mesma entrada de legenda.<br>Ela carregará <strong>traduzida</strong>!",
+          "quickTip": "<strong>Dica Rápida:</strong> Se uma tradução parecer estranha, quebrada ou fora de sincronia, clique três vezes rapidamente nessa legenda na lista para forçar uma nova retradução.",
+          "ps": "<b>PS:</b><br>A tradução parcial é entregue em lotes para que você possa começar a assistir quase instantaneamente.<br>A tradução completa pode levar de <strong>30 segundos a 5 minutos</strong> dependendo da duração do filme/episódio.",
+          "onlyOneSource": "<em>*Apenas 1 idioma de origem recomendado:*</em>",
+          "onlyOneSourceBody": "Quando as listas de tradução \"Criar\" são criadas, elas carregam a lista de legendas na mesma ordem do idioma de origem.<br>Isso significa que você pode testar as legendas do idioma de origem para a sincronia correta e só então selecionar a mesma na lista de tradução, em vez de traduzir legendas dessincronizadas."
+        },
+        "toolbox": {
+          "title": "\ud83e\uddf0 Instruções do Sub Toolbox",
+          "beta": "BETA: Novos recursos do toolbox estão chegando em breve.<br>Por enquanto, aproveite as traduções perfeitas de arquivos SRT em lote com todos os seus provedores de IA e configurações.",
+          "howTitle": "\ud83d\ude80 Como usar o Sub Toolbox:",
+          "step1": "Habilite o <strong>\"Sub Toolbox\"</strong> na página de configuração antes de instalar.",
+          "step2": "No Stremio, abra a lista de legendas e clique em <strong>\"Sub Toolbox\"</strong>.",
+          "step3": "Clique com o botão direito no stream/vídeo tocando no Stremio e escolha <strong>\"Download Subtitles\"</strong> para iniciar o toolbox no seu navegador.",
+          "step4": "Escolha uma ferramenta: Extrair & traduzir legendas embutidas, Traduzir arquivos de legenda, Sincronizar legendas ou Legendas automáticas.",
+          "step5": "Cada ferramenta abre no seu navegador usando sua sessão salva do SubMaker e configurações do provedor de IA.",
+          "step6": "Siga os passos na tela e arraste o resultado de volta para o Stremio, se necessário."
+        },
+        "reset": {
+          "title": "Redefinir Todas as Configurações",
+          "intro": "<strong>Isso redefinirá literalmente tudo para este site:</strong>",
+          "item1": "- Armazenamento local, armazenamento de sessão, configuração em cache e tokens",
+          "item2": "- Service worker e todos os caches",
+          "item3": "- Quaisquer dados do site armazenados por este app",
+          "footer": "A página recarregará depois.",
+          "cancel": "Cancelar",
+          "confirm": "Redefinir Tudo"
+        }
+      },
+      "noTranslation": {
+        "title": "Apenas Buscar Legendas (Sem Tradução)",
+        "description": "Pule a tradução por IA e apenas busque legendas nos idiomas escolhidos"
+      },
+      "sections": {
+        "subtitleApiTitle": "Chaves de API de Legendas"
+      },
+      "opensubs": {
+        "implDescription": "Escolha sua implementação preferida do OpenSubtitles abaixo.",
+        "implementationType": "Tipo de Implementação",
+        "v3Title": "V3 (Padrão)",
+        "v3Tooltip": "O V3 não mostra todos os resultados do OpenSubtitles e limites de taxa podem ser aplicados.",
+        "v3Description": "Usa o addon oficial Stremio OpenSubtitles V3. Sem autenticação necessária, configuração simples.",
+        "authTitle": "Auth (Recomendado)",
+        "authDescription": "Usa sua conta do OpenSubtitles com autenticação de chave de API. Requer nome de usuário/senha.",
+        "usernameLabel": "Nome de usuário",
+        "passwordLabel": "Senha",
+        "usernamePlaceholder": "Digite o Nome de Usuário do OpenSubtitles",
+        "passwordPlaceholder": "Digite a Senha do OpenSubtitles",
+        "rateNote": "20 legendas por dia. Crie uma conta gratuita se não tiver uma.",
+        "validateCta": "Executar Teste",
+        "validateTitle": "Validar credenciais do OpenSubtitles",
+        "showHidePassword": "Mostrar/ocultar senha",
+        "pingHint": "Execute um ping rápido antes de salvar para validar suas credenciais."
+      },
+      "limits": {
+        "sourceDescription": "Você pode selecionar até {max} idioma(s) de origem, mas apenas 1 é recomendado (para que você tenha a mesma ordem de lista ao traduzir). Todas as legendas deste idioma estarão disponíveis para tradução no seletor de tradução E serão buscadas (legendas originais aparecerão).",
+        "targetDescription": "Legendas em idiomas de destino serão buscadas E botões de tradução aparecerão para traduzir DO idioma de origem PARA estes idiomas. Você pode selecionar até {max} idiomas de destino no total (incluindo Learn Mode).",
+        "noTranslationDescription": "Selecione em quais idiomas você deseja buscar legendas (até {max})."
+      },
+      "validation": {
+        "sourceRequired": "Por favor, selecione pelo menos um idioma de origem",
+        "sourceRange": "Por favor, selecione {min}-{max} idiomas de origem",
+        "targetLimitShort": "Por favor, selecione até {limit} idiomas de destino (incluindo Learn Mode)",
+        "noTranslationRequired": "Por favor, selecione pelo menos um idioma para o modo Apenas Buscar",
+        "noTranslationLimitShort": "Por favor, selecione até {limit} idiomas para o modo Apenas Buscar",
+        "opensubsEnable": "Habilite o OpenSubtitles antes de testar as credenciais.",
+        "opensubsAuthMode": "Mude para o modo Auth para testar suas credenciais.",
+        "credentialsRequired": "Por favor, insira nome de usuário e senha",
+        "apiKeyRequired": "Por favor, insira uma chave de API",
+        "apiKeyValid": "Chave da API é válida",
+        "testResults": "({count} resultados de teste)",
+        "connectionError": "Erro de conexão. Por favor, tente novamente.",
+        "validationFailed": "Validação falhou",
+        "testing": "Testando...",
+        "valid": "Válido",
+        "invalid": "Inválido",
+        "error": "Erro",
+        "testCredentials": "Testar Credenciais",
+        "test": "Teste",
+        "targetRequired": "Por favor, selecione pelo menos um idioma de destino",
+        "learnRequired": "Por favor, selecione pelo menos um idioma de aprendizado (Learn)",
+        "geminiKeyRequired": "Chave da API Gemini é obrigatória",
+        "geminiModelRequired": "Por favor, selecione um modelo Gemini",
+        "mainProviderEnable": "Habilite {provider} para usá-lo como Provedor Principal",
+        "mainProviderKeyRequired": "Chave da API necessária para {provider}",
+        "mainProviderModelRequired": "Selecione um modelo para {provider}",
+        "mainProviderRequired": "Selecione um Provedor Principal",
+        "opensubsAuthCredentials": "O OpenSubtitles Auth requer nome de usuário e senha. Insira as credenciais ou mude para V3 (sem login necessário).",
+        "providerKeyMissing": "{provider} está habilitado, mas a chave da API está faltando",
+        "providersMinimum": "Adicione pelo menos um provedor de IA e habilite-o (chave de API necessária, a menos que o provedor seja sem chave)",
+        "secondaryGeminiConfigured": "Gemini deve ter uma chave de API válida e modelo quando selecionado como Provedor Secundário",
+        "secondaryGeminiKey": "Chave da API Gemini é obrigatória quando Gemini é o Provedor Secundário",
+        "secondaryGeminiModel": "Por favor, selecione um modelo Gemini para o Provedor Secundário",
+        "secondaryProviderDifferent": "Provedor Secundário deve ser diferente do Provedor Principal",
+        "secondaryProviderEnable": "Habilite {provider} para usá-lo como Provedor Secundário",
+        "secondaryProviderKey": "Chave da API necessária para {provider} (Provedor Secundário)",
+        "secondaryProviderModel": "Selecione um modelo para {provider} (Provedor Secundário)",
+        "secondaryProviderRequired": "Selecione um Provedor Secundário ou desabilite a opção de fallback",
+        "secondaryProvidersCount": "O Provedor Secundário requer dois provedores de IA configurados (principal e fallback)",
+        "subdlKeyRequired": "SubDL está habilitado, mas a chave da API está faltando",
+        "subsourceKeyRequired": "SubSource está habilitado, mas a chave da API está faltando",
+        "subtitleProviderRequired": "Por favor, habilite pelo menos um provedor de legendas"
+      },
+      "alerts": {
+        "sessionLost": "Sessão de configuração foi perdida. Por favor, reconfigure e salve para criar uma nova sessão.",
+        "loadLanguagesFailed": "Falha ao carregar idiomas: {reason}",
+        "loadLanguagesExhausted": "Falha ao carregar idiomas após {retries} tentativas: {reason}. Por favor, atualize a página.",
+        "sourceLimit": "Você só pode selecionar até {limit} idiomas de origem",
+        "targetLimit": "Você só pode selecionar até {limit} idiomas de destino no total (incluindo Learn Mode)",
+        "noTranslationLimit": "Você só pode selecionar até {limit} idiomas no modo Apenas Buscar",
+        "saveConfigFirst": "Salve sua configuração primeiro para abrir o Sub Toolbox.",
+        "betaOn": "Modo Experimental LIGADO",
+        "betaOff": "Modo Experimental DESLIGADO",
+        "missingCfWorkers": "A chave do Cloudflare Workers AI deve estar no formato ACCOUNT_ID|TOKEN",
+        "missingProviderKey": "Adicione uma chave de API para {provider} para carregar modelos",
+        "configurationSaved": "Configuração salva! Agora você pode instalar o addon no Stremio.",
+        "configurationUpdated": "Configuração atualizada! As alterações entrarão em vigor imediatamente no Stremio.",
+        "installUrlCopied": "URL de instalação copiada para a área de transferência!",
+        "loadModelsFailed": "Falha ao carregar modelos para {provider}: {reason}",
+        "loadModelsSuccess": "Carregados {count} modelos para {provider}",
+        "newVersionDetected": "Nova versão detectada",
+        "noTranslationTrimmed": "Apenas os primeiros {limit} idiomas foram mantidos para o modo Apenas Buscar.",
+        "openingStremio": "Abrindo Stremio...",
+        "saveFailed": "Falha ao salvar configuração: {reason}",
+        "sessionExpiredCreated": "Sessão expirada. Criada nova sessão - por favor, reinstale o addon no Stremio.",
+        "sessionExpiredCreating": "Sessão expirada. Criando nova sessão...",
+        "sessionNetworkError": "Erro de rede ao atualizar sessão. Criando nova sessão...",
+        "sessionUpdateFailed": "Atualização de sessão falhou. Criando nova sessão...",
+        "targetsTrimmed": "Apenas os primeiros {limit} idiomas de destino foram mantidos (combinados com Learn Mode)."
+      },
+      "providers": {
+        "subsource": {
+          "title": "SubSource",
+          "description": "Obtenha sua chave de API gratuita em",
+          "linkLabel": "SubSource.net",
+          "placeholder": "Digite a chave de API do SubSource",
+          "validateTitle": "Validar chave da API",
+          "validateCta": "Teste",
+          "toggleLabel": "Habilitar SubSource"
+        },
+        "subdl": {
+          "title": "SubDL",
+          "description": "Obtenha sua chave de API gratuita em",
+          "linkLabel": "SubDL.com",
+          "placeholder": "Digite a chave de API do SubDL",
+          "validateTitle": "Validar chave da API",
+          "validateCta": "Teste",
+          "toggleLabel": "Habilitar SubDL"
+        }
+      },
+      "providersUi": {
+        "loadModels": "Carregar Modelos",
+        "loadModelsTitle": "Buscar modelos",
+        "selectModel": "Selecionar modelo",
+        "loadingModels": "Carregando modelos...",
+        "cfworkersLoadModels": "Adicione ACCOUNT_ID|TOKEN para carregar modelos",
+        "noFallbackProviders": "Nenhum provedor de fallback disponível",
+        "useDefaultModel": "Usar Modelo Padrão",
+        "main": {
+          "label": "Provedor Principal",
+          "description": "Escolha qual provedor de IA habilitado usar quando múltiplos estiverem configurados."
+        },
+        "secondary": {
+          "label": "Provedor Secundário<br><span class=\"label-description\">Se o provedor principal der erro (429/503/proibido/outro), repete o lote falho com este provedor, depois continua com o provedor principal.</span>"
+        },
+        "fallback": {
+          "label": "Provedor de Fallback",
+          "description": "Usado apenas quando o provedor principal retorna um erro. Alterna sem problemas."
+        },
+        "placeholders": {
+          "openai": "Chave da API OpenAI",
+          "anthropic": "Chave da API Anthropic",
+          "xai": "Chave da API XAI",
+          "deepseek": "Chave da API DeepSeek",
+          "deepl": "Chave de Autenticação DeepL",
+          "mistral": "Chave da API Mistral",
+          "cfworkers": "ACCOUNT_ID|TOKEN",
+          "openrouter": "Chave da API OpenRouter"
+        },
+        "selectProvider": "Selecionar provedor",
+        "deeplHint": "Chaves gratuitas usam automaticamente api-free.deepl.com. Códigos de idioma são mapeados automaticamente de suas seleções.",
+        "cfworkersHint": "Use ACCOUNT|TOKEN para definir o ID da conta explicitamente.",
+        "noKeyNeeded": "Nenhuma chave de API necessária",
+        "googleWeb": "web (fixo)",
+        "googleHint": "Usa o endpoint público da web do Google Translate (pode ser instável)."
+      },
+      "gemini": {
+        "title": "Chaves de API de Tradução por IA",
+        "apiKey": {
+          "label": "Chave da API Gemini",
+          "helper": "Obtenha sua chave de API gratuita em",
+          "linkLabel": "Google AI Studio",
+          "placeholder": "Digite sua chave da API Gemini",
+          "validateTitle": "Validar chave da API",
+          "validateCta": "Teste"
+        },
+        "model": {
+          "label": "Modelo de Tradução",
+          "helper": "Modelo de IA para traduções",
+          "options": {
+            "flashLite": "Gemini 2.5 Flash-Lite",
+            "flash": "Gemini 2.5 Flash",
+            "pro": "Gemini 2.5 Pro (Lento)"
+          },
+          "hintTitle": "Tradução ruim/quebrada ou fora de sincronia?",
+          "hintBody": "Clique três vezes rapidamente na legenda para forçar uma retradução.",
+          "betaTitle": "\u26a1 O uso do 2.5 Pro ainda está em Beta.",
+          "betaAdvice": "Se tiver problemas de tradução, use o Flash-Lite.",
+          "rateWarningTitle": "\u26a0\ufe0f Limitação da Camada Gratuita:",
+          "rateWarningBody": "Se estiver usando uma chave de API gratuita, o Gemini 2.5 Pro pode acionar limites de taxa (HTTP 429). Você provavelmente só conseguirá traduzir uma legenda por vez."
+        }
+      },
+      "noTranslationCard": {
+        "title": "Idiomas",
+        "label": "Idiomas de Legendas",
+        "search": "Pesquisar idiomas...",
+        "quickPopular": "Populares",
+        "quickAll": "Todos",
+        "quickClear": "Limpar"
+      },
+      "languageCards": {
+        "search": "Pesquisar idiomas...",
+        "quickPopular": "Populares",
+        "quickAll": "Todos",
+        "quickClear": "Limpar",
+        "sourceTitle": "Idiomas de Origem",
+        "sourceLabel": "* Idiomas de origem para traduções",
+        "targetTitle": "Idiomas de Destino",
+        "targetLabel": "* Idiomas de destino para legendas e traduções",
+        "learnTitle": "Aprender Idiomas de Destino",
+        "learnLabel": "Selecionar Idiomas do Learn Mode",
+        "learnDescription": "Cria entradas \"Learn (Language)\" que pareiam linhas originais + traduzidas em WebVTT. Selecione idiomas de destino \"Learn\" acima após habilitar."
+      },
+      "learnMode": {
+        "label": "Learn Mode",
+        "description": "Adiciona entradas \"Learn (Language)\" que geram WebVTT de idioma duplo com linhas de origem e traduzidas para aprendizado de idiomas.",
+        "orderLabel": "Ordem das Legendas do Learn Mode",
+        "orderDescription": "Escolha qual idioma aparece no topo e na parte inferior da tela.",
+        "sourceTop": "Origem no Topo - Destino na Base",
+        "targetTop": "Destino no Topo - Origem na Base"
+      },
+      "translationSettings": {
+        "title": "Configurações de Tradução",
+        "workflow": {
+          "label": "Fluxo de Trabalho de Tradução",
+          "description": "Alternar entre modos é recomendado se você tiver problemas de sincronia de tradução. Nosso fluxo de trabalho principal de tradução remove timestamps e envia as legendas numeradas para a IA, depois reconstrói o SRT com os timestamps originais. \"Enviar Timestamps para IA\" envia as legendas COM códigos de tempo e confia na IA para retornar timestamps corretos. Adicionado para garantir o futuro do addon.",
+          "original": "Timestamps Originais (Padrão)",
+          "ai": "Enviar Timestamps para IA"
+        },
+        "promptStyle": {
+          "label": "Estilo de Prompt",
+          "description": "Escolha entre preservação estrita da estrutura ou adaptação ao fluxo natural",
+          "options": {
+            "natural": "Natural - Adapta a estrutura para o fluxo natural do idioma de destino",
+            "strict": "Estrito - Preserva o tempo e a estrutura exatos"
+          }
+        },
+        "database": {
+          "label": "Banco de Dados SubMaker",
+          "description": "Escolha como lidar com o banco de dados de tradução do SubMaker. O banco de dados principal armazena traduções permanentemente para reduzir o uso da API. O modo Bypass força traduções novas e as armazena temporariamente (12 horas).",
+          "use": "Usar Banco de Dados SubMaker",
+          "bypass": "Ignorar Cache (Forçar Retradução)",
+          "noteTitle": "\u26a0\ufe0f Modo Bypass Necessário:"
+        },
+        "chunking": {
+          "label": "Estratégia de Fragmentação",
+          "description": "Lotes Múltiplos envia legendas em solicitações separadas (pedaços). Lote Único traduz o arquivo de legenda inteiro de uma só vez (ainda divide automaticamente em 2 ou 3 partes em 50k e 100k+ tokens). O Lote Único ainda transmite saídas parciais enquanto processa (através de streaming de token) e entrega traduções contextuais melhores. Pode causar erros MAX_OUTPUT. Títulos longos podem ter mais problemas de sincronia.",
+          "multiple": "Lotes Múltiplos (Padrão)",
+          "single": "Lote Único"
+        }
+      },
+      "multiProvider": {
+        "label": "Múltiplos provedores (beta)",
+        "description": "Habilita múltiplos provedores e configurações avançadas de parâmetros."
+      },
+      "otherSettings": {
+        "title": "Outras Configurações",
+        "subToolbox": {
+          "label": "Habilitar \"Sub Toolbox\" (Alpha)",
+          "description": "Mostra a entrada Sub Toolbox nas legendas do Stremio para acesso via navegador a todas as ferramentas. (Leia as instruções após habilitar)"
+        },
+        "mobileMode": {
+          "label": "Modo Móvel (correção/solução alternativa)",
+          "description": "O Stremio faz apenas 1 requisição para legendas e a armazena em cache, então legendas no Android não podem ser parcialmente entregues. O Modo Móvel retém requisições de tradução e envia a legenda final apenas quando pronta. Use isso se estiver assistindo no Android/iOS. Sem traduções parciais, sem mensagens de carregamento. Pode congelar o stream até que a tradução esteja pronta. Flash-lite recomendado. Aguarde 1-3 min, se não carregar automaticamente alterne legendas para frente e para trás para carregar a tradução."
+        },
+        "betaMode": {
+          "label": "Modo Beta",
+          "description": "Desbloqueia recursos experimentais como Múltiplos Provedores e Configurações Avançadas."
+        },
+        "devMode": {
+          "label": "Modo Dev"
+        }
+      },
+      "advancedGemini": {
+        "title": "Configurações Avançadas (Gemini)",
+        "infoTitle": "Ajuste fino do comportamento do Gemini:",
+        "infoBody": "Sobrescrever modelo padrão e parâmetros de amostragem do Gemini.",
+        "cacheNotePrefix": "Quando qualquer configuração do Gemini é alterada dos padrões,",
+        "cacheNoteStrong": "Ignorar Cache é automaticamente habilitado",
+        "cacheNoteSuffix": "para garantir que suas traduções experimentais não poluam o banco de dados compartilhado.",
+        "model": {
+          "label": "Sobrescrever Modelo de Tradução",
+          "description": "Sobrescrever o modelo padrão. Deixe vazio para usar o padrão do sistema (gemini-flash-latest).",
+          "default": "Usar Modelo Padrão"
+        },
+        "thinking": {
+          "label": "Orçamento de Pensamento (Raciocínio Estendido)",
+          "description": "0 = desativado, -1 = dinâmico (auto-ajuste), ou contagem de token fixa (1-32768). Valores mais altos = raciocínio mais profundo, mas mais lento."
+        },
+        "temperature": {
+          "label": "Temperatura (Criatividade)",
+          "description": "Controla a aleatoriedade (0.0-2.0). Menor = mais determinístico, Maior = mais criativo. Padrão: 0.8"
+        },
+        "topP": {
+          "label": "Top-P (Amostragem de Núcleo)",
+          "description": "Limiar de probabilidade (0.0-1.0). Menor = mais focado, Maior = mais diverso. Padrão: 0.95"
+        },
+        "batchContext": {
+          "label": "Habilitar Contexto de Lote (Experimental)",
+          "description": "Incluir contexto original ao redor e traduções anteriores ao processar lotes. Melhora a coerência da tradução, mas pode quebrar saídas e aumenta o uso de token. Desativado por padrão."
+        },
+        "contextSize": {
+          "label": "Tamanho do Contexto",
+          "description": "Número de entradas ao redor para incluir como contexto (1-10). Padrão: 3"
+        }
+      },
+      "providerAdvanced": {
+        "title": "Parâmetros Avançados",
+        "intro": "Ajuste fino das configurações de geração para cada provedor habilitado. Estes se aplicam apenas no modo de múltiplos provedores.",
+        "empty": "Habilite um provedor acima para desbloquear seus parâmetros.",
+        "labels": {
+          "temperature": "Temperatura",
+          "topP": "Top-P",
+          "maxTokens": "Máximo de tokens de saída",
+          "timeout": "Tempo limite da requisição (s)",
+          "retries": "Máximo de tentativas",
+          "reasoning": "Esforço de raciocínio",
+          "thinking": "Orçamento de pensamento (tokens)",
+          "formality": "Formalidade",
+          "preserveFormatting": "Preservar formatação",
+          "preserveFormattingHint": "Manter quebras de linha, maiúsculas/minúsculas e tags intactas"
+        },
+        "reasoningDefaults": {
+          "none": "Nenhum (padrão - para modelos sem raciocínio)",
+          "low": "Baixo (mais rápido)",
+          "medium": "Médio (equilibrado)",
+          "high": "Alto (raciocínio mais profundo)"
+        },
+        "formality": {
+          "default": "Padrão",
+          "more": "Mais formal",
+          "less": "Menos formal"
+        },
+        "providers": {
+          "openai": {
+            "title": "Parâmetros OpenAI",
+            "description": "Aplica-se à OpenAI e endpoints compatíveis"
+          },
+          "anthropic": {
+            "title": "Parâmetros Anthropic",
+            "description": "Ajuste Claude / Anthropic API"
+          },
+          "xai": {
+            "title": "Parâmetros XAI (Grok)",
+            "description": "Ajuste Grok API"
+          },
+          "deepseek": {
+            "title": "Parâmetros DeepSeek",
+            "description": "Endpoints de chat DeepSeek"
+          },
+          "deepl": {
+            "title": "Parâmetros DeepL",
+            "description": "Controles de formalidade & formatação",
+            "footer": "Idiomas Beta ativam automaticamente quality_optimized e desativam latency_optimized."
+          },
+          "mistral": {
+            "title": "Parâmetros Mistral",
+            "description": "Ajuste Mistral API"
+          },
+          "cfworkers": {
+            "title": "Parâmetros Cloudflare Workers AI",
+            "description": "Use formato ACCOUNT_ID|TOKEN"
+          },
+          "openrouter": {
+            "title": "Parâmetros OpenRouter",
+            "description": "Roteamento OpenRouter"
+          }
+        }
+      },
+      "dev": {
+        "title": "Dev"
+      },
+      "reset": {
+        "hint": "Algum problema? Redefinir configurações para o padrão ->",
+        "cta": "Redefinir"
+      }
+    },
+    "nav": {
+      "refresh": "Atualizar stream",
+      "refreshTitle": "Ir para seu último stream",
+      "refreshLoading": "Atualizando...",
+      "refreshEmpty": "Nenhum stream recente",
+      "refreshError": "Falha na atualização",
+      "refreshCurrent": "Já é o mais recente",
+      "refreshMissing": "Dados de stream ausentes",
+      "streamDetected": "Novo stream detectado",
+      "mobileMenu": "Abrir menu",
+      "subToolbox": "Sub Toolbox",
+      "translateFiles": "Traduzir arquivos",
+      "embeddedSubs": "Extrair Subs",
+      "syncSubtitles": "Sincronizar legendas",
+      "automaticSubs": "Auto subs",
+      "configure": "Configurar",
+      "youAreHere": "Você está aqui"
+    },
+    "fileUpload": {
+      "title": "Tradução de Arquivo",
+      "documentTitle": "Tradução de Arquivo - SubMaker",
+      "subtitle": "Faça upload e traduza seus arquivos de legenda",
+      "help": "Mostrar Instruções",
+      "themeToggle": "Alternar tema",
+      "drop": {
+        "aria": "Upload de arquivos de legenda",
+        "browse": "Clique para navegar pelos arquivos",
+        "limit": "Selecione até {max} arquivos ou arraste e solte",
+        "hint": "Nós enfileiramos uploads e executamos {count} por vez para evitar limites de taxa.",
+        "one": "um"
+      },
+      "instructions": {
+        "title": "Como Funciona",
+        "formats": "Formatos suportados:",
+        "stepsTitle": "Passos:",
+        "step1": "Faça upload do(s) arquivo(s) de legenda (qualquer formato suportado, até {max} de uma vez)",
+        "step2": "Selecione seu idioma de destino",
+        "step3": "Clique em \"Traduzir\" e aguarde a mágica",
+        "step4": "Baixe sua legenda traduzida",
+        "step5": "Arraste para o Stremio",
+        "dontShow": "Não mostre isso novamente",
+        "gotIt": "Entendi!"
+      },
+      "options": {
+        "title": "Opções de Tradução",
+        "provider": {
+          "label": "Provedor de Tradução",
+          "helper": "Escolha qual provedor configurado usar para esta tradução."
+        },
+        "flow": {
+          "label": "Fluxo de Tradução",
+          "helper": "Escolha entre lotes múltiplos ou execução de lote único.",
+          "multiple": "Lotes Múltiplos (Recomendado)",
+          "single": "Lote único (tudo de uma vez)"
+        },
+        "timing": {
+          "label": "Estratégia de Timestamps",
+          "helper": "Decida como os timestamps são tratados durante a tradução.",
+          "rebuild": "Reconstruir Timestamps",
+          "ai": "Enviar Timestamps para IA"
+        }
+      },
+      "advanced": {
+        "title": "Configurações Avançadas",
+        "highlightTitle": "Ajuste fino do comportamento da IA para esta tradução apenas:",
+        "highlightBody": "Sobrescrever modelo e parâmetros.",
+        "highlightNote": "Estas configurações são temporárias e não serão salvas na sua configuração.",
+        "model": {
+          "label": "Sobrescrever Modelo de Tradução",
+          "helper": "Sobrescrever o modelo padrão apenas para esta tradução.",
+          "useConfigured": "Usar Modelo Configurado (da sua configuração)",
+          "useConfiguredWith": "Usar Modelo Configurado ({model})"
+        },
+        "thinking": {
+          "label": "Orçamento de Pensamento (Raciocínio Estendido)",
+          "helper": "0 = desativado, -1 = dinâmico (auto-ajuste), ou contagem de token fixa (1-32768)."
+        },
+        "temperature": {
+          "label": "Temperatura (Criatividade)",
+          "helper": "Controla a aleatoriedade (0.0-2.0). Menor = determinístico, Maior = criativo. Padrão: 0.8"
+        },
+        "reasoning": {
+          "label": "Esforço de Raciocínio",
+          "helper": "Aplica-se a modelos estilo OpenAI com capacidade de raciocínio. Deixe em branco para o padrão.",
+          "default": "Nenhum (usar padrão do provedor)",
+          "low": "Baixo",
+          "medium": "Médio",
+          "high": "Alto"
+        },
+        "topP": {
+          "label": "Top-P (Amostragem de Núcleo)",
+          "helper": "Limiar de probabilidade (0.0-1.0). Menor = focado, Maior = diverso. Padrão: 0.95"
+        },
+        "topK": {
+          "label": "Top-K (Seleção de Token)",
+          "helper": "Número de tokens principais a considerar (1-100). Padrão: 40"
+        },
+        "maxTokens": {
+          "label": "Máximo de Tokens de Saída",
+          "helper": "Tokens máximos na saída (1-200000). Os padrões seguem seu provedor selecionado."
+        },
+        "formality": {
+          "label": "Formalidade",
+          "helper": "Configuração apenas para DeepL para controlar o tom.",
+          "default": "Padrão",
+          "more": "Mais formal",
+          "less": "Menos formal"
+        },
+        "preserveFormatting": {
+          "label": "Preservar Formatação",
+          "helper": "Manter quebras de linha, maiúsculas/minúsculas e tags intactas (apenas DeepL).",
+          "toggle": "Preservar formatação"
+        },
+        "timeout": {
+          "label": "Tempo Limite de Tradução (segundos)",
+          "helper": "Tempo máximo para aguardar tradução (5-600). Os padrões seguem seu provedor selecionado."
+        },
+        "retries": {
+          "label": "Máximo de Tentativas",
+          "helper": "Número de tentativas de reenvio para esta tradução (0-5). Padrão: 2"
+        },
+      "reset": "Redefinir para Padrões",
+        "modelStatus": {
+          "unavailable": "Sobrescrita de modelo não disponível para Google Translate",
+          "fetching": "Buscando modelos...",
+          "loaded": "Modelos carregados!",
+          "failed": "Falha ao buscar modelos"
+        }
+      },
+      "toast": {
+        "title": "Novo stream detectado",
+        "meta": "Um episódio diferente está tocando no Stremio.",
+        "dismiss": "Dispensar notificação",
+        "update": "Atualizar"
+      },
+      "source": {
+        "label": "Idioma de Origem",
+        "helper": "Obrigatório para DeepL; escolha o idioma original da legenda ou deixe em auto-detectar.",
+        "auto": "Auto-detectar (recomendado)"
+      },
+      "target": {
+        "label": "Idioma de Destino",
+        "helper": "Selecione o idioma para traduzir",
+        "placeholder": "Escolha um idioma..."
+      },
+      "languageToggle": {
+        "showAll": "Mostrar todos os idiomas"
+      },
+      "files": {
+        "single": "Arquivos selecionados: {name}",
+        "multi": "{count} arquivos selecionados: {preview}{extra}"
+      },
+      "actions": {
+        "start": "Iniciar Tradução"
+      },
+      "progress": {
+        "headline": "Traduzindo sua legenda...",
+        "subtext": "Traduções na fila executam uma de cada vez para respeitar limites de taxa.",
+        "button": "Traduzindo...",
+        "active": "Traduzindo {name}",
+        "detail": "Trabalho {position} de {total}. Executando {concurrent} por vez.",
+        "subtitle": "legenda"
+      },
+      "refresh": {
+        "loading": "Atualizando...",
+        "empty": "Nenhum stream ainda",
+        "error": "Falha na atualização",
+        "current": "Já é o mais recente"
+      },
+      "queue": {
+        "title": "Fila de upload",
+        "subtitle": "Arquivos executam sequencialmente para evitar limitação de tradução.",
+        "empty": "Nenhum arquivo na fila",
+        "download": "Baixar",
+        "untitled": "Sem Título",
+        "options": {
+          "addTargets": "Adicionar idiomas de destino em Configurar"
+        },
+        "status": {
+          "pending": "Na fila",
+          "processing": "Processando",
+          "completed": "Feito",
+          "failed": "Falhou"
+        },
+        "summary": {
+          "processing": "{count} em progresso",
+          "pending": "{count} na fila",
+          "completed": "{count} feito",
+          "failed": "{count} falhou",
+          "ready": "Fila pronta"
+        },
+        "meta": {
+          "single": "Lote único",
+          "multi": "Lotes múltiplos",
+          "timingAi": "Enviar timestamps para IA",
+          "timingRebuild": "Reconstruir timestamps",
+          "target": "{target}"
+        },
+        "limitFull": "Você já tem {max} arquivos na fila. Limpe-a para adicionar mais.",
+        "limitPartial": "Apenas os primeiros {available} arquivos foram adicionados para ficar dentro do limite da fila de {max}."
+      },
+      "result": {
+        "title": "Tradução Completa!",
+        "body": "Sua legenda foi traduzida com sucesso.",
+        "download": "Baixar Legenda Traduzida",
+        "translateAnother": "Traduzir Outra",
+        "finished": "Finalizado: {name}"
+      },
+      "reset": {
+        "text": "Redefinir página de Tradução de Arquivo para padrões ->",
+        "action": "Redefinir"
+      },
+      "resetModal": {
+        "title": "Redefinir Tradução de Arquivo",
+        "lead": "Isso redefinirá tudo para esta ferramenta:",
+        "bullet1": "Limpar trabalhos na fila, seleções e quaisquer resultados baixados",
+        "bullet2": "Remover preferências salvas (temas, dicas dispensadas) para esta página",
+        "bullet3": "Você será recarregado na mesma página de tradução de arquivo depois.",
+        "cancel": "Cancelar",
+        "action": "Redefinir Tudo",
+        "busy": "Redefinindo...",
+        "closeAria": "Fechar diálogo de redefinição"
+      },
+      "provider": {
+        "using": "Usando {main}{mainModel} da sua configuração salva do SubMaker.",
+        "withFallback": "Usando {main}{mainModel} com fallback {fallback}{fallbackModel}."
+      },
+      "errors": {
+        "configMissing": "Token de configuração ausente. Abra esta página novamente do Stremio ou da página de configuração.",
+        "noFiles": "Por favor, selecione pelo menos um arquivo de legenda (SRT, VTT, ASS, SSA).",
+        "reviewSelections": "Por favor, revise suas seleções.",
+        "translationFailed": "Tradução falhou: {error}",
+        "warningPrefix": "Aviso: ",
+        "targetMissing": "Por favor, selecione um idioma de destino",
+        "sourceMissing": "Por favor, selecione um idioma de origem para traduções DeepL"
+      }
+    },
+    "sync": {
+      "documentTitle": "Subtitles Sync Studio - SubMaker",
+      "title": "Subtitles Sync Studio",
+      "subtitle": "Sincronize legendas automaticamente com seu vídeo usando análise de áudio",
+      "sectionHeading": "Vincule seu stream, escolha uma legenda e sincronize",
+      "badges": {
+        "addon": "Addon",
+        "extension": "Extensão",
+        "hash": "Hash",
+        "extensionWaiting": "Aguardando extensão..."
+      },
+      "meta": {
+        "linkedStream": "Stream vinculado",
+        "titleLabel": "Título",
+        "videoIdLabel": "ID do Vídeo",
+        "episodeLabel": "Episódio",
+        "fileLabel": "Arquivo",
+        "waiting": "Aguardando um stream vinculado...",
+        "noStream": "Nenhum stream vinculado",
+        "videoIdUnavailable": "ID do Vídeo indisponível",
+        "linkedFallback": "stream vinculado",
+        "episodeFallback": "Episódio"
+      },
+      "instructions": {
+        "help": "Mostrar instruções",
+        "title": "Instruções de Sincronização de Legendas",
+        "methods": "Métodos de Sincronização",
+        "items": {
+          "manual": "Ajuste Manual de Deslocamento: Ajuste o tempo da legenda manualmente com milissegundos positivos/negativos quando não quiser executar o autosync.",
+          "fingerprint": "Pré-passagem Rápida de Fingerprint: Verificação grosseira de fingerprint do ffsubsync para travar o grande deslocamento antes de varreduras mais profundas (ativado por padrão).",
+          "alass": "ALASS (áudio -> legenda): Âncoras wasm rápidas contra o áudio; escolha perfis Rápido/Equilibrado/Profundo/Completo para cobertura.",
+          "ffsubsync": "FFSubSync (áudio -> legenda): Alinhamento de áudio ciente de desvio via ffsubsync-wasm; escolha uma varredura leve, equilibrada, profunda ou completa.",
+          "vosk": "Vosk CTC/DTW (texto -> áudio): Força o alinhamento do texto da legenda diretamente ao áudio com Vosk logits + DTW, ótimo para tempos quebrados ou grandes deslocamentos.",
+          "whisper": "Whisper + ALASS (legenda -> legenda): Alinhamento de transcrição Whisper com uma passagem de refinamento ALASS; use perfis leve/equilibrado/profundo/completo para controlar o tamanho da varredura."
+        },
+        "note": "Selecione um motor primário primeiro, depois escolha seu perfil de varredura. A cobertura se adapta ao tempo de execução detectado para que casos pesados possam obter varreduras mais profundas.",
+        "dontShow": "Não mostre isso novamente",
+        "gotIt": "Entendi",
+        "closeAria": "Fechar instruções"
+      },
+      "toast": {
+        "title": "Novo stream detectado",
+        "meta": "Um episódio diferente está tocando no Stremio.",
+        "update": "Atualizar",
+        "dismiss": "Dispensar notificação"
+      },
+      "step1": {
+        "chip": "Passo 1",
+        "title": "Fornecer Informações do Stream",
+        "linkedLabel": "Stream vinculado",
+        "streamLabel": "URL do Stream:",
+        "placeholder": "Cole a URL do seu stream aqui (ex: http://... ou magnet:...)",
+        "infoTitle": "Sincronização de Legendas:",
+        "infoBody": "O Autosync precisa da URL do stream e da extensão xSync; deslocamentos manuais funcionam sem eles.",
+        "continue": "Continuar para Seleção de Legenda"
+      },
+      "step2": {
+        "chip": "Passo 2",
+        "title": "Selecionar Legenda para Sincronizar",
+        "selectLabel": "Escolha entre {title} legendas buscadas:",
+        "selectPlaceholder": "Escolha uma legenda",
+        "uploadTitle": "Ou arraste & solte seu arquivo .srt aqui",
+        "uploadSubtitle": "Clique para navegar pelos arquivos",
+        "sourceLabel": "Idioma de Origem:",
+        "sourcePlaceholder": "Selecione idioma de origem",
+        "translateToggle": "Traduzir legenda após sincronizar",
+        "targetLabel": "Idioma de Destino:",
+        "subtitleOption": "{language} - Legenda #{index}"
+      },
+      "step3": {
+        "chip": "Passo 3",
+        "title": "Sincronizar Legenda",
+        "primaryLabel": "Modo Primário:",
+        "secondaryLabel": "Perfil de Varredura:",
+        "primaryOptions": {
+          "manual": "Ajuste Manual de Deslocamento",
+          "alass": "ALASS (áudio -> legenda)",
+          "ffsubsync": "FFSubSync (áudio -> legenda)",
+          "vosk": "Vosk CTC/DTW (texto -> áudio)",
+          "whisper": "Whisper + ALASS (legenda -> legenda)"
+        },
+        "manualLabel": "Deslocamento de Tempo (milissegundos):",
+        "offsetHotkeys": "Atalhos: Esq/Dir = +/-100ms; Shift+Esq/Dir = +/-500ms; 0 = redefinir",
+        "offsetHintPositive": "Valores positivos = atrasar legendas (aparecem depois)",
+        "offsetHintNegative": "Valores negativos = adiantar legendas (aparecem antes)",
+        "offsetButtons": {
+          "minus1000": "-1s",
+          "minus500": "-500ms",
+          "minus100": "-100ms",
+          "reset": "Redefinir",
+          "plus100": "+100ms",
+          "plus500": "+500ms",
+          "plus1000": "+1s"
+        },
+        "start": "Aplicar Sincronização",
+        "startBusy": "Sincronizando...",
+        "progress": "Sincronizando legendas...",
+        "options": {
+          "addTargets": "Adicionar idiomas de destino em Configurar"
+        },
+        "status": {
+          "noStream": "Nenhum stream vinculado. Deslocamentos manuais funcionam, mas o autosync precisará de uma URL de stream http(s).",
+          "invalidStream": "O Autosync requer uma URL de stream http(s) válida. Deslocamentos manuais podem ser executados sem ela.",
+          "linked": "URL do stream vinculada para autosync.",
+          "needSubtitle": "Por favor, selecione uma legenda primeiro",
+          "needLanguage": "Selecione o idioma da legenda antes de sincronizar.",
+          "extensionRequired": "O Autosync requer a Extensão Chrome SubMaker. Por favor, instale/habilite-a.",
+          "urlRequired": "O Autosync requer uma URL de stream http(s) válida. Por favor, cole-a no Passo 1.",
+          "profileRequired": "Selecione um perfil de varredura antes de iniciar o autosync.",
+          "success": "Legenda sincronizada com sucesso!",
+          "failed": "Sincronização falhou: {reason}",
+          "extensionSyncFailed": "Sincronização da extensão falhou",
+          "timeout": "Tempo limite da sincronização da extensão",
+          "fetchSubtitleFailed": "Falha ao buscar legenda"
+        },
+        "progressApplying": "Aplicando deslocamento: {ms}ms...",
+        "progressComplete": "Sincronização completa!",
+        "autosync": {
+          "generic": "Autosync",
+          "starting": "Iniciando {mode} ({primary}){plan}...",
+          "complete": "{mode} completo!"
+        }
+      },
+      "step4": {
+        "title": "Prévia & Download",
+        "downloadSynced": "Baixar Legenda Sincronizada",
+        "downloadTranslated": "Baixar Legenda Traduzida"
+      },
+      "offset": {
+        "onTime": "No horário",
+        "direction": {
+          "later": "depois",
+          "earlier": "antes"
+        }
+      },
+      "auto": {
+        "fingerprintLabel": "Pré-passagem rápida de fingerprint (recomendado)",
+        "fingerprintDescription": "Executa uma verificação rápida de deslocamento grosseiro do ffsubsync nas primeiras janelas de áudio antes do seu motor selecionado. Desabilite apenas se o áudio estiver mudo, muito cortado ou se você quiser pular a etapa extra."
+      },
+      "refresh": {
+        "loading": "Atualizando...",
+        "empty": "Nenhum stream ainda",
+        "error": "Falha na atualização",
+        "current": "Já é o mais recente"
+      },
+      "upload": {
+        "invalidFile": "Por favor, selecione um arquivo .srt válido",
+        "loaded": "Arquivo de legenda carregado: {name}"
+      },
+      "plan": {
+        "summary": "Plano: {plan}",
+        "fullRuntimeSeconds": "Varredura de tempo de execução completo ({seconds}s)",
+        "fullRuntime": "Varredura de tempo de execução completo",
+        "windowCountSeconds": "{count} x {seconds}s",
+        "windowCount": "{count} janelas",
+        "coverageDetected": "~{pct}% do tempo de execução detectado",
+        "coverageTarget": "~{pct}% cobertura alvo",
+        "fingerprint": "pré-passagem de fingerprint",
+        "fingerprintSkipped": "A pré-passagem de fingerprint é ignorada quando FFSubSync é o motor primário."
+      },
+      "logs": {
+        "estimatedRuntime": "Tempo de execução estimado da legenda (da legenda atual): {duration}",
+        "generic": "Evento de log",
+        "sentRequest": "Enviou requisição de sincronização ({mode}){summary} para a extensão."
+      },
+      "modes": {
+        "alass": {
+          "description": "Âncoras Áudio -> legenda via alass-wasm."
+        },
+        "ffsubsync": {
+          "description": "Alinhamento Áudio -> legenda via ffsubsync-wasm."
+        },
+        "vosk": {
+          "description": "Texto -> áudio (Vosk CTC logits + DTW)."
+        },
+        "whisper": {
+          "description": "Legenda -> legenda (Transcrição Whisper + refinamento ALASS)."
+        }
+      },
+      "presets": {
+        "alass": {
+          "rapid": {
+            "label": "Âncoras rápidas (~8-10%)",
+            "description": "4-6 janelas de âncora curtas para travamento rápido de desvio."
+          },
+          "balanced": {
+            "label": "Âncoras equilibradas (~14-18%)",
+            "description": "6-9 janelas em ~60s para mudanças de taxa de bits mais difíceis."
+          },
+          "deep": {
+            "label": "Âncoras profundas (~26-32%)",
+            "description": "9-14 janelas em ~75s para desvio pesado/anúncios."
+          },
+          "complete": {
+            "label": "Completo (tempo de execução total)",
+            "description": "Varre o tempo de execução completo com âncoras alass."
+          }
+        },
+        "ffsubsync": {
+          "light": {
+            "label": "Varredura leve (~6-8%)",
+            "description": "4-6 janelas (~60s) para pegar desvios óbvios rapidamente."
+          },
+          "balanced": {
+            "label": "Varredura equilibrada (~12-16%)",
+            "description": "6-10 janelas (~80s) para padrões de desvio mistos."
+          },
+          "deep": {
+            "label": "Varredura profunda (~22-28%)",
+            "description": "9-14 janelas (~100s) para correção agressiva."
+          },
+          "complete": {
+            "label": "Completo (tempo de execução total)",
+            "description": "Varredura ffsubsync de tempo de execução completo para precisão máxima."
+          }
+        },
+        "vosk": {
+          "light": {
+            "label": "Vosk Leve (~10-12%)",
+            "description": "Passagem rápida CTC/DTW para grandes deslocamentos e tempos quebrados."
+          },
+          "balanced": {
+            "label": "Vosk Equilibrado (~16-20%)",
+            "description": "Adiciona mais âncoras para anúncios/desvio mantendo a rapidez."
+          },
+          "deep": {
+            "label": "Vosk Profundo (~26-32%)",
+            "description": "Âncoras densas para áudio ruidoso ou legendas bagunçadas."
+          },
+          "complete": {
+            "label": "Vosk Completo (tempo de execução total)",
+            "description": "Alinhamento Vosk CTC/DTW de tempo de execução completo quando a precisão é crítica."
+          }
+        },
+        "whisper": {
+          "light": {
+            "label": "Varredura leve (~5-7%)",
+            "description": "3-5 janelas Whisper (~70s) para verificação de sanidade de desvio."
+          },
+          "balanced": {
+            "label": "Varredura equilibrada (~12-16%)",
+            "description": "5-8 janelas (~85s) para programas típicos com anúncios."
+          },
+          "deep": {
+            "label": "Varredura profunda (~22-28%)",
+            "description": "8-12 janelas (~100s) para desvios teimosos."
+          },
+          "complete": {
+            "label": "Completo (tempo de execução total)",
+            "description": "Transcrição de tempo de execução completo + alinhar quando você precisa de tudo."
+          }
+        }
+      },
+      "primary": {
+        "manual": "Deslocamento manual: digite o deslocamento em milissegundos que você precisa.",
+        "alass": "ALASS ancora a legenda ao áudio para alinhamento rápido e offline.",
+        "ffsubsync": "FFSubSync detecta desvios/anúncios diretamente da forma de onda do áudio.",
+        "vosk": "Vosk CTC/DTW força o alinhamento do texto da legenda diretamente ao áudio.",
+        "whisper": "Alinhamento de transcrição Whisper com uma passagem de refinamento ALASS."
+      },
+      "extension": {
+        "ready": "Pronto",
+        "notDetected": "Extensão não detectada",
+        "pinging": "Pingando extensão...",
+        "readyVersion": "Pronto (v{version})",
+        "detected": "Extensão detectada (v{version})",
+        "unlocked": "Motores de sincronização desbloqueados (ALASS / FFSubSync / Vosk CTC/DTW / Whisper + ALASS)"
+      },
+      "translate": {
+        "inProgress": "Traduzindo legenda... Isso pode levar de 1 a 5 minutos.",
+        "failed": "Tradução falhou",
+        "success": "Tradução completada!",
+        "error": "Tradução falhou: {reason}"
+      },
+      "errors": {
+        "saveFailed": "Falha ao salvar legenda sincronizada"
+      }
+    }
+  }
+}
