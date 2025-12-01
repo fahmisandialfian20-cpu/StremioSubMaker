@@ -126,6 +126,9 @@
     }
 
     function applyStaticCopy() {
+        try {
+            document.title = tConfig('config.documentTitle', {}, document.title || 'SubMaker - Configure');
+        } catch (_) {}
         setText('uiLanguageLabel', 'config.uiLanguageLabel', 'Interface');
         setAttr('uiLanguageSelect', 'aria-label', 'config.uiLanguageAria', 'UI language');
         setAttr('uiLanguageSelect', 'title', 'config.uiLanguageAria', 'UI language');
@@ -2522,7 +2525,7 @@ Translate to {target_language}.`;
 
         if (filtered.length === 0) {
             toggle.disabled = true;
-            syncSelectOptions(select, [{ value: '', text: 'No fallback providers available' }]);
+            syncSelectOptions(select, [{ value: '', text: tConfig('config.providersUi.noFallbackProviders', {}, 'No fallback providers available') }]);
             select.disabled = true;
             toggle.checked = false;
             currentConfig.secondaryProviderEnabled = false;
@@ -2669,7 +2672,7 @@ Translate to {target_language}.`;
         select.innerHTML = '';
         const placeholder = document.createElement('option');
         placeholder.value = '';
-        placeholder.textContent = 'Select model';
+        placeholder.textContent = tConfig('config.providersUi.selectModel', {}, 'Select model');
         select.appendChild(placeholder);
 
         (models || []).forEach(model => {
@@ -2772,14 +2775,14 @@ Translate to {target_language}.`;
         }
         const modelSelect = document.getElementById(`provider-${providerKey}-model`);
         if (modelSelect) {
-            modelSelect.innerHTML = '<option>Loading...</option>';
+            modelSelect.innerHTML = `<option value="">${tConfig('config.providersUi.loadingModels', {}, 'Loading models...')}</option>`;
         }
 
         if (providerKey === 'cfworkers') {
             const creds = parseCfWorkersKey(apiKey);
             if (!creds.accountId || !creds.token) {
                 if (modelSelect) {
-                    modelSelect.innerHTML = '<option value="">Add ACCOUNT_ID|TOKEN to load models</option>';
+                    modelSelect.innerHTML = `<option value="">${tConfig('config.providersUi.cfworkersLoadModels', {}, 'Add ACCOUNT_ID|TOKEN to load models')}</option>`;
                 }
                 if (!options.silent) {
                     showAlert(tConfig('config.alerts.missingCfWorkers', {}, 'Cloudflare Workers AI key must be in ACCOUNT_ID|TOKEN format'), 'error', 'config.alerts.missingCfWorkers', {});
@@ -3513,7 +3516,7 @@ Translate to {target_language}.`;
         }
 
         // Clear and populate advanced model dropdown with ALL models
-        advModelSelect.innerHTML = '<option value="">Use Default Model</option>';
+        advModelSelect.innerHTML = `<option value="">${tConfig('config.providersUi.useDefaultModel', {}, 'Use Default Model')}</option>`;
 
         // Define hardcoded multi-model options
         const hardcodedModels = [

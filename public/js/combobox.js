@@ -4,6 +4,15 @@
     var valueDescriptor = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
     var activeCombo = null;
 
+    function translate(key, fallback) {
+        try {
+            if (typeof window !== 'undefined' && typeof window.t === 'function') {
+                return window.t(key, {}, fallback || key);
+            }
+        } catch (_) {}
+        return fallback || key;
+    }
+
     function dispatchChange(select) {
         var evt;
         try {
@@ -131,11 +140,15 @@
             }
         }
 
+        function getPlaceholder() {
+            return select.getAttribute('data-placeholder') || translate('common.selectOption', 'Select an option');
+        }
+
         function syncFromSelect() {
             var value = select.value;
             var selectedOption = select.options && select.options[select.selectedIndex];
-            var label = selectedOption ? selectedOption.textContent.trim() : (select.getAttribute('data-placeholder') || '');
-            button.textContent = label || 'Select an option';
+            var label = selectedOption ? selectedOption.textContent.trim() : getPlaceholder();
+            button.textContent = label || translate('common.selectOption', 'Select an option');
 
             Array.prototype.forEach.call(panel.querySelectorAll('.combo-option'), function(optEl) {
                 var isSelected = optEl.dataset.value === value;

@@ -4980,7 +4980,7 @@ function generateAutoSubtitlePage(configStr, videoId, filename, config = {}) {
       const extDot = document.getElementById('ext-dot');
       const extLabel = document.getElementById('ext-label');
       const extStatus = document.getElementById('ext-status');
-      const startBtnLabel = startBtn ? startBtn.textContent : tt('toolbox.autoSubs.steps.start', {}, ${JSON.stringify(copy.steps.start)});
+      const startBtnLabel = startBtn ? startBtn.textContent : tt('toolbox.autoSubs.actions.start', {}, ${JSON.stringify(copy.steps.start)});
 
       let extensionReady = false;
       let pingRetries = 0;

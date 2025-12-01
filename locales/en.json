@@ -5,6 +5,7 @@
     "Toolbox",
     "Tool shelf",
     "Learn Mode",
+    "Learn Mode labels (e.g., Learn {language})",
     "Learn (Language) entries (\"Learn <Language>\")",
     "SubMaker xSync",
     "SubMaker Link",
@@ -20,6 +21,9 @@
   ],
   "lang": "en",
   "messages": {
+    "common": {
+      "selectOption": "Select an option"
+    },
     "manifest": {
       "name": "SubMaker - Subtitle Translator",
       "description": "Take control of your subtitles! Fetch and translate subtitles from OpenSubtitles, SubScene and SubDL with a free Gemini AI key or other AI providers, without ever leaving Stremio.\n\nSource languages: {sources}\nTarget languages: {targets}"
@@ -229,7 +233,7 @@
         "queueTranslation": "Queue translation",
         "running": "{count} running",
         "queued": "{count} queued",
-        "extracting": "Extracting via xSync…",
+        "extracting": "Extracting via xSync...",
         "selectSubtitle": "Select a subtitle in Step 1 outputs first.",
         "translationQueued": "Translation already queued for {lang}.",
         "translating": "Translating {label} -> {target}...",
@@ -487,6 +491,7 @@
       },
       "heroTitle": "SubMaker",
       "heroSubtitle": "AI-Powered Subtitle Translation",
+      "documentTitle": "SubMaker - Configure",
       "quickStatsStatus": "Status",
       "quickStatsConfigure": "Configure",
       "quickStatsToolbox": "Toolbox",
@@ -677,6 +682,10 @@
         "loadModels": "Load Models",
         "loadModelsTitle": "Fetch models",
         "selectModel": "Select model",
+        "loadingModels": "Loading models...",
+        "cfworkersLoadModels": "Add ACCOUNT_ID|TOKEN to load models",
+        "noFallbackProviders": "No fallback providers available",
+        "useDefaultModel": "Use Default Model",
         "main": {
           "label": "Main Provider",
           "description": "Choose which enabled AI provider to use when multiple are configured."
@@ -953,9 +962,9 @@
         "stepsTitle": "Steps:",
         "step1": "Upload your subtitle file(s) (any supported format, up to {max} at once)",
         "step2": "Select your target language",
-        "step3": "Click \"Translate\" and wait for the magic ✨",
+        "step3": "Click \"Translate\" and wait for the magic",
         "step4": "Download your translated subtitle",
-        "step5": "Drag it to Stremio 🎬",
+        "step5": "Drag it to Stremio",
         "dontShow": "Don't show this again",
         "gotIt": "Got it!"
       },
@@ -1037,7 +1046,7 @@
           "label": "Max Retries",
           "helper": "Number of retry attempts for this translation (0-5). Default: 2"
         },
-        "reset": "🔄 Reset to Defaults",
+      "reset": "Reset to Defaults",
         "modelStatus": {
           "unavailable": "Model override not available for Google Translate",
           "fetching": "Fetching models...",
@@ -1069,7 +1078,7 @@
         "multi": "{count} files selected: {preview}{extra}"
       },
       "actions": {
-        "start": "🚀 Start Translation"
+        "start": "Start Translation"
       },
       "progress": {
         "headline": "Translating your subtitle...",
@@ -1120,12 +1129,12 @@
       "result": {
         "title": "Translation Complete!",
         "body": "Your subtitle has been successfully translated.",
-        "download": "⬇️ Download Translated Subtitle",
-        "translateAnother": "🔄 Translate Another One",
+        "download": "Download Translated Subtitle",
+        "translateAnother": "Translate Another One",
         "finished": "Finished: {name}"
       },
       "reset": {
-        "text": "Reset File Translation page to defaults →",
+        "text": "Reset File Translation page to defaults ->",
         "action": "Reset"
       },
       "resetModal": {
@@ -1205,7 +1214,7 @@
         "linkedLabel": "Linked stream",
         "streamLabel": "Stream URL:",
         "placeholder": "Paste your stream URL here (e.g., http://... or magnet:...)",
-        "infoTitle": "ℹ️ Subtitles Sync:",
+        "infoTitle": "Subtitles Sync:",
         "infoBody": "Autosync needs the stream URL and the xSync extension; manual offsets work without them.",
         "continue": "Continue to Subtitle Selection"
       },
@@ -1214,7 +1223,7 @@
         "title": "Select Subtitle to Sync",
         "selectLabel": "Choose from {title} fetched subtitles:",
         "selectPlaceholder": "Choose a subtitle",
-        "uploadTitle": "📁 Or drag & drop your .srt file here",
+        "uploadTitle": "Or drag & drop your .srt file here",
         "uploadSubtitle": "Click to browse files",
         "sourceLabel": "Source Language:",
         "sourcePlaceholder": "Select source language",
@@ -1228,14 +1237,14 @@
         "primaryLabel": "Primary Mode:",
         "secondaryLabel": "Scan Profile:",
         "primaryOptions": {
-          "manual": "📝 Manual Offset Adjustment",
-          "alass": "🎯 ALASS (audio -> subtitle)",
-          "ffsubsync": "🎛️ FFSubSync (audio -> subtitle)",
-          "vosk": "🧭 Vosk CTC/DTW (text -> audio)",
-          "whisper": "🗣️ Whisper + ALASS (subtitle -> subtitle)"
+          "manual": "Manual Offset Adjustment",
+          "alass": "ALASS (audio -> subtitle)",
+          "ffsubsync": "FFSubSync (audio -> subtitle)",
+          "vosk": "Vosk CTC/DTW (text -> audio)",
+          "whisper": "Whisper + ALASS (subtitle -> subtitle)"
         },
         "manualLabel": "Time Offset (milliseconds):",
-        "offsetHotkeys": "Hotkeys: ←/→ = ±100ms • Shift+←/→ = ±500ms • 0 = reset",
+        "offsetHotkeys": "Hotkeys: Left/Right = +/-100ms; Shift+Left/Right = +/-500ms; 0 = reset",
         "offsetHintPositive": "Positive values = delay subtitles (appear later)",
         "offsetHintNegative": "Negative values = advance subtitles (appear earlier)",
         "offsetButtons": {
@@ -1407,11 +1416,11 @@
         }
       },
       "primary": {
-        "manual": "📝 Manual offset: type the millisecond shift you need.",
-        "alass": "🎯 ALASS anchors the subtitle to audio for fast, offline alignment.",
-        "ffsubsync": "🎛️ FFSubSync detects drifts/ads directly from the audio waveform.",
-        "vosk": "🧭 Vosk CTC/DTW force-aligns your subtitle text directly to the audio.",
-        "whisper": "🗣️ Whisper transcript alignment with an ALASS refinement pass."
+        "manual": "Manual offset: type the millisecond shift you need.",
+        "alass": "ALASS anchors the subtitle to audio for fast, offline alignment.",
+        "ffsubsync": "FFSubSync detects drifts/ads directly from the audio waveform.",
+        "vosk": "Vosk CTC/DTW force-aligns your subtitle text directly to the audio.",
+        "whisper": "Whisper transcript alignment with an ALASS refinement pass."
       },
       "extension": {
         "ready": "Ready",
@@ -1429,139 +1438,6 @@
       },
       "errors": {
         "saveFailed": "Failed to save synced subtitle"
-      }
-    },
-    "xsync": {
-      "popup": {
-        "title": "SubMaker xSync",
-        "standingBy": "Standing by",
-        "active": "Active",
-        "total": "Total",
-        "configure": "Configure",
-        "settings": "Settings",
-        "toolbox": "Toolbox",
-        "advanced": "Advanced",
-        "syncPage": "Sync Page",
-        "connection": "Connection",
-        "factoryReset": "Factory Reset",
-        "open": "Open",
-        "reload": "Reload",
-        "reset": "Reset",
-        "copyright": "SubMaker xSync \u00a9 2025",
-        "resetConfirm": "Are you sure you want to reset the extension? This will clear all settings and data.",
-        "resetFailed": "Failed to reset extension. Please try removing and reinstalling it.",
-        "engineBusy": "Syncing now",
-        "engineIdle": "Standing by",
-        "themeAria": "Theme: {theme}",
-        "iconAlt": "SubMaker xSync icon",
-        "logoAlt": "SubMaker xSync logo"
-      },
-      "offscreen": {
-        "title": "SubMaker xSync Offscreen"
-      },
-      "options": {
-        "title": "SubMaker xSync Settings",
-        "subtitle": "Settings & Configuration",
-        "status": "Status",
-        "configure": "Configure",
-        "toolbox": "Toolbox",
-        "lastSave": "Last Save",
-        "notCaptured": "Not captured",
-        "notYet": "Not yet",
-        "generalEyebrow": "General",
-        "generalTitle": "Global Behaviour",
-        "autoSync": "Auto Sync",
-        "autoSyncHint": "Keep automatic syncing active whenever SubMaker is detected.",
-        "statusRefresh": "Status Refresh",
-        "statusRefreshHint": "How often the popup refreshes job stats.",
-        "themePreference": "Theme Preference",
-        "themeLight": "Light",
-        "themeDark": "Dark",
-        "themeTrueDark": "True Dark",
-        "themeToggleAria": "Toggle theme",
-        "refreshUnitSeconds": "s",
-        "linksEyebrow": "Link Capture",
-        "linksTitle": "Configure and Toolbox links",
-        "linksHint": "Open the configure and toolbox pages once and we’ll remember the URLs.",
-        "configureUrl": "Configure URL",
-        "toolboxUrl": "Toolbox URL",
-        "syncUrl": "Sync Page URL",
-        "saveButton": "Save Settings",
-        "saveSuccess": "Settings saved",
-        "saveError": "Failed to save settings",
-        "saving": "Saving",
-        "statusReady": "Ready",
-        "statusLoadingError": "Error loading",
-        "statusIdle": "Idle",
-        "statusOffline": "Offline",
-        "statusImported": "Imported",
-        "statusResetting": "Resetting...",
-        "statusResetFailed": "Reset failed",
-        "statusImportFailed": "Import failed",
-        "loadError": "Could not load settings",
-        "exported": "Exported settings",
-        "exportFailed": "Export failed",
-        "imported": "Imported settings",
-        "importFailed": "Import failed",
-        "resetConfirm": "Are you sure you want to reset the extension? This will clear all settings and data.",
-        "resetSuccess": "Extension reset; reloading...",
-        "resetFailed": "Reset failed",
-        "statsReset": "Stats reset",
-        "statsResetFailed": "Could not reset stats",
-        "lastSavedUnknown": "Unknown",
-        "clearStatsConfirm": "Reset popup stats (active/total sync counters)?",
-        "statusActiveCount": "{count} syncing",
-        "statusExtractingCount": "{count} extracting",
-        "themeAria": "Theme: {theme}",
-        "syncEyebrow": "Sync Behaviour",
-        "syncTitle": "Automation & Safety",
-        "preferAlass": "Prefer ALASS",
-        "preferAlassHint": "Favour ALASS when available for higher-accuracy alignment.",
-        "concurrency": "Concurrency",
-        "concurrencyHint": "Prevent overload when multiple tabs sync at once.",
-        "concurrencyOption1": "Single job",
-        "concurrencyOption2": "Up to 2 jobs",
-        "concurrencyOption3": "Up to 3 jobs",
-        "concurrencyOption4": "Up to 4 jobs",
-        "fallbackBehavior": "Fallback Behaviour",
-        "fallbackHint": "How to handle hiccups during background syncing.",
-        "fallbackOptionRetry": "Retry quietly",
-        "fallbackOptionManual": "Prompt me",
-        "fallbackOptionSkip": "Skip failed sync",
-        "quietMode": "Quiet Mode",
-        "quietModeHint": "Pause automatic sync until re-enabled.",
-        "integrationsEyebrow": "Integrations",
-        "integrationsTitle": "SubMaker Link",
-        "detectPages": "Detect SubMaker Pages",
-        "detectPagesHint": "Listen for the sync page to auto-connect.",
-        "offscreenWorker": "Offscreen Worker",
-        "offscreenHint": "Allow the offscreen document for processing.",
-        "notificationsEyebrow": "Notifications",
-        "notificationsTitle": "Signals & Quiet Hours",
-        "notifyStart": "On Start",
-        "notifyStartHint": "Show a toast when a sync kicks off.",
-        "notifySuccess": "On Success",
-        "notifySuccessHint": "Celebrate when a sync finishes.",
-        "notifyError": "On Error",
-        "notifyErrorHint": "Surface issues immediately.",
-        "notifySound": "Sounds",
-        "notifySoundHint": "Play subtle cues with notifications.",
-        "quietHours": "Quiet Hours",
-        "quietHoursHint": "Mute notifications during a window.",
-        "quietStart": "Quiet Start",
-        "quietEnd": "Quiet End",
-        "supportEyebrow": "Support & Data",
-        "supportTitle": "Backups, Resets, Diagnostics",
-        "export": "Export Settings",
-        "import": "Import Settings",
-        "resetStats": "Reset Stats",
-        "resetDefaults": "Reset to Defaults",
-        "supportHint": "Exports are JSON. Stats reset only clears popup metrics (active/total).",
-        "saveEyebrow": "Save",
-        "saveSubline": "Applies instantly across the extension."
-      },
-      "content": {
-        "extractFailed": "Extraction failed"
       }
     }
   }
