@@ -129,9 +129,8 @@
         try {
             document.title = tConfig('config.documentTitle', {}, document.title || 'SubMaker - Configure');
         } catch (_) {}
-        setText('uiLanguageLabel', 'config.uiLanguageLabel', 'Interface');
-        setAttr('uiLanguageSelect', 'aria-label', 'config.uiLanguageAria', 'UI language');
-        setAttr('uiLanguageSelect', 'title', 'config.uiLanguageAria', 'UI language');
+        setAttr('uiLanguageDock', 'aria-label', 'config.uiLanguageAria', 'UI language');
+        setAttr('uiLanguageDock', 'title', 'config.uiLanguageAria', 'UI language');
         setText('heroTitle', 'config.heroTitle', 'SubMaker');
         setText('heroSubtitle', 'config.heroSubtitle', 'AI-Powered Subtitle Translation');
         setAttr('subToolboxLauncher', 'title', 'config.actions.openToolbox', 'Open Sub Toolbox');
@@ -300,7 +299,17 @@
         const dock = document.getElementById('uiLanguageDock');
         if (dock) {
             dock.setAttribute('data-lang', meta.value);
+            const label = tConfig('config.uiLanguageLabel', {}, 'Interface language');
+            const dockLabel = label ? `${label}: ${meta.label || meta.value.toUpperCase()}` : (meta.label || meta.value.toUpperCase());
+            dock.setAttribute('aria-label', dockLabel);
+            dock.setAttribute('title', dockLabel);
         }
+        const buttons = document.querySelectorAll('.ui-lang-flag');
+        buttons.forEach(btn => {
+            const isActive = btn.dataset.lang === meta.value;
+            btn.classList.toggle('active', isActive);
+            btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+        });
     }
 
     const SERVER_LIMITS = (typeof window !== 'undefined' && window.__CONFIG_LIMITS__) ? window.__CONFIG_LIMITS__ : {};
@@ -719,20 +728,39 @@ Translate to {target_language}.`;
         currentConfig.providerParameters = mergeProviderParameters(defaults, currentConfig.providerParameters);
     }
 
-    function populateUiLanguageSelect(selectedLang) {
-        const select = document.getElementById('uiLanguageSelect');
-        if (!select) return;
-        select.innerHTML = '';
+    function renderUiLanguageFlags(selectedLang) {
+        const container = document.getElementById('uiLanguageFlags');
+        const dock = document.getElementById('uiLanguageDock');
+        if (!container) return;
+
+        const activeMeta = getUiLanguageMeta(selectedLang || currentConfig?.uiLanguage || getPreferredUiLanguage());
+        const labelText = tConfig('config.uiLanguageLabel', {}, 'Interface language');
+        const ariaPrefix = labelText ? `${labelText}: ` : '';
+
+        container.innerHTML = '';
         SUPPORTED_UI_LANGUAGES.forEach((entry) => {
-            const resolved = resolveUiLanguageMeta(entry);
-            const opt = document.createElement('option');
-            opt.value = entry.value;
-            opt.textContent = resolved?.label || entry.value.toUpperCase();
-            select.appendChild(opt);
+            const meta = resolveUiLanguageMeta(entry);
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `ui-lang-flag${meta.value === activeMeta.value ? ' active' : ''}`;
+            btn.dataset.lang = meta.value;
+            btn.setAttribute('aria-pressed', meta.value === activeMeta.value ? 'true' : 'false');
+            btn.setAttribute('aria-label', ariaPrefix + (meta.label || meta.value.toUpperCase()));
+            btn.title = meta.label || meta.value.toUpperCase();
+            btn.textContent = meta.flag || meta.value.toUpperCase();
+            btn.addEventListener('click', () => {
+                const current = (currentConfig && currentConfig.uiLanguage) || '';
+                if (meta.value === current) return;
+                setUiLanguage(meta.value);
+            });
+            container.appendChild(btn);
         });
-        const meta = getUiLanguageMeta(selectedLang || select.value);
-        select.value = meta.value;
-        updateUiLanguageBadge(meta.value);
+
+        if (dock) {
+            dock.setAttribute('title', ariaPrefix + (activeMeta.label || activeMeta.value.toUpperCase()));
+            dock.setAttribute('aria-label', ariaPrefix + (activeMeta.label || activeMeta.value.toUpperCase()));
+        }
+        updateUiLanguageBadge(activeMeta.value);
     }
 
     function setUiLanguage(lang) {
@@ -753,24 +781,9 @@ Translate to {target_language}.`;
             } catch (_) {}
             return fallback;
         };
-        const label = document.getElementById('uiLanguageLabel');
-        if (label) {
-            label.textContent = translate('config.uiLanguageLabel', 'Interface');
-        }
-        updateUiLanguageBadge((currentConfig && currentConfig.uiLanguage) || (locale && locale.lang) || 'en');
-        const dock = document.getElementById('uiLanguageDock');
-        if (dock) {
-            const dockLabel = translate('config.uiLanguageLabel', 'Interface language');
-            dock.title = dockLabel;
-            dock.setAttribute('aria-label', dockLabel);
-        }
-        const uiLangSelect = document.getElementById('uiLanguageSelect');
-        if (uiLangSelect) {
-            const labelText = translate('config.uiLanguageLabel', 'Interface language');
-            uiLangSelect.setAttribute('aria-label', labelText);
-            uiLangSelect.setAttribute('title', labelText);
-            populateUiLanguageSelect((currentConfig && currentConfig.uiLanguage) || (locale && locale.lang) || 'en');
-        }
+        const activeLang = (currentConfig && currentConfig.uiLanguage) || (locale && locale.lang) || 'en';
+        renderUiLanguageFlags(activeLang);
+        updateUiLanguageBadge(activeLang);
         const heroTitle = document.getElementById('heroTitle');
         if (heroTitle) {
             heroTitle.textContent = translate('config.heroTitle', 'SubMaker');
@@ -929,8 +942,9 @@ Translate to {target_language}.`;
         showInstructionsModalIfNeeded();
 
         // Populate UI language selector before wiring events
-        populateUiLanguageSelect(currentConfig.uiLanguage || locale.lang || 'en');
-        try { localStorage.setItem(UI_LANGUAGE_STORAGE_KEY, (currentConfig.uiLanguage || locale.lang || 'en')); } catch (_) {}
+        const activeUiLang = currentConfig.uiLanguage || locale.lang || 'en';
+        renderUiLanguageFlags(activeUiLang);
+        try { localStorage.setItem(UI_LANGUAGE_STORAGE_KEY, activeUiLang); } catch (_) {}
 
         // Kick off language loading without blocking UI/modals
         loadLanguages().catch(err => {
@@ -1842,14 +1856,6 @@ Translate to {target_language}.`;
     function setupEventListeners() {
         // Form submission
         document.getElementById('configForm').addEventListener('submit', handleSubmit);
-
-        const uiLangSelect = document.getElementById('uiLanguageSelect');
-        if (uiLangSelect) {
-            uiLangSelect.addEventListener('change', (e) => {
-                const lang = e.target.value || 'en';
-                setUiLanguage(lang);
-            });
-        }
 
         // Delegate language grid item clicks to containers (reduces per-item listeners)
         const gridMap = [
@@ -4018,12 +4024,9 @@ Translate to {target_language}.`;
         }
 
         // UI language selector
-        populateUiLanguageSelect(currentConfig.uiLanguage || locale.lang || 'en');
-        const uiLangSelect = document.getElementById('uiLanguageSelect');
-        if (uiLangSelect) {
-            uiLangSelect.value = (currentConfig.uiLanguage || locale.lang || 'en').toString().toLowerCase();
-            updateUiLanguageBadge(uiLangSelect.value);
-        }
+        const activeUiLang = (currentConfig.uiLanguage || locale.lang || 'en').toString().toLowerCase();
+        renderUiLanguageFlags(activeUiLang);
+        updateUiLanguageBadge(activeUiLang);
 
         // Load Gemini API key
         document.getElementById('geminiApiKey').value = currentConfig.geminiApiKey || '';

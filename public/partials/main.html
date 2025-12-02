@@ -1,22 +1,9 @@
 <div class="container">
-    <div class="ui-language-dock" id="uiLanguageDock">
+    <div class="ui-language-dock" id="uiLanguageDock" role="group" aria-label="UI language">
         <div class="ui-language-glow" aria-hidden="true"></div>
-        <div class="ui-language-inner">
-            <span class="ui-language-flag-badge" aria-hidden="true">
-                <span class="ui-language-flag" id="uiLanguageFlag">🇬🇧</span>
-            </span>
-            <div class="ui-language-copy">
-                <span class="ui-language-pill" id="uiLanguageLabel" data-i18n="config.uiLanguageLabel">Interface</span>
-                <span class="ui-language-value" id="uiLanguageValue">English</span>
-            </div>
-            <span class="ui-language-chevron" aria-hidden="true">
-                <svg viewBox="0 0 16 16" role="presentation" focusable="false">
-                    <path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                        stroke-linejoin="round" />
-                </svg>
-            </span>
+        <div class="ui-language-flag-row" id="uiLanguageFlags">
+            <!-- Flags are rendered dynamically -->
         </div>
-        <select id="uiLanguageSelect" class="ui-language-select" aria-label="UI language" title="UI language"></select>
     </div>
 
     <div class="header">
