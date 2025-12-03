@@ -2638,15 +2638,21 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
         var(--surface-2);
       box-shadow: 0 10px 26px rgba(0,0,0,0.35);
     }
+    .mkv-header {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
     .mkv-icon {
-      width: 32px;
-      height: 32px;
-      border-radius: 10px;
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
       background: var(--surface);
       border: 1px solid var(--border);
       display: grid;
       place-items: center;
-      font-size: 18px;
+      font-size: 16px;
       flex-shrink: 0;
     }
     .mkv-title {
@@ -2668,7 +2674,7 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       font-size: 13px;
       line-height: 1.5;
     }
-    select.compact-select { width: min(240px, 100%); }
+    select.compact-select { width: min(240px, 100%); text-align: center; text-align-last: center; }
     select.target-select { width: min(420px, 100%); }
     .selected-track-box {
       margin-top: 12px;
@@ -2815,7 +2821,7 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
           <div class="page-icon">🧲</div>
           <h1 class="page-heading">Embedded Subtitle Studio</h1>
           <p class="page-subtitle">Extract embedded tracks from your current stream and translate them instantly.</p>
-          <p class="notice warn aio-warning">Do not use this tool at the same time you watch through a AIOStreams <strong>PROXY</strong> for Real-Debrid.</p>
+          <p class="notice warn aio-warning">Do not use this tool at the same time you stream through an AIOStreams <strong>PROXY</strong> for Real-Debrid.</p>
         </div>
       <div class="badge-row">
         ${renderRefreshBadge(t)}
@@ -2863,18 +2869,18 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
             <input type="text" id="stream-url" placeholder="Paste the video/stream URL from Stremio or your browser">
           </div>
           <div class="mkv-callout" aria-live="polite">
-            <div class="mkv-icon">🎬</div>
-            <div>
+            <div class="mkv-header">
+              <div class="mkv-icon">🎬</div>
               <div class="mkv-title">MKV tip</div>
-              <p class="mkv-text">Use Complete Mode when extracting MKV streams for the best results. Non-MKV links automatically switch to Smart.</p>
-              <p class="mkv-text">In Complete mode, the whole file will be fetched for extraction.</p>
             </div>
+            <p class="mkv-text">Use Complete Mode when extracting MKV streams for the best results. Non-MKV links automatically switch to Smart.</p>
+            <p class="mkv-text">In Complete mode, the whole file will be fetched for extraction.</p>
           </div>
           <div class="mode-controls">
             <label for="extract-mode">Mode</label>
             <select id="extract-mode" class="compact-select">
-              <option value="smart-v2">Smart (fast, single-pass)</option>
-              <option value="complete-v2">Complete (full file, single demux)</option>
+              <option value="smart-v2">Smart (fast)</option>
+              <option value="complete-v2">Complete (full file)</option>
             </select>
             <p class="mode-helper">Smart performs one best-effort fast pass and fails if incomplete. Complete always downloads the entire stream and runs one FFmpeg demux with no retries.</p>
             <button id="extract-btn" type="button" class="secondary">Extract Subtitles</button>
