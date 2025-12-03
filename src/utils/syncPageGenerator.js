@@ -2456,7 +2456,7 @@ async function generateSubtitleSyncPage(subtitles, videoId, streamFilename, conf
                     current.start = parseTime(times[0]);
                     current.end = parseTime(times[1]);
                 } else if (current.start !== undefined) {
-                    current.text = (current.text || '') + line + '\n';
+                    current.text = (current.text || '') + line + '\\n';
                 }
             }
 
@@ -2682,10 +2682,10 @@ async function generateSubtitleSyncPage(subtitles, videoId, streamFilename, conf
                 const newStart = Math.max(0, sub.start + offsetMs);
                 const newEnd = Math.max(newStart, sub.end + offsetMs);
 
-                result += \`\${sub.index}\n\`;
-                result += \`\${formatTime(newStart)} --> \${formatTime(newEnd)}\n\`;
+                result += \`\${sub.index}\\n\`;
+                result += \`\${formatTime(newStart)} --> \${formatTime(newEnd)}\\n\`;
                 result += sub.text;
-                result += '\n';
+                result += '\\n';
             }
 
             return result.trim();
