@@ -2637,7 +2637,7 @@ function generateFileTranslationPage(videoId, configStr, config, filename = '') 
             const message = (info && info.message) ? info.message : tt('fileUpload.toast.title', {}, 'New stream detected');
             const title = (info && info.title) ? info.title + ': ' : '';
             subtitleMenuInstance.notify(title + message, 'muted', { persist: true });
-            return true;
+            return false; // also surface the in-page toast
         }
 
         initStreamRefreshButton({

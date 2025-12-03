@@ -2210,7 +2210,7 @@ async function generateSubtitleSyncPage(subtitles, videoId, streamFilename, conf
             const message = (info && info.message) ? info.message : tt('sync.toast.meta', {}, ${JSON.stringify(copy.toast.meta)});
             const title = (info && info.title) ? info.title + ': ' : (tt('sync.toast.title', {}, ${JSON.stringify(copy.toast.title)}) + ': ');
             subtitleMenuInstance.notify(title + message, 'muted', { persist: true });
-            return true;
+            return false; // keep page toast visible
         }
 
         initStreamRefreshButton({

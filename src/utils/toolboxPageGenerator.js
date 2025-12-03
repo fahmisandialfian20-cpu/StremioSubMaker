@@ -3093,7 +3093,7 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       const message = (info && info.message) ? info.message : tt('toolbox.toast.title', {}, 'New stream detected');
       const title = (info && info.title) ? info.title + ': ' : '';
       subtitleMenuInstance.notify(title + message, 'muted', { persist: true });
-      return true;
+      return false; // allow the toast to show in-page
     }
     window.addEventListener('beforeunload', () => {
       requestExtensionReset('page-unload');
@@ -5030,7 +5030,7 @@ function generateAutoSubtitlePage(configStr, videoId, filename, config = {}) {
       const message = (info && info.message) ? info.message : tt('toolbox.toast.title', {}, TOAST_TITLE_FALLBACK);
       const title = (info && info.title) ? info.title + ': ' : '';
       subtitleMenuInstance.notify(title + message, 'muted', { persist: true });
-      return true;
+      return false; // keep in-page toast visible
     }
     initStreamRefreshButton({
       buttonId: 'quickNavRefresh',
