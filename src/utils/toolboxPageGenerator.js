@@ -4331,11 +4331,22 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
             const byteLength = t.byteLength || (contentBytes ? contentBytes.length : (typeof contentValue === 'string' ? contentValue.length : 0));
             const primaryLangRaw = (t.language || t.lang || t.languageRaw || '').toString().trim();
             const primaryLang = isGeneratedLangHint(primaryLangRaw) ? '' : primaryLangRaw;
+            const fallbackLangs = [
+              t.originalLanguage,
+              (!isGeneratedLabel(t.originalLabel) && t.originalLabel) || null,
+              (!isGeneratedLabel(t.label) && t.label) || null,
+              (!isGeneratedLabel(t.name) && t.name) || null,
+              t.title || null
+            ].filter(Boolean);
             let rawLang = canonicalTrackLanguageCode(primaryLang);
             if (rawLang === 'und') {
-              const labelLang = !isGeneratedLabel(t.label) ? canonicalTrackLanguageCode(t.label || '') : 'und';
-              const nameLang = !isGeneratedLabel(t.name) ? canonicalTrackLanguageCode(t.name || '') : 'und';
-              rawLang = labelLang !== 'und' ? labelLang : (nameLang !== 'und' ? nameLang : 'und');
+              for (const candidate of fallbackLangs) {
+                const next = canonicalTrackLanguageCode(candidate);
+                if (next && next !== 'und') {
+                  rawLang = next;
+                  break;
+                }
+              }
             }
             return {
               id: t.id || idx,
