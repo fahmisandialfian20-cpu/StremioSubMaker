@@ -2959,7 +2959,7 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
               <div class="mkv-icon">🎬</div>
               <div class="mkv-title">MKV tip</div>
             </div>
-            <p class="mkv-text">Use Complete Mode when extracting MKV streams for the best results. Non-MKV links automatically switch to Smart.</p>
+            <p class="mkv-text">Use Complete Mode when extracting MKV streams for the best results.</p>
             <p class="mkv-text">In Complete mode, the whole file will be fetched for extraction.</p>
           </div>
           <div class="mode-controls">
@@ -3281,21 +3281,6 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
 
     function normalizeStreamValue(val) {
       return (val || '').toString().trim();
-    }
-
-    function isMkvUrl(value) {
-      const normalized = normalizeStreamValue(value);
-      if (!normalized) return false;
-      return /\.mkv(\b|[?#/]|$)/i.test(normalized);
-    }
-
-    function autoSelectModeForUrl(url) {
-      const shouldUseComplete = !url || isMkvUrl(url);
-      const nextMode = shouldUseComplete ? 'complete' : 'smart';
-      if (state.extractMode === nextMode) return;
-      state.extractMode = nextMode;
-      if (els.modeSelect) els.modeSelect.value = nextMode;
-      persistExtractMode(state.extractMode);
     }
 
     function isPlaceholderStreamValue(val) {
@@ -4323,12 +4308,23 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
           }
           const batchId = Date.now();
           state.currentBatchId = batchId;
+          const isGeneratedLabel = (label) => {
+            if (!label) return true;
+            const lower = String(label).toLowerCase();
+            return /^extracted_sub/.test(lower) || /^track\\s+\\d+$/i.test(lower);
+          };
           state.tracks = filteredTracks.map((t, idx) => {
             const contentBytes = t.contentBytes || null;
             const contentBase64 = t.contentBase64 || '';
             const contentValue = (typeof t.content === 'string' || t.content instanceof Uint8Array || t.content instanceof ArrayBuffer) ? t.content : '';
             const byteLength = t.byteLength || (contentBytes ? contentBytes.length : (typeof contentValue === 'string' ? contentValue.length : 0));
-            const rawLang = canonicalTrackLanguageCode((t.language || t.lang || t.languageRaw || t.name || '').toString().trim());
+            const primaryLang = (t.language || t.lang || t.languageRaw || '').toString().trim();
+            let rawLang = canonicalTrackLanguageCode(primaryLang);
+            if (rawLang === 'und') {
+              const labelLang = !isGeneratedLabel(t.label) ? canonicalTrackLanguageCode(t.label || '') : 'und';
+              const nameLang = !isGeneratedLabel(t.name) ? canonicalTrackLanguageCode(t.name || '') : 'und';
+              rawLang = labelLang !== 'und' ? labelLang : (nameLang !== 'und' ? nameLang : 'und');
+            }
             return {
               id: t.id || idx,
               label: t.label || ('Track ' + (idx + 1)),
@@ -4447,15 +4443,6 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       els.targetSelect.addEventListener('change', () => {
         state.selectedTargetLang = els.targetSelect.value || null;
       });
-    }
-    const updateModeFromStreamField = () => {
-      autoSelectModeForUrl(els.streamUrl?.value || '');
-    };
-    if (els.streamUrl) {
-      ['input', 'change', 'blur'].forEach(evt => {
-        els.streamUrl.addEventListener(evt, updateModeFromStreamField);
-      });
-      updateModeFromStreamField();
     }
     if (els.modeSelect) {
       els.modeSelect.addEventListener('change', () => {

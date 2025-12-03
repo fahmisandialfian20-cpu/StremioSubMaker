@@ -2951,6 +2951,7 @@ function generateFileTranslationPage(videoId, configStr, config, filename = '') 
             const configuredModel = getConfiguredModelForProvider(normalized);
             const isMain = normalizeProviderKey(providerInfo.mainProvider) === normalized;
             const fallbackLabel = isMain && fallbackProviderKey ? formatProviderName(fallbackProviderKey) : '';
+            const useAll = showAllLanguagesCheckbox ? showAllLanguagesCheckbox.checked : false;
             if (providerDetails) {
                 if (fallbackLabel) {
                     providerDetails.textContent = tt(
