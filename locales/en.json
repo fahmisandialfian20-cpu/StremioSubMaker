@@ -221,6 +221,7 @@
       },
       "logs": {
         "linkedChanged": "Linked stream changed. Outputs cleared; run extraction again for the new stream.",
+        "linkedPending": "New stream detected. It will switch after the current extraction/translation finishes.",
         "noProgress": "No extraction progress for {minutes} minute(s). Resetting extraction; please retry.",
         "cacheSaveFailed": "Failed to save track {id} to cache: {reason}",
         "event": "Log event",

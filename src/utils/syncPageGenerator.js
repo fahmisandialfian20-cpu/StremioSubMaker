@@ -2078,6 +2078,7 @@ async function generateSubtitleSyncPage(subtitles, videoId, streamFilename, conf
         })};
         const subtitleMenuTargets = ${JSON.stringify(targetLanguages.map(lang => ({ code: lang, name: getLanguageName(lang) || lang })))};
         let subtitleMenuInstance = null;
+        let pendingStreamUpdate = null;
 
         let STATE = {
             streamUrl: null,
@@ -2144,27 +2145,12 @@ async function generateSubtitleSyncPage(subtitles, videoId, streamFilename, conf
                 (nextFilename && nextFilename !== CONFIG.streamFilename) ||
                 (nextHash && nextHash !== CONFIG.videoHash);
             if (!changed) return;
-
-            CONFIG.videoId = nextVideoId || CONFIG.videoId;
-            CONFIG.streamFilename = nextFilename || CONFIG.streamFilename;
-            CONFIG.videoHash = nextHash || CONFIG.videoHash;
-
-            updateLinkedMeta({
-                videoId: CONFIG.videoId,
-                filename: CONFIG.streamFilename,
-                title: CONFIG.linkedTitle
-            });
-
-            if (subtitleMenuInstance && typeof subtitleMenuInstance.updateStream === 'function') {
-                subtitleMenuInstance.updateStream({
-                    videoId: CONFIG.videoId,
-                    filename: CONFIG.streamFilename,
-                    videoHash: CONFIG.videoHash
-                });
-                if (typeof subtitleMenuInstance.prefetch === 'function') {
-                    subtitleMenuInstance.prefetch();
-                }
-            }
+            // Require explicit user action; keep update pending
+            pendingStreamUpdate = {
+                videoId: nextVideoId || CONFIG.videoId,
+                filename: nextFilename || CONFIG.streamFilename,
+                videoHash: nextHash || CONFIG.videoHash
+            };
         }
 
         function openInstructions(auto = false) {

@@ -1400,11 +1400,15 @@ function generateSubToolboxPage(configStr, videoId, filename, config) {
       const POLL_ERROR_STREAK_CAP = 6;
       let sseRetryTimer = null;
       let sseRetryCount = 0;
+      let sseCooldownUntil = 0;
+      let sseProbeTimer = null;
       let currentSig = '';
       let lastSig = '';
       let hasBaseline = false;
       let lastSeenTs = 0;
       const MAX_SSE_RETRIES = 5;
+      const SSE_PROBE_TIMEOUT_MS = 4000;
+      const SSE_COOLDOWN_MS = 10 * 60 * 1000;
       let lastMetaRequestKey = '';
 
       function parseVideoId(raw) {
@@ -1548,34 +1552,76 @@ function generateSubToolboxPage(configStr, videoId, filename, config) {
       }
 
       function startSse() {
+        const now = Date.now();
+        if (now < sseCooldownUntil) return;
+        if (es) return;
         try {
           if (sseRetryTimer) clearTimeout(sseRetryTimer);
+          if (sseProbeTimer) clearTimeout(sseProbeTimer);
+
+          let sseReady = false;
+          const markReady = () => {
+            sseReady = true;
+            sseRetryCount = 0;
+            pollErrorStreak = 0;
+            if (sseProbeTimer) {
+              clearTimeout(sseProbeTimer);
+              sseProbeTimer = null;
+            }
+            if (pollTimer) {
+              clearTimeout(pollTimer);
+              pollTimer = null;
+            }
+          };
+
           es = new EventSource('/api/stream-activity?config=' + encodeURIComponent(TOOLBOX.configStr));
+
+          sseProbeTimer = setTimeout(() => {
+            if (sseReady) return;
+            try { es?.close(); } catch (_) {}
+            es = null;
+            sseCooldownUntil = Date.now() + SSE_COOLDOWN_MS;
+            pollOnce();
+          }, SSE_PROBE_TIMEOUT_MS);
+
+          es.addEventListener('ready', () => {
+            markReady();
+          });
+
+          es.addEventListener('ping', () => {
+            markReady();
+          });
 
           es.addEventListener('episode', (ev) => {
             try {
-              sseRetryCount = 0; // Reset on successful message
+              markReady();
               const data = JSON.parse(ev.data);
               handleEpisode(data);
             } catch (_) {}
           });
 
           es.addEventListener('open', () => {
-            sseRetryCount = 0; // Connection successful
-            if (pollTimer) {
-              clearTimeout(pollTimer);
-              pollTimer = null;
-            }
+            markReady();
           });
 
           es.addEventListener('error', () => {
+            if (sseProbeTimer) {
+              clearTimeout(sseProbeTimer);
+              sseProbeTimer = null;
+            }
             try { es.close(); } catch (_) {}
             es = null;
+
+            if (!sseReady && sseRetryCount >= 2) {
+              sseCooldownUntil = Date.now() + SSE_COOLDOWN_MS;
+              pollOnce();
+              return;
+            }
+            sseRetryCount++;
 
             // Retry SSE with exponential backoff (start at 5s)
             if (sseRetryCount < MAX_SSE_RETRIES) {
               const delay = Math.min(5000 * Math.pow(2, sseRetryCount), 30000);
-              sseRetryCount++;
               sseRetryTimer = setTimeout(startSse, delay);
             } else {
               // Max retries reached, fall back to polling
@@ -1591,6 +1637,7 @@ function generateSubToolboxPage(configStr, videoId, filename, config) {
         try { es?.close(); } catch (_) {}
         if (pollTimer) clearTimeout(pollTimer);
         if (sseRetryTimer) clearTimeout(sseRetryTimer);
+        if (sseProbeTimer) clearTimeout(sseProbeTimer);
       });
 
       startSse();
@@ -2822,6 +2869,7 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
     let subtitleMenuInstance = null;
     let extractWatchdogTimer = null;
     let lastExtensionLabel = '';
+    let pendingStreamUpdate = null;
 
     function requestExtensionReset(reason) {
       try {
@@ -2952,6 +3000,16 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       return normalized === 'stream and refresh';
     }
 
+    function hasActiveStreamWork() {
+      return state.extractionInFlight || state.translationInFlight || state.activeTranslations > 0 || (state.queue && state.queue.length > 0);
+    }
+
+    function hasStreamOutputs() {
+      return (state.tracks && state.tracks.length > 0) ||
+        (state.targets && Object.keys(state.targets).length > 0) ||
+        (state.downloads && state.downloads.length > 0);
+    }
+
     function getStreamSignature(source = {}) {
       const videoId = normalizeStreamValue(source.videoId !== undefined ? source.videoId : PAGE.videoId);
       const filename = normalizeStreamValue(source.filename !== undefined ? source.filename : PAGE.filename);
@@ -2979,10 +3037,10 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       }
     }
 
-    function handleStreamUpdateFromNotification(payload) {
-      const nextSig = getStreamSignature(payload || {});
+    function applyStreamUpdate(payload, opts = {}) {
+      const nextSig = opts.signature || getStreamSignature(payload || {});
       const currentSig = getStreamSignature();
-      if (!nextSig || nextSig === currentSig) return;
+      if (!nextSig || nextSig === currentSig) return false;
 
       PAGE.videoId = normalizeStreamValue(payload.videoId) || PAGE.videoId;
       PAGE.filename = normalizeStreamValue(payload.filename) || PAGE.filename;
@@ -2992,12 +3050,14 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
         videoId: PAGE.videoId
       });
 
+      pendingStreamUpdate = null;
       setTargetOptions(baseTargetOptions, true);
       updateVideoMeta(PAGE);
       resetExtractionState(true);
       if (els.extractLog) {
         els.extractLog.innerHTML = '';
-        const label = window.t ? window.t('toolbox.logs.linkedChanged', {}, 'Linked stream changed. Outputs cleared; run extraction again for the new stream.') : 'Linked stream changed. Outputs cleared; run extraction again for the new stream.';
+        const label = opts.logLabel ||
+          (window.t ? window.t('toolbox.logs.linkedChanged', {}, 'Linked stream changed. Outputs cleared; run extraction again for the new stream.') : 'Linked stream changed. Outputs cleared; run extraction again for the new stream.');
         logExtract(label);
       }
       if (subtitleMenuInstance && typeof subtitleMenuInstance.updateStream === 'function') {
@@ -3010,6 +3070,39 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
           subtitleMenuInstance.prefetch();
         }
       }
+      return true;
+    }
+
+    function applyPendingStreamUpdateIfSafe(opts = {}) {
+      if (!pendingStreamUpdate) return false;
+      if (hasActiveStreamWork()) return false;
+      if (!opts.force) {
+        if (state.extractMessageId) return false;
+        if (hasStreamOutputs()) return false;
+      }
+      const label = opts.logLabel ||
+        (window.t ? window.t('toolbox.logs.linkedChanged', {}, 'Linked stream changed. Outputs cleared; run extraction again for the new stream.') : 'Linked stream changed. Outputs cleared; run extraction again for the new stream.');
+      return applyStreamUpdate(pendingStreamUpdate.payload, { signature: pendingStreamUpdate.signature, logLabel: label });
+    }
+
+    function handleStreamUpdateFromNotification(payload) {
+      const nextSig = getStreamSignature(payload || {});
+      const currentSig = getStreamSignature();
+      if (!nextSig || nextSig === currentSig) return;
+
+      if (hasActiveStreamWork() || hasStreamOutputs()) {
+        const isNew = !pendingStreamUpdate || pendingStreamUpdate.signature !== nextSig;
+        pendingStreamUpdate = { payload, signature: nextSig };
+        if (isNew && els.extractLog) {
+          const pendingLabel = window.t
+            ? window.t('toolbox.logs.linkedPending', {}, 'New stream detected. It will switch after the current extraction/translation finishes.')
+            : 'New stream detected. It will switch after the current extraction/translation finishes.';
+          logExtract(pendingLabel);
+        }
+        return;
+      }
+
+      applyStreamUpdate(payload, { signature: nextSig });
     }
 
     initInstructions();
@@ -3278,6 +3371,9 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
         els.modeSelect.disabled = !!active;
       }
       updateExtensionStatus(state.extensionReady, lastExtensionLabel || (state.extensionReady ? 'Ready' : ''), state.extensionReady ? 'ok' : 'warn');
+      if (!state.extractionInFlight) {
+        applyPendingStreamUpdateIfSafe();
+      }
     }
 
     function applyTranslateDisabled() {
@@ -3306,6 +3402,9 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
         }
       }
       applyTranslateDisabled();
+      if (!state.translationInFlight) {
+        applyPendingStreamUpdateIfSafe();
+      }
     }
 
     function handleExtractionTimeout() {
@@ -3927,6 +4026,7 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
           setStep2Enabled(false);
         }
         requestExtensionReset('extract-finished');
+        applyPendingStreamUpdateIfSafe();
       }
     });
 
@@ -3963,6 +4063,9 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
         return;
       }
       if (state.extractionInFlight) return;
+      if (pendingStreamUpdate) {
+        applyPendingStreamUpdateIfSafe({ force: true });
+      }
       const streamUrl = (els.streamUrl.value || '').trim();
       if (!streamUrl) {
         const label = window.t ? window.t('toolbox.logs.pasteUrl', {}, 'Paste a stream URL first.') : 'Paste a stream URL first.';
@@ -4889,6 +4992,7 @@ function generateAutoSubtitlePage(configStr, videoId, filename, config = {}) {
     const SUBTITLE_MENU_TARGET_CODES = ${JSON.stringify(config.targetLanguages || [])};
     const SUBTITLE_LANGUAGE_MAPS = ${safeJsonSerialize(languageMaps)};
     let subtitleMenuInstance = null;
+    let pendingStreamUpdate = null;
     const tt = (key, vars = {}, fallback = '') => window.t ? window.t(key, vars, fallback || key) : (fallback || key);
     const TOAST_TITLE_FALLBACK = ${JSON.stringify(t('toolbox.toast.title', {}, 'New stream detected'))};
     const REFRESH_LABEL_FALLBACKS = {
@@ -4932,21 +5036,12 @@ function generateAutoSubtitlePage(configStr, videoId, filename, config = {}) {
         (nextFilename && nextFilename !== PAGE.filename) ||
         (nextHash && nextHash !== PAGE.videoHash);
       if (!changed) return;
-
-      PAGE.videoId = nextVideoId || PAGE.videoId;
-      PAGE.filename = nextFilename || PAGE.filename;
-      PAGE.videoHash = nextHash || PAGE.videoHash;
-
-      if (subtitleMenuInstance && typeof subtitleMenuInstance.updateStream === 'function') {
-        subtitleMenuInstance.updateStream({
-          videoId: PAGE.videoId,
-          filename: PAGE.filename,
-          videoHash: PAGE.videoHash
-        });
-        if (typeof subtitleMenuInstance.prefetch === 'function') {
-          subtitleMenuInstance.prefetch();
-        }
-      }
+      // Require explicit user action; keep update pending
+      pendingStreamUpdate = {
+        videoId: nextVideoId || PAGE.videoId,
+        filename: nextFilename || PAGE.filename,
+        videoHash: nextHash || PAGE.videoHash
+      };
     }
 
     subtitleMenuInstance = mountSubtitleMenu();

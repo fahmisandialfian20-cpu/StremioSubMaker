@@ -221,6 +221,7 @@
       },
       "logs": {
         "linkedChanged": "La emisión vinculada cambió. Se limpiaron las salidas; vuelve a extraer para la nueva emisión.",
+        "linkedPending": "Se detectó una nueva emisión. Cambiará después de que termine la extracción/traducción actual.",
         "noProgress": "Sin progreso de extracción por {minutes} minuto(s). Restableciendo extracción; vuelve a intentarlo.",
         "cacheSaveFailed": "No se pudo guardar la pista {id} en caché: {reason}",
         "event": "Evento de registro",

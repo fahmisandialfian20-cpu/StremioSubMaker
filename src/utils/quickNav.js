@@ -443,9 +443,8 @@ function quickNavScript() {
       let pollErrorStreak = 0;
       let sseRetryTimer = null;
       let sseRetryCount = 0;
-      let sseDisabled = false;
-      let sseRapidErrorCount = 0;
-      let sseRapidErrorWindowStart = 0;
+      let sseCooldownUntil = 0;
+      let sseProbeTimer = null;
       let currentSig = '';
       let lastSig = '';
       let hasBaseline = false;
@@ -456,6 +455,8 @@ function quickNavScript() {
       const POLL_BACKOFF_MAX_MS = 60000;
       const POLL_ERROR_STREAK_CAP = 6;
       const STALE_BACKSTOP_MS = Math.max(20000, Number(opts.staleBackstopMs) || 30000); // Force a poll if nothing arrives for ~30s
+      const SSE_PROBE_TIMEOUT_MS = 4000; // If no event arrives quickly, assume SSE is blocked
+      const SSE_COOLDOWN_MS = 10 * 60 * 1000; // Wait before retrying SSE after repeated failures
       const OWNER_TTL_MS = 45000; // quicker failover if the owning tab closes
       const OWNER_REFRESH_MS = 20000;
       const configSig = (() => {
@@ -643,6 +644,8 @@ function quickNavScript() {
 
       // Attempt to become owner on load if none is fresh
       becomeOwner(false);
+      // Ensure we keep a live connection even if ownership bookkeeping misbehaves
+      startSse();
       // Fallback: periodically re-check if owner disappeared
       setInterval(() => ensureOwner(), OWNER_REFRESH_MS);
 
@@ -691,7 +694,6 @@ function quickNavScript() {
 
       async function pollOnce(force = false) {
         const isStale = (Date.now() - lastSeenTs) > STALE_BACKSTOP_MS;
-        if (!force && !isStale && !isOwner && channel) return;
         try {
           const resp = await fetch('/api/stream-activity?config=' + encodeURIComponent(configStr), { cache: 'no-store' });
           if (!resp.ok || resp.status === 204) {
@@ -715,16 +717,49 @@ function quickNavScript() {
       }
 
       function startSse() {
-        if (sseDisabled) return;
-        if (!isOwner && channel) return;
+        const now = Date.now();
+        if (now < sseCooldownUntil) return;
         if (es) return;
         try {
           if (sseRetryTimer) clearTimeout(sseRetryTimer);
+          if (sseProbeTimer) clearTimeout(sseProbeTimer);
+
+          let sseReady = false;
+          const markReady = () => {
+            sseReady = true;
+            sseRetryCount = 0;
+            pollErrorStreak = 0;
+            if (sseProbeTimer) {
+              clearTimeout(sseProbeTimer);
+              sseProbeTimer = null;
+            }
+            if (pollTimer) {
+              clearTimeout(pollTimer);
+              pollTimer = null;
+            }
+          };
+
           es = new EventSource('/api/stream-activity?config=' + encodeURIComponent(configStr));
+
+          sseProbeTimer = setTimeout(() => {
+            if (sseReady) return;
+            try { es?.close(); } catch (_) {}
+            es = null;
+            sseCooldownUntil = Date.now() + SSE_COOLDOWN_MS;
+            pollOnce(true);
+          }, SSE_PROBE_TIMEOUT_MS);
+
+          es.addEventListener('ready', () => {
+            markReady();
+          });
+
+          es.addEventListener('ping', () => {
+            markReady();
+          });
 
           es.addEventListener('episode', (ev) => {
             try {
-              sseRetryCount = 0;
+              markReady();
               const data = JSON.parse(ev.data);
               handleEpisode(data);
               broadcastEpisode(data);
@@ -732,35 +767,27 @@ function quickNavScript() {
           });
 
           es.addEventListener('open', () => {
-            sseRetryCount = 0;
-            pollErrorStreak = 0;
-            if (pollTimer) {
-              clearTimeout(pollTimer);
-              pollTimer = null;
-            }
+            markReady();
           });
 
           es.addEventListener('error', () => {
+            if (sseProbeTimer) {
+              clearTimeout(sseProbeTimer);
+              sseProbeTimer = null;
+            }
             try { es.close(); } catch (_) {}
             es = null;
 
-            // Detect rapid failures and permanently fall back to polling
-            const now = Date.now();
-            if (now - sseRapidErrorWindowStart > 15000) {
-              sseRapidErrorWindowStart = now;
-              sseRapidErrorCount = 0;
-            }
-            sseRapidErrorCount += 1;
-            if (sseRapidErrorCount >= 3) {
-              sseDisabled = true;
+            if (!sseReady && sseRetryCount >= 2) {
+              sseCooldownUntil = Date.now() + SSE_COOLDOWN_MS;
               pollOnce(true);
               return;
             }
+            sseRetryCount++;
 
             if (sseRetryCount < MAX_SSE_RETRIES) {
               // Backoff starting at 5s to avoid rapid reconnect spam
               const delay = Math.min(5000 * Math.pow(2, sseRetryCount), 30000);
-              sseRetryCount++;
               sseRetryTimer = setTimeout(startSse, delay);
             } else {
               pollOnce();
@@ -780,6 +807,7 @@ function quickNavScript() {
         try { es?.close(); } catch (_) {}
         if (pollTimer) clearTimeout(pollTimer);
         if (sseRetryTimer) clearTimeout(sseRetryTimer);
+        if (sseProbeTimer) clearTimeout(sseProbeTimer);
         if (ownerLeaseTimer) clearInterval(ownerLeaseTimer);
         if (staleCheckTimer) clearInterval(staleCheckTimer);
         releaseOwner();

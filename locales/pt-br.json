@@ -221,6 +221,7 @@
       },
       "logs": {
         "linkedChanged": "Stream vinculado alterado. Saídas limpas; execute a extração novamente para o novo stream.",
+        "linkedPending": "Novo stream detectado. Ele será trocado após a extração/tradução atual terminar.",
         "noProgress": "Nenhum progresso de extração por {minutes} minuto(s). Reiniciando extração; por favor, tente novamente.",
         "cacheSaveFailed": "Falha ao salvar faixa {id} no cache: {reason}",
         "event": "Evento de log",

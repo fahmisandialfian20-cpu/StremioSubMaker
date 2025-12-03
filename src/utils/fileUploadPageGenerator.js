@@ -2553,6 +2553,7 @@ function generateFileTranslationPage(videoId, configStr, config, filename = '') 
         const PAGE = { configStr: configToken, videoId: ${JSON.stringify(videoId)}, filename: ${JSON.stringify(filename || '')}, videoHash: ${JSON.stringify(config?.videoHash || '')} };
         const subtitleMenuTargets = ${JSON.stringify(targetLangs)};
         let subtitleMenuInstance = null;
+        let pendingStreamUpdate = null;
         const uploadQueueLimits = ${JSON.stringify(uploadQueueDefaults)};
         const translationDefaults = ${JSON.stringify(translationWorkflowDefaults)};
         const MAX_OUTPUT_TOKEN_LIMIT = ${MAX_OUTPUT_TOKEN_LIMIT};
@@ -2618,19 +2619,12 @@ function generateFileTranslationPage(videoId, configStr, config, filename = '') 
                 (nextFilename && nextFilename !== PAGE.filename) ||
                 (nextHash && nextHash !== PAGE.videoHash);
             if (!changed) return;
-            PAGE.videoId = nextVideoId || PAGE.videoId;
-            PAGE.filename = nextFilename || PAGE.filename;
-            PAGE.videoHash = nextHash || PAGE.videoHash;
-            if (subtitleMenuInstance && typeof subtitleMenuInstance.updateStream === 'function') {
-                subtitleMenuInstance.updateStream({
-                    videoId: PAGE.videoId,
-                    filename: PAGE.filename,
-                    videoHash: PAGE.videoHash
-                });
-                if (typeof subtitleMenuInstance.prefetch === 'function') {
-                    subtitleMenuInstance.prefetch();
-                }
-            }
+            // Require explicit user action (toast Update/refresh button); do not auto-apply stream changes
+            pendingStreamUpdate = {
+                videoId: nextVideoId || PAGE.videoId,
+                filename: nextFilename || PAGE.filename,
+                videoHash: nextHash || PAGE.videoHash
+            };
         }
 
         subtitleMenuInstance = mountSubtitleMenu();
