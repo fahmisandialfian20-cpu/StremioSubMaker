@@ -5091,7 +5091,7 @@ function generateAutoSubtitlePage(configStr, videoId, filename, config = {}) {
         <div class="page-icon">🤖</div>
         <h1 class="page-heading">${escapeHtml(copy.hero.title)}</h1>
         <p class="page-subtitle">${escapeHtml(copy.hero.subtitle)}</p>
-        <p class="notice warn aio-warning">If you use AIOStreams <strong>PROXY</strong> for Real-Debrid, completely exit all streams before running this tool.</p>
+        <p class="notice warn aio-warning">Do not use this tool at the same time you stream through an AIOStreams <strong>PROXY</strong> for Real-Debrid.</p>
       </div>
       <div class="badge-row">
         ${renderRefreshBadge(t)}

@@ -667,8 +667,6 @@ Translate to {target_language}.`;
     // Visual state cache keys (these should be cleared on version changes)
     const VISUAL_STATE_KEYS = [
         'submaker_dont_show_instructions',
-        'submaker_dont_show_sub_toolbox',
-        'submaker_dont_show_file_translation',
         'submaker_collapsed_sections',
         'submaker_scroll_position'
     ];
@@ -1455,13 +1453,6 @@ Translate to {target_language}.`;
     }
 
     window.closeSubToolboxModal = function() {
-        const dontShowEl = document.getElementById('dontShowSubToolbox');
-        const dontShow = dontShowEl ? dontShowEl.checked : false;
-        if (dontShow) {
-            localStorage.setItem('submaker_dont_show_sub_toolbox', 'true');
-            // Preserve legacy key so older caches also stay hidden
-            localStorage.setItem('submaker_dont_show_file_translation', 'true');
-        }
         const modal = document.getElementById('subToolboxModal');
         if (modal) {
             modal.classList.remove('show');
@@ -1470,16 +1461,18 @@ Translate to {target_language}.`;
     };
 
     function showSubToolboxModal() {
+        // Always show the instructions now; clear any legacy suppression flags
         try {
-            const newKey = localStorage.getItem('submaker_dont_show_sub_toolbox');
-            const legacyKey = localStorage.getItem('submaker_dont_show_file_translation');
-            const suppressed = (newKey === 'true') || (legacyKey === 'true');
-            if (!suppressed) {
-                openModalById('subToolboxModal');
-            }
-        } catch (_) {
-            openModalById('subToolboxModal');
-        }
+            localStorage.removeItem('submaker_dont_show_sub_toolbox');
+            localStorage.removeItem('submaker_dont_show_file_translation');
+        } catch (_) {}
+        openModalById('subToolboxModal');
+    }
+
+    function updateSubToolboxInstructionsLink(isEnabled) {
+        const linkBtn = document.getElementById('subToolboxInstructionsLink');
+        if (!linkBtn) return;
+        linkBtn.style.display = isEnabled ? 'inline-flex' : 'none';
     }
 
     // (Removed extra window load fallback to reduce complexity)
@@ -2286,9 +2279,18 @@ Translate to {target_language}.`;
         const toolboxToggle = document.getElementById('subToolboxEnabled');
         if (toolboxToggle) {
             toolboxToggle.addEventListener('change', (e) => {
-                if (e.target.checked) {
+                const enabled = !!e.target.checked;
+                updateSubToolboxInstructionsLink(enabled);
+                if (enabled) {
                     showSubToolboxModal();
                 }
+            });
+        }
+        const toolboxInstructionsLink = document.getElementById('subToolboxInstructionsLink');
+        if (toolboxInstructionsLink) {
+            toolboxInstructionsLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                showSubToolboxModal();
             });
         }
 
@@ -4203,6 +4205,7 @@ Translate to {target_language}.`;
         currentConfig.subToolboxEnabled = toolboxEnabled;
         const toolboxToggle = document.getElementById('subToolboxEnabled');
         if (toolboxToggle) toolboxToggle.checked = toolboxEnabled;
+        updateSubToolboxInstructionsLink(toolboxEnabled);
         const mobileModeEl = document.getElementById('mobileMode');
         if (mobileModeEl) mobileModeEl.checked = currentConfig.mobileMode === true;
         const singleBatchEl = document.getElementById('singleBatchMode');

@@ -2751,3 +2751,30 @@
                 opacity: 0.85;
             }
         }
+
+.link-button {
+    background: none;
+    border: none;
+    color: var(--primary);
+    cursor: pointer;
+    padding: 0;
+    text-decoration: underline;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.link-button:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+.subtle-link {
+    color: var(--text-secondary);
+    text-decoration: underline;
+}
+
+.subtle-link:hover {
+    color: var(--primary);
+}

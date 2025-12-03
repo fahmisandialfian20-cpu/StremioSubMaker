@@ -819,7 +819,8 @@
         "title": "Otros ajustes",
         "subToolbox": {
           "label": "Activar \"Sub Toolbox\" (Alpha)",
-          "description": "Muestra Sub Toolbox en la lista de subtítulos de Stremio para acceder a todas las herramientas. (Lee las instrucciones tras activarlo)"
+          "description": "Muestra Sub Toolbox en la lista de subtítulos de Stremio para acceder a todas las herramientas. (Lee las instrucciones tras activarlo)",
+          "instructionsLink": "Leer instrucciones para usar el Toolbox"
         },
         "mobileMode": {
           "label": "Modo móvil (arreglo/mitigación)",

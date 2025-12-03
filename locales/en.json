@@ -819,7 +819,8 @@
         "title": "Other Settings",
         "subToolbox": {
           "label": "Enable \"Sub Toolbox\" (Alpha)",
-          "description": "Shows the Sub Toolbox entry in Stremio subtitles for brower access to all tools. (Read instructions after enabling)"
+          "description": "Shows the Sub Toolbox entry in Stremio subtitles for brower access to all tools. (Read instructions after enabling)",
+          "instructionsLink": "Read instructions for using the Toolbox"
         },
         "mobileMode": {
           "label": "Mobile Mode (fix/workaround)",

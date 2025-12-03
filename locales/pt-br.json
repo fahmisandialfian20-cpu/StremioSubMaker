@@ -819,7 +819,8 @@
         "title": "Outras Configurações",
         "subToolbox": {
           "label": "Habilitar \"Sub Toolbox\" (Alpha)",
-          "description": "Mostra a entrada Sub Toolbox nas legendas do Stremio para acesso via navegador a todas as ferramentas. (Leia as instruções após habilitar)"
+          "description": "Mostra a entrada Sub Toolbox nas legendas do Stremio para acesso via navegador a todas as ferramentas. (Leia as instruções após habilitar)",
+          "instructionsLink": "Ler instruções para usar o Toolbox"
         },
         "mobileMode": {
           "label": "Modo Móvel (correção/solução alternativa)",
