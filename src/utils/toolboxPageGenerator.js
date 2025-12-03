@@ -1395,6 +1395,7 @@ function generateSubToolboxPage(configStr, videoId, filename, config) {
       let es = null;
       let pollTimer = null;
       let pollErrorStreak = 0;
+      let pollPausedUntil = 0;
       const POLL_INTERVAL_MS = 5000;
       const POLL_BACKOFF_MAX_MS = 60000;
       const POLL_ERROR_STREAK_CAP = 6;
@@ -1670,7 +1671,13 @@ function generateSubToolboxPage(configStr, videoId, filename, config) {
         });
       }
 
-      async function pollOnce() {
+      async function pollOnce(force = false) {
+        const now = Date.now();
+        if (pollPausedUntil && now < pollPausedUntil && !force) return;
+        if (pollPausedUntil && now >= pollPausedUntil) {
+          pollPausedUntil = 0;
+          pollErrorStreak = 0;
+        }
         const shouldOwnConnection = isOwner || !channel;
         if (!shouldOwnConnection) return;
         try {
@@ -1688,6 +1695,9 @@ function generateSubToolboxPage(configStr, videoId, filename, config) {
           pollErrorStreak = Math.min(pollErrorStreak + 1, POLL_ERROR_STREAK_CAP);
           // ignore
         } finally {
+          if (pollErrorStreak >= POLL_ERROR_STREAK_CAP) {
+            pollPausedUntil = Date.now() + 10 * 60 * 1000; // cool down after repeated failures
+          }
           const delay = Math.min(
             POLL_BACKOFF_MAX_MS,
             POLL_INTERVAL_MS * Math.max(1, Math.pow(2, pollErrorStreak))

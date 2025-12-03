@@ -441,6 +441,7 @@ function quickNavScript() {
       let es = null;
       let pollTimer = null;
       let pollErrorStreak = 0;
+      let pollPausedUntil = 0;
       let sseRetryTimer = null;
       let sseRetryCount = 0;
       let sseCooldownUntil = 0;
@@ -740,6 +741,12 @@ function quickNavScript() {
       }
 
       async function pollOnce(force = false) {
+        const now = Date.now();
+        if (pollPausedUntil && now < pollPausedUntil && !force) return;
+        if (pollPausedUntil && now >= pollPausedUntil) {
+          pollPausedUntil = 0;
+          pollErrorStreak = 0;
+        }
         const shouldOwnConnection = isOwner || !channel;
         if (!shouldOwnConnection && !force) return;
         const isStale = (Date.now() - lastSeenTs) > STALE_BACKSTOP_MS;
@@ -756,6 +763,9 @@ function quickNavScript() {
         } catch (_) {
           pollErrorStreak = Math.min(pollErrorStreak + 1, POLL_ERROR_STREAK_CAP);
         } finally {
+          if (pollErrorStreak >= POLL_ERROR_STREAK_CAP) {
+            pollPausedUntil = Date.now() + 10 * 60 * 1000; // cool down after repeated failures
+          }
           const baseDelay = (force || isStale) ? Math.min(POLL_INTERVAL_MS, STALE_BACKSTOP_MS) : POLL_INTERVAL_MS;
           const delay = Math.min(
             POLL_BACKOFF_MAX_MS,
