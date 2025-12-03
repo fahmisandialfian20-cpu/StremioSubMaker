@@ -2854,7 +2854,7 @@ async function generateSubtitleSyncPage(subtitles, videoId, streamFilename, conf
                 }
             };
             sendPing();
-            pingTimer = setInterval(sendPing, 2000);
+            pingTimer = setInterval(sendPing, 5000);
         }
 
         // Set up message listener FIRST, before sending PING

@@ -1358,7 +1358,7 @@ function generateSubToolboxPage(configStr, videoId, filename, config) {
           }
         };
         sendPing();
-        pingTimer = setInterval(sendPing, 2000);
+        pingTimer = setInterval(sendPing, 5000);
       }
       window.addEventListener('message', event => {
         const msg = event.data;
@@ -3937,7 +3937,7 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
           updateExtensionStatus(false, notDetected, 'bad');
           return;
         }
-        pingTimer = setTimeout(tick, 2000);
+        pingTimer = setTimeout(tick, 5000);
       };
       tick();
     }
@@ -5060,7 +5060,7 @@ function generateAutoSubtitlePage(configStr, videoId, filename, config = {}) {
             updateExtensionStatus(false, notDetected, 'bad');
             return;
           }
-          pingTimer = setTimeout(tick, 2000);
+        pingTimer = setTimeout(tick, 5000);
         };
         tick();
       }

@@ -58,6 +58,7 @@ const PORT = process.env.PORT || 7001;
 // Reject suspicious host headers early (defense against host header injection)
 // Allow alphanumeric, dots, hyphens, underscores, and optional port
 const HOST_HEADER_REGEX = /^[A-Za-z0-9._-]+(?::\d+)?$/;
+const TRACE_CONFIG_RESOLVE = process.env.TRACE_CONFIG_RESOLVE === 'true';
 
 // Initialize session manager with environment-based configuration
 // Memory limit: 30,000 sessions (LRU eviction) - reduced from 50k to balance memory usage
@@ -2699,6 +2700,11 @@ async function regenerateDefaultConfig() {
 async function resolveConfigAsync(configStr, req) {
     const localhost = isLocalhost(req);
     const isToken = /^[a-f0-9]{32}$/.test(configStr);
+    if (TRACE_CONFIG_RESOLVE) {
+        const pathLabel = req?.path || req?.originalUrl || req?.url || 'unknown';
+        const ip = req?.ip || req?.connection?.remoteAddress || 'unknown';
+        log.debug(() => `[ConfigTrace] resolveConfigAsync path=${pathLabel} ip=${ip} key=${redactToken(configStr)}`);
+    }
 
     // SECURITY CRITICAL: Fast path cache lookup with TRIPLE-LAYER DEFENSE
     // IMPORTANT: Only cache base64 configs. Session tokens must always re-fetch from
