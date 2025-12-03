@@ -2903,7 +2903,7 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
     <header class="masthead">
         <div class="page-hero">
           <div class="page-icon">🧲</div>
-          <h1 class="page-heading">Embedded Subtitle Studio</h1>
+          <h1 class="page-heading">Embedded Subtitles Studio</h1>
           <p class="page-subtitle">Extract embedded tracks from your current stream and translate them instantly.</p>
           <p class="notice warn aio-warning">If you use AIOStreams <strong>PROXY</strong> for Real-Debrid, completely exit all streams before running this tool.</p>
         </div>
