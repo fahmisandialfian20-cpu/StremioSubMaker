@@ -23,8 +23,13 @@ function deepFreeze(obj) {
  * @returns {{ lang: string, messages: Object }}
  */
 function loadLocale(lang) {
-  const normalized = (lang || DEFAULT_LANG).toString().trim().toLowerCase() || DEFAULT_LANG;
-  const safeLang = /^[a-z-]+$/i.test(normalized) ? normalized : DEFAULT_LANG;
+  const normalized = (lang || DEFAULT_LANG)
+    .toString()
+    .trim()
+    .toLowerCase()
+    .replace(/_/g, '-') || DEFAULT_LANG;
+  // Allow alphanumeric BCP-47 tags with dashes (reject anything else to keep paths safe)
+  const safeLang = /^[a-z0-9-]+$/i.test(normalized) ? normalized : DEFAULT_LANG;
 
   if (localeCache.has(safeLang)) {
     return localeCache.get(safeLang);

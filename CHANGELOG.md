@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## SubMaker v1.4.12
+
+**Bug Fixes:**
+- **Locale placeholders:** Config page now re-applies limit copy with `data-i18n-vars` so `{max}` placeholders resolve correctly after locale reloads (target/source/no-translation language caps no longer show raw template tokens).
+- **BCP-47 locale support:** Locale loader now accepts alphanumeric tags with dashes/underscores (e.g., `es-419`, `pt_BR`) instead of silently falling back to English.
+- **Safe alerts:** Config alerts no longer render via `innerHTML`, preventing HTML injection from bubbled error strings while keeping icons/spacing intact.
+- **data-i18n vars respected:** `data-i18n-vars` is parsed and applied for any element using `data-i18n`, so dynamic placeholders stay translated when copy is re-applied.
+
 ## SubMaker v1.4.11
 
 **New Features:**

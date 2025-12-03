@@ -91,7 +91,16 @@
                 const attr = node.getAttribute('data-i18n-attr');
                 const fallbackAttr = node.getAttribute('data-i18n-fallback');
                 const fallback = fallbackAttr || (attr ? node.getAttribute(attr) : node.textContent);
-                const value = tConfig(key, {}, fallback || '');
+                const varsAttr = node.getAttribute('data-i18n-vars');
+                let vars = {};
+                if (varsAttr) {
+                    try {
+                        vars = JSON.parse(varsAttr);
+                    } catch (_) {
+                        vars = {};
+                    }
+                }
+                const value = tConfig(key, vars, fallback || '');
                 if (attr === 'innerHTML') {
                     node.innerHTML = value;
                 } else if (attr) {
@@ -178,6 +187,8 @@
         setText('targetLanguagesError', 'config.validation.targetRequired', 'Please select at least one target language');
         setText('learnLanguagesError', 'config.validation.learnRequired', 'Please select at least one learn language');
         applyDataI18n();
+        // Reapply any dynamic copy that depends on runtime values (e.g., language limits)
+        try { updateLanguageLimitCopy(); } catch (_) {}
     }
 
     /**
@@ -1065,11 +1076,13 @@ Translate to {target_language}.`;
     function updateLanguageLimitCopy() {
         const sourceDesc = document.getElementById('sourceLanguagesDescription');
         if (sourceDesc) {
+            try { sourceDesc.setAttribute('data-i18n-vars', JSON.stringify({ max: MAX_SOURCE_LANGUAGES })); } catch (_) {}
             sourceDesc.innerHTML = tConfig('config.limits.sourceDescription', { max: MAX_SOURCE_LANGUAGES }, `You can select up to ${MAX_SOURCE_LANGUAGES} source language${MAX_SOURCE_LANGUAGES === 1 ? '' : 's'}, but only 1 is recommended (so you have the same list order when translating). All subtitles from this language will be available for translation in the translation selector AND will be fetched (original subtitles will show up).`);
         }
 
         const targetDesc = document.getElementById('targetLanguagesDescription');
         if (targetDesc) {
+            try { targetDesc.setAttribute('data-i18n-vars', JSON.stringify({ max: MAX_TARGET_LANGUAGES })); } catch (_) {}
             targetDesc.innerHTML = tConfig('config.limits.targetDescription', { max: MAX_TARGET_LANGUAGES }, `Subtitles in target languages will be fetched AND translation buttons will appear for translating FROM the source language TO these languages. You can select up to ${MAX_TARGET_LANGUAGES} total target languages (including Learn Mode).`);
         }
 
@@ -1080,6 +1093,7 @@ Translate to {target_language}.`;
 
         const noTranslationDesc = document.getElementById('noTranslationLanguagesDescription');
         if (noTranslationDesc) {
+            try { noTranslationDesc.setAttribute('data-i18n-vars', JSON.stringify({ max: MAX_NO_TRANSLATION_LANGUAGES })); } catch (_) {}
             noTranslationDesc.textContent = tConfig('config.limits.noTranslationDescription', { max: MAX_NO_TRANSLATION_LANGUAGES }, `Select which languages you want to fetch subtitles in (up to ${MAX_NO_TRANSLATION_LANGUAGES}).`);
         }
     }
@@ -4800,7 +4814,16 @@ Translate to {target_language}.`;
             alert.setAttribute('data-i18n-fallback', message || '');
         }
 
-        alert.innerHTML = `<span style="font-size: 1.25rem;">${icon}</span><div style="flex: 1;">${message}</div>`;
+        const iconSpan = document.createElement('span');
+        iconSpan.style.fontSize = '1.25rem';
+        iconSpan.textContent = icon;
+
+        const messageDiv = document.createElement('div');
+        messageDiv.style.flex = '1';
+        messageDiv.textContent = typeof message === 'string' ? message : String(message || '');
+
+        alert.appendChild(iconSpan);
+        alert.appendChild(messageDiv);
 
         container.appendChild(alert);
         const displayTime = 5000;

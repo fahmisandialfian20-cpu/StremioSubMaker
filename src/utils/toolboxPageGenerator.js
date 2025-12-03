@@ -549,7 +549,8 @@ function generateSubToolboxPage(configStr, videoId, filename, config) {
     .page {
       max-width: 1180px;
       margin: 0 auto;
-      padding-top: calc(var(--theme-toggle-size, 48px) + 20px);
+      /* Don't reserve a full row for the floating theme toggle */
+      padding-top: 0;
     }
     .masthead {
       display: flex;
