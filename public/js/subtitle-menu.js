@@ -1097,10 +1097,9 @@
             : isSync ? 'synced'
               : isAction ? 'action'
                 : (inTarget && !inSource ? 'target' : 'source');
-      let group = 'source';
+      let group = 'primary';
       if (isTranslation) group = 'translation';
       else if (isLearn || isEmbed || isSync || isAction) group = 'other';
-      else if (inTarget && !inSource) group = 'target';
       return {
         id: entry?.id || displayLabel,
         label: displayLabel,
@@ -1500,10 +1499,7 @@
           if (groupEl) {
             groupEl.style.display = 'flex';
             groupEl.removeAttribute('aria-hidden');
-            if (toggleEl) {
-              const isOpen = groupEl.classList.contains('is-open') && !groupEl.classList.contains('is-collapsed');
-              toggleEl.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-            }
+            setGroupOpenState(groupEl, toggleEl, false);
           }
           languages.forEach(lang => container.appendChild(buildLanguageCard(lang, openKeys.has(lang.key), container, groupType)));
         }
@@ -1919,6 +1915,9 @@
     attachGroupToggle(elements.primaryToggle, elements.primaryGroup);
     attachGroupToggle(elements.translationToggle, elements.translationGroup);
     attachGroupToggle(elements.otherToggle, elements.otherGroup);
+    setGroupOpenState(elements.primaryGroup, elements.primaryToggle, false);
+    setGroupOpenState(elements.translationGroup, elements.translationToggle, false);
+    setGroupOpenState(elements.otherGroup, elements.otherToggle, false);
 
     updateSubtitleMenuMeta(elements);
     setSubtitleMenuStatus(elements, '', 'muted', { persist: true });
