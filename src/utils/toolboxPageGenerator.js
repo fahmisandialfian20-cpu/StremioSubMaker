@@ -1437,6 +1437,12 @@ function generateSubToolboxPage(configStr, videoId, filename, config) {
       })();
       const hasBroadcast = typeof BroadcastChannel === 'function';
       const channel = hasBroadcast ? new BroadcastChannel(channelName) : null;
+      const hasLocks = typeof navigator !== 'undefined' &&
+        navigator.locks && typeof navigator.locks.request === 'function';
+      const lockName = 'submaker-stream-lock-' + configSig;
+      let lockHeld = false;
+      let lockRelease = null;
+      let lockRequestInFlight = false;
       let isOwner = false;
       let ownerLeaseTimer = null;
 
@@ -1550,6 +1556,32 @@ function generateSubToolboxPage(configStr, videoId, filename, config) {
         refreshOwnerLease();
         startSse();
         return true;
+      }
+
+      function acquireLock() {
+        if (!hasLocks) return false;
+        if (lockHeld || lockRequestInFlight) return true;
+        lockRequestInFlight = true;
+        navigator.locks.request(lockName, { mode: 'exclusive' }, async () => {
+          lockRequestInFlight = false;
+          lockHeld = true;
+          await new Promise((resolve) => {
+            lockRelease = resolve;
+            becomeOwner(true);
+          });
+          lockHeld = false;
+          lockRelease = null;
+        }).catch(() => { lockRequestInFlight = false; });
+        return true;
+      }
+
+      function releaseLock() {
+        if (lockRelease) {
+          lockRelease();
+          lockRelease = null;
+        }
+        lockHeld = false;
+        lockRequestInFlight = false;
       }
 
       function ensureOwner() {
@@ -1762,9 +1794,12 @@ function generateSubToolboxPage(configStr, videoId, filename, config) {
           } catch (_) {}
           try { localStorage.removeItem(ownerKey); } catch (_) {}
         }
+        releaseLock();
       });
 
-      becomeOwner(false);
+      if (!acquireLock()) {
+        becomeOwner(false);
+      }
       setInterval(() => ensureOwner(), 60000);
       if (!channel) {
         startSse();

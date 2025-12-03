@@ -486,6 +486,12 @@ function quickNavScript() {
       })();
       const hasBroadcast = typeof BroadcastChannel === 'function';
       const channel = hasBroadcast ? new BroadcastChannel(channelName) : null;
+      const hasLocks = typeof navigator !== 'undefined' &&
+        navigator.locks && typeof navigator.locks.request === 'function';
+      const lockName = 'submaker-stream-lock-' + configSig;
+      let lockHeld = false;
+      let lockRelease = null;
+      let lockRequestInFlight = false;
       let isOwner = false;
       let ownerLeaseTimer = null;
 
@@ -629,6 +635,32 @@ function quickNavScript() {
         return true;
       }
 
+      function acquireLock() {
+        if (!hasLocks) return false;
+        if (lockHeld || lockRequestInFlight) return true;
+        lockRequestInFlight = true;
+        navigator.locks.request(lockName, { mode: 'exclusive' }, async () => {
+          lockRequestInFlight = false;
+          lockHeld = true;
+          await new Promise((resolve) => {
+            lockRelease = resolve;
+            becomeOwner(true);
+          });
+          lockHeld = false;
+          lockRelease = null;
+        }).catch(() => { lockRequestInFlight = false; });
+        return true;
+      }
+
+      function releaseLock() {
+        if (lockRelease) {
+          lockRelease();
+          lockRelease = null;
+        }
+        lockHeld = false;
+        lockRequestInFlight = false;
+      }
+
       function ensureOwner() {
         if (isOwner) return;
         const rec = readOwner();
@@ -657,7 +689,9 @@ function quickNavScript() {
       });
 
       // Attempt to become owner on load if none is fresh
-      becomeOwner(false);
+      if (!acquireLock()) {
+        becomeOwner(false);
+      }
       // Owner tab holds the live connection; other tabs listen via BroadcastChannel/storage events
       // Fallback: periodically re-check if owner disappeared
       setInterval(() => ensureOwner(), OWNER_REFRESH_MS);
@@ -822,6 +856,7 @@ function quickNavScript() {
         try {
           if (globalOwners[configSig] === tabId) delete globalOwners[configSig];
         } catch (_) {}
+        releaseLock();
         try { localStorage.removeItem(ownerKey); } catch (_) {}
       }
 
@@ -833,6 +868,7 @@ function quickNavScript() {
         if (ownerLeaseTimer) clearInterval(ownerLeaseTimer);
         if (staleCheckTimer) clearInterval(staleCheckTimer);
         releaseOwner();
+        releaseLock();
       });
       window.addEventListener('pagehide', releaseOwner);
 
