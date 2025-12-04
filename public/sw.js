@@ -285,6 +285,17 @@ async function handleHtmlRequest(request) {
     try {
         // Always try network first for HTML (configured with no-cache headers)
         const response = await fetch(request, { cache: 'no-store' });
+        const cacheName = getVersionedCacheName(APP_VERSION);
+
+        // If upstream marks the response as uncachable (no-store/Vary:*), make sure we don't keep stale entries
+        if (responseHasVaryStar(response) || responseHasNoStore(response)) {
+            try {
+                const cache = await caches.open(cacheName);
+                await cache.delete(request);
+            } catch (_) {
+            }
+            return response;
+        }
 
         if (response.ok) {
             // Check if response has no-cache headers
@@ -296,7 +307,7 @@ async function handleHtmlRequest(request) {
             // Only cache HTML if it doesn't have no-cache headers
             // This ensures configure.html and config.js are always fresh
             if (shouldCache) {
-                const cache = await caches.open(getVersionedCacheName(APP_VERSION));
+                const cache = await caches.open(cacheName);
                 try {
                     await safeCachePut(cache, request, response.clone());
                 } catch (err) {
@@ -363,6 +374,16 @@ async function handleStaticAsset(request) {
     try {
         // Not in cache, fetch from network
         const response = await fetch(request);
+
+        // Responses with Vary:* or no-store cannot be cached; also purge any stale entry
+        if (responseHasVaryStar(response) || responseHasNoStore(response)) {
+            try {
+                const cache = await caches.open(cacheName);
+                await cache.delete(request);
+            } catch (_) {
+            }
+            return response;
+        }
 
         if (response.ok) {
             // Cache the response unless headers forbid it

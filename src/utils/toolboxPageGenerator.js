@@ -1659,6 +1659,10 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       hashMismatch: {
         inline: copy.step1.hashMismatchInline,
         alertLines: [copy.step1.hashMismatchLine1, copy.step1.hashMismatchLine2]
+      },
+      locks: {
+        needExtraction: copy.locks.needExtraction,
+        needTrack: copy.locks.needTrack
       }
     }
   };
@@ -2926,6 +2930,7 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
     const translationContextTemplate = BOOTSTRAP.strings?.translationContextTemplate || "You're translating subtitles for {label}";
     const translationContextFallback = BOOTSTRAP.strings?.translationContextFallback || 'your linked stream';
     const hashMismatchStrings = BOOTSTRAP.strings?.hashMismatch || {};
+    const lockCopy = BOOTSTRAP.strings?.locks || {};
     const HASH_MISMATCH_LINES = Array.isArray(hashMismatchStrings.alertLines) && hashMismatchStrings.alertLines.length
       ? hashMismatchStrings.alertLines
       : [
@@ -3557,8 +3562,8 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       translate: buttonCopy.translate || els.translateBtn?.textContent || 'Translate Subtitles'
     };
     const lockReasons = {
-      needExtraction: copy?.locks?.needExtraction || tr('toolbox.embedded.locks.needExtraction', {}, 'Run Step 1 extraction to unlock translation.'),
-      needTrack: copy?.locks?.needTrack || tr('toolbox.embedded.locks.needTrack', {}, 'Select an extracted subtitle to unlock translation.')
+      needExtraction: lockCopy?.needExtraction || tr('toolbox.embedded.locks.needExtraction', {}, 'Run Step 1 extraction to unlock translation.'),
+      needTrack: lockCopy?.needTrack || tr('toolbox.embedded.locks.needTrack', {}, 'Select an extracted subtitle to unlock translation.')
     };
     let lastStep2LockReason = lockReasons.needExtraction;
     function lockCard(el, label) {
@@ -6772,10 +6777,6 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
 </head>
 <body>
   ${themeToggleMarkup(themeToggleLabel)}
-  <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="${t('nav.mobileMenu', {}, 'Open menu')}" title="${t('nav.mobileMenu', {}, 'Open menu')}">
-    <span></span><span></span><span></span>
-  </button>
-  <div class="mobile-nav-overlay" id="mobileNavOverlay"></div>
   <div id="episodeToast" class="episode-toast" role="status" aria-live="polite">
     <div class="icon">!</div>
     <div class="content">

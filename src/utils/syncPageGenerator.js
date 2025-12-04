@@ -182,12 +182,17 @@ function resolveSubtitleLanguage(sub, languageMaps) {
 
 async function fetchLinkedTitleServer(videoId) {
     const parsed = parseStremioId(videoId);
-    const imdbId = parsed?.imdbId;
-    // Skip Cinemeta lookups when the ID is not a valid IMDb identifier (avoids noisy 404s on placeholders)
-    if (!imdbId || !/^tt\d{3,}$/i.test(imdbId)) return null;
-    const normalizedImdbId = imdbId.toLowerCase();
+    if (!parsed) return null;
     const metaType = parsed.type === 'episode' ? 'series' : 'movie';
-    const url = `https://v3-cinemeta.strem.io/meta/${metaType}/${encodeURIComponent(normalizedImdbId)}.json`;
+    const metaId = (() => {
+        const imdbId = parsed.imdbId;
+        if (imdbId && /^tt\d{3,}$/i.test(imdbId)) return imdbId.toLowerCase();
+        if (parsed.tmdbId) return `tmdb:${parsed.tmdbId}`;
+        return null;
+    })();
+    // Skip lookups when ID is clearly not resolvable (placeholder/default links)
+    if (!metaId) return null;
+    const url = `https://v3-cinemeta.strem.io/meta/${metaType}/${encodeURIComponent(metaId)}.json`;
     try {
         const resp = await axios.get(url, { timeout: 3500 });
         const meta = resp.data && resp.data.meta;
@@ -2670,6 +2675,14 @@ async function generateSubtitleSyncPage(subtitles, videoId, streamFilename, conf
                     episode: parts.length >= 3 ? parseInt(parts[parts.length - 1], 10) : undefined
                 };
             }
+            if (parts[0] === 'tmdb') {
+                return {
+                    type: parts.length >= 3 ? 'episode' : 'movie',
+                    tmdbId: parts[1],
+                    season: parts.length >= 3 ? parseInt(parts[2], 10) : undefined,
+                    episode: parts.length >= 4 ? parseInt(parts[3], 10) : undefined
+                };
+            }
             const imdbId = normalizeImdbId(parts[0]);
             if (parts.length >= 3) {
                 return {
@@ -2692,14 +2705,21 @@ async function generateSubtitleSyncPage(subtitles, videoId, streamFilename, conf
 
         async function fetchLinkedTitle(videoId) {
             const parsed = parseVideoId(videoId);
-            if (!parsed || !parsed.imdbId) return null;
-            const key = parsed.imdbId + ':' + (parsed.type === 'episode' ? 'series' : 'movie');
+            if (!parsed) return null;
+            const metaType = parsed.type === 'episode' ? 'series' : 'movie';
+            const metaId = (() => {
+                if (parsed.imdbId && /^tt\\d{3,}$/i.test(parsed.imdbId)) return parsed.imdbId.toLowerCase();
+                if (parsed.tmdbId) return 'tmdb:' + parsed.tmdbId;
+                return null;
+            })();
+            if (!metaId) return null;
+            const key = metaId + ':' + metaType;
             if (CONFIG.videoId === videoId && CONFIG.linkedTitle) {
                 linkedTitleCache.set(key, CONFIG.linkedTitle);
                 return CONFIG.linkedTitle;
             }
             if (linkedTitleCache.has(key)) return linkedTitleCache.get(key);
-            const metaUrl = \`https://v3-cinemeta.strem.io/meta/\${parsed.type === 'episode' ? 'series' : 'movie'}/\${encodeURIComponent(parsed.imdbId)}.json\`;
+            const metaUrl = \`https://v3-cinemeta.strem.io/meta/\${metaType}/\${encodeURIComponent(metaId)}.json\`;
             try {
                 const resp = await fetch(metaUrl);
                 if (!resp.ok) throw new Error('Failed to fetch metadata');
