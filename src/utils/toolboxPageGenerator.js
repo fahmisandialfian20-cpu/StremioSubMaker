@@ -180,9 +180,17 @@ function formatEpisodeTag(parsed) {
 
 async function fetchLinkedTitleServer(videoId) {
   const parsed = parseStremioId(videoId);
-  if (!parsed || !parsed.imdbId) return null;
+  if (!parsed) return null;
   const metaType = parsed.type === 'episode' ? 'series' : 'movie';
-  const url = `https://v3-cinemeta.strem.io/meta/${metaType}/${encodeURIComponent(parsed.imdbId)}.json`;
+  const metaId = (() => {
+    const imdbId = parsed.imdbId;
+    if (imdbId && /^tt\d{3,}$/i.test(imdbId)) return imdbId.toLowerCase();
+    if (parsed.tmdbId) return `tmdb:${parsed.tmdbId}`;
+    return null;
+  })();
+  // Skip lookups for placeholders/unknown IDs to avoid noisy 404s
+  if (!metaId) return null;
+  const url = `https://v3-cinemeta.strem.io/meta/${metaType}/${encodeURIComponent(metaId)}.json`;
   try {
     const resp = await axios.get(url, { timeout: 3500 });
     const meta = resp.data && resp.data.meta;
@@ -1468,7 +1476,11 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       gotIt: t('toolbox.embedded.instructions.gotIt', {}, 'Got it')
     },
     hero: {
-      notice: t('toolbox.embedded.hero.notice', {}, 'If you use AIOStreams PROXY for Real-Debrid, completely exit all streams before running this tool.')
+      notice: t(
+        'toolbox.embedded.hero.notice',
+        {},
+        'Do not use this tool at the same time you stream through an AIOStreams <strong>PROXY</strong> for Real-Debrid.'
+      )
     },
     videoMeta: {
       label: t('toolbox.embedded.videoMeta.label', {}, 'Linked stream'),
@@ -1478,17 +1490,17 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
     },
     step1: {
       chip: t('toolbox.embedded.step1.chip', {}, 'Step 1'),
-      title: t('toolbox.embedded.step1.title', {}, 'Extension & Extraction'),
-      helper: t('toolbox.embedded.step1.helper', {}, 'Right-click Stremio\'s stream and select "Copy Stream URL". Ensure the linked stream is the right one. Paste the stream URL below and extract its subtitles.'),
-      streamLabel: t('toolbox.embedded.step1.streamLabel', {}, 'Stream URL'),
+      title: t('toolbox.embedded.step1.title', {}, 'Provide Stream Information'),
+      helper: t('toolbox.embedded.step1.helper', {}, ''),
+      streamLabel: t('toolbox.embedded.step1.streamLabel', {}, 'Stream URL:'),
       streamPlaceholder: t('toolbox.embedded.step1.streamPlaceholder', {}, 'Paste the video/stream URL from Stremio or your browser'),
       modeLabel: t('toolbox.embedded.step1.modeLabel', {}, 'Mode'),
       modeSmart: t('toolbox.embedded.step1.modeSmart', {}, 'Smart (fast)'),
       modeComplete: t('toolbox.embedded.step1.modeComplete', {}, 'Complete (full file)'),
       modeHelper: t('toolbox.embedded.step1.modeHelper', {}, 'In Complete mode, the whole file will be fetched for extraction.\nComplete mode is needed for MKV files.'),
       extractButton: t('toolbox.embedded.step1.extractButton', {}, 'Extract Subtitles'),
-      extractBlocked: t('toolbox.embedded.step1.extractBlocked', {}, 'Refresh the stream link in Stremio, then try again.'),
-      hashMismatchInline: t('toolbox.embedded.step1.hashMismatchInline', {}, 'Stream URL hash mismatch. Copy the matching Stremio stream link to unlock extraction.'),
+      extractBlocked: t('toolbox.embedded.step1.extractBlocked', {}, ''),
+      hashMismatchInline: t('toolbox.embedded.step1.hashMismatchInline', {}, ''),
       hashMismatchLine1: t('toolbox.embedded.step1.hashMismatchLine1', {}, 'Hashes must match before extraction can start.'),
       hashMismatchLine2: t('toolbox.embedded.step1.hashMismatchLine2', {}, 'Copy the stream link again in Stremio and paste it here to unlock the button.'),
       logHeader: t('toolbox.embedded.step1.logHeader', {}, 'Live log'),
@@ -1524,6 +1536,10 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       outputsEmpty: t('toolbox.embedded.step2.outputsEmpty', {}, 'No translations yet. Pick a track and translate to see them here.'),
       reloadHint: t('toolbox.embedded.step2.reloadHint', {}, 'Done! Reload the stream subtitle list in Stremio to see xEmbed (Language) entries.'),
       reloadHintManual: t('toolbox.embedded.step2.reloadHintManual', {}, 'Hash mismatch detected; translations were saved locally. Download the SRT above and drag it into Stremio manually.')
+    },
+    locks: {
+      needExtraction: t('toolbox.embedded.locks.needExtraction', {}, 'Run Step 1 extraction to unlock translation.'),
+      needTrack: t('toolbox.embedded.locks.needTrack', {}, 'Select an extracted subtitle to unlock translation.')
     },
     status: {
       queued: t('toolbox.embedded.status.queued', {}, 'queued'),
@@ -1640,7 +1656,6 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
         translate: copy.step2.translateButton,
         extracting: copy.buttons.extracting
       },
-      extractBlocked: copy.step1.extractBlocked,
       hashMismatch: {
         inline: copy.step1.hashMismatchInline,
         alertLines: [copy.step1.hashMismatchLine1, copy.step1.hashMismatchLine2]
@@ -2114,6 +2129,8 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       border-radius: 16px;
       box-shadow: var(--shadow);
       padding: 16px;
+      position: relative;
+      overflow: hidden;
     }
     .section-grid {
       display: grid;
@@ -2148,6 +2165,28 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
     .centered-section .target { flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 6px; }
     .centered-section .result-head { justify-content: center; text-align: center; }
     .centered-section .downloads { justify-items: center; }
+    .card.locked { opacity: 0.55; }
+    .card.locked::after {
+      content: attr(data-locked-label);
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 1rem;
+      background: rgba(255, 255, 255, 0.82);
+      color: var(--muted);
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      pointer-events: all;
+      z-index: 5;
+    }
+    [data-theme="dark"] .card.locked::after,
+    [data-theme="true-dark"] .card.locked::after {
+      background: rgba(10, 12, 22, 0.82);
+      color: #d5def3;
+    }
     .is-disabled { opacity: 0.45; pointer-events: none; filter: grayscale(0.08); }
     .is-disabled .step-chip { background: #e2e8f0; color: #94a3b8; }
     .muted { color: var(--muted); }
@@ -2497,6 +2536,40 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       border-color: rgba(16,185,129,0.35);
       color: #0f5132;
     }
+    #hash-status {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    #hash-status .alert-head {
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      color: inherit;
+    }
+    #hash-status .alert-body {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.45;
+    }
+    #hash-status.neutral {
+      background: var(--surface-2);
+      border-color: var(--border);
+      color: var(--text-secondary);
+    }
+    #hash-status.success {
+      background: rgba(16,185,129,0.12);
+      border-color: rgba(16,185,129,0.35);
+      color: #0f5132;
+    }
+    #hash-status.danger {
+      background: rgba(239,68,68,0.12);
+      border-color: rgba(239,68,68,0.35);
+      color: #7f1d1d;
+    }
     .notice.warn, .notice.danger {
       background: rgba(239,68,68,0.12);
       border-color: rgba(239,68,68,0.35);
@@ -2511,6 +2584,11 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       background: rgba(239,68,68,0.12);
       border-color: rgba(239,68,68,0.35);
       color: #7f1d1d;
+    }
+    .notice.aio-warning {
+      background: rgba(8,164,213,0.12);
+      border-color: rgba(8,164,213,0.25);
+      color: var(--text);
     }
     .aio-warning {
       margin-top: 12px;
@@ -2607,7 +2685,7 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
 </head>
 <body>
   ${themeToggleMarkup(themeToggleLabel)}
-  <button class="help-button mario" id="embeddedHelp" title="${escapeHtml(copy.instructions.help)}">?</button>
+  <button class="help-button mario" id="embeddedHelp" title="${escapeHtml(copy.instructions.help)}" aria-label="${escapeHtml(copy.instructions.help)}">?</button>
   <div class="modal-overlay" id="embeddedInstructionsModal" role="dialog" aria-modal="true" aria-labelledby="embeddedInstructionsTitle">
     <div class="modal">
       <div class="modal-header">
@@ -2656,7 +2734,7 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
           <div class="page-icon">🧲</div>
           <h1 class="page-heading">${escapeHtml(copy.meta.pageHeading)}</h1>
           <p class="page-subtitle">${escapeHtml(copy.meta.pageSubtitle)}</p>
-          <p class="notice warn aio-warning">${escapeHtml(copy.hero.notice)}</p>
+          <p class="notice warn aio-warning">${copy.hero.notice}</p>
         </div>
       <div class="badge-row">
         ${renderRefreshBadge(t)}
@@ -2690,7 +2768,7 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
           <div class="step-header">
             <span class="step-chip">${escapeHtml(copy.step1.chip)}</span>
             <h3>${escapeHtml(copy.step1.title)}</h3>
-            <p class="muted" style="margin:4px 0 0;">${escapeHtml(copy.step1.helper)}</p>
+            ${copy.step1.helper ? `<p class="muted" style="margin:4px 0 0;">${escapeHtml(copy.step1.helper)}</p>` : ''}
           </div>
         </div>
         <div class="step-stack">
@@ -2705,7 +2783,13 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
               <label for="stream-url">${escapeHtml(copy.step1.streamLabel)}</label>
               <input type="text" id="stream-url" placeholder="${escapeHtml(copy.step1.streamPlaceholder)}">
             </div>
-            <div class="notice" id="hash-status" style="margin-top:10px;">${escapeHtml(t('toolbox.autoSubs.hash.waiting', {}, 'Waiting for stream hash...'))}</div>
+            <div class="notice hash-status neutral" id="hash-status" aria-live="polite">
+              <div class="alert-head">${escapeHtml(t('toolbox.embedded.step1.hashStatus.neutralTitle', {}, 'Hash check ready'))}</div>
+              <div class="alert-body">
+                <div>${escapeHtml(copy.step1.hashMismatchLine1)}</div>
+                <div>${escapeHtml(copy.step1.hashMismatchLine2)}</div>
+              </div>
+            </div>
             <div class="mode-controls">
               <label for="extract-mode">${escapeHtml(copy.step1.modeLabel)}</label>
               <select id="extract-mode" class="compact-select">
@@ -2714,8 +2798,6 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
               </select>
               <p class="mode-helper">${modeHelperHtml}</p>
               <button id="extract-btn" type="button" class="secondary">${escapeHtml(copy.step1.extractButton)}</button>
-              <p id="extract-blocked-msg" style="margin:6px 0 0; color:#d14343; font-weight:600; display:none;">${escapeHtml(copy.step1.extractBlocked)}</p>
-              <p id="hash-mismatch-inline" class="hash-inline">${escapeHtml(copy.step1.hashMismatchInline)}</p>
             </div>
           <div class="log-header" aria-hidden="true">
             <span class="pulse"></span>
@@ -2723,7 +2805,6 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
             <span>${escapeHtml(copy.step1.logSub)}</span>
           </div>
           <div class="log" id="extract-log" aria-live="polite"></div>
-          <div class="log-alert" id="hash-mismatch-alert" style="display:none;" role="status" aria-live="polite"></div>
 
           <div class="result-box">
             <div class="result-head">
@@ -2738,7 +2819,7 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
         </div>
       </div>
 
-      <div class="card section centered-section is-disabled" id="step2Card">
+      <div class="card section centered-section is-disabled locked" id="step2Card" data-locked-label="${escapeHtml(copy.locks.needExtraction)}">
         <div class="section-head">
           <div class="step-header">
             <span class="step-chip">${escapeHtml(copy.step2.chip)}</span>
@@ -2844,7 +2925,6 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
     const buttonCopy = BOOTSTRAP.strings?.buttons || {};
     const translationContextTemplate = BOOTSTRAP.strings?.translationContextTemplate || "You're translating subtitles for {label}";
     const translationContextFallback = BOOTSTRAP.strings?.translationContextFallback || 'your linked stream';
-    const extractBlockedCopy = BOOTSTRAP.strings?.extractBlocked || 'Refresh the stream link in Stremio, then try again.';
     const hashMismatchStrings = BOOTSTRAP.strings?.hashMismatch || {};
     const HASH_MISMATCH_LINES = Array.isArray(hashMismatchStrings.alertLines) && hashMismatchStrings.alertLines.length
       ? hashMismatchStrings.alertLines
@@ -2852,7 +2932,14 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
         'Hashes must match before extraction can start.',
         'Copy the stream link again in Stremio and paste it here to unlock the button.'
       ];
-    const HASH_MISMATCH_INLINE = hashMismatchStrings.inline || 'Stream URL hash mismatch. Copy the matching Stremio stream link to unlock extraction.';
+    const HASH_MISMATCH_INLINE = hashMismatchStrings.inline || '';
+    const HASH_STATUS_COPY = {
+      neutralTitle: hashMismatchStrings.neutralTitle || tt('toolbox.embedded.step1.hashStatus.neutralTitle', {}, 'Hash check ready'),
+      neutralBody: hashMismatchStrings.neutralBody || tt('toolbox.embedded.step1.hashStatus.neutralBody', {}, 'Paste the stream URL to compare with your linked stream.'),
+      waitingTitle: hashMismatchStrings.waitingTitle || tt('toolbox.embedded.step1.hashStatus.waitingTitle', {}, 'Paste a stream URL to compare hashes.'),
+      validTitle: hashMismatchStrings.validTitle || tt('toolbox.embedded.step1.hashStatus.validTitle', {}, 'Hashes match'),
+      validBody: hashMismatchStrings.validBody || tt('toolbox.embedded.step1.hashStatus.validBody', {}, 'Hashes match. You can extract subtitles now.')
+    };
     const escapeHtmlClient = (value) => {
       if (value === undefined || value === null) return '';
       return String(value)
@@ -3469,10 +3556,32 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       extract: buttonCopy.extract || els.extractBtn?.textContent || 'Extract Subtitles',
       translate: buttonCopy.translate || els.translateBtn?.textContent || 'Translate Subtitles'
     };
+    const lockReasons = {
+      needExtraction: copy?.locks?.needExtraction || tr('toolbox.embedded.locks.needExtraction', {}, 'Run Step 1 extraction to unlock translation.'),
+      needTrack: copy?.locks?.needTrack || tr('toolbox.embedded.locks.needTrack', {}, 'Select an extracted subtitle to unlock translation.')
+    };
+    let lastStep2LockReason = lockReasons.needExtraction;
+    function lockCard(el, label) {
+      if (!el) return;
+      if (label) el.setAttribute('data-locked-label', label);
+      el.classList.add('locked');
+      el.classList.add('is-disabled');
+      el.setAttribute('aria-disabled', 'true');
+      el.inert = true;
+    }
+    function unlockCard(el) {
+      if (!el) return;
+      el.classList.remove('locked');
+      el.classList.remove('is-disabled');
+      el.removeAttribute('aria-disabled');
+      el.inert = false;
+      el.removeAttribute('inert');
+    }
     const EXT_INSTALL_URL = 'https://chromewebstore.google.com/detail/submaker-xsync/lpocanpndchjkkpgchefobjionncknjn';
 
     if (els.extractLog) els.extractLog.innerHTML = '';
     if (els.translateLog) els.translateLog.innerHTML = '';
+    renderHashStatus(getVideoHash(), state.streamHashInfo?.hash || '');
 
     state.extractMode = loadExtractMode();
     if (els.modeSelect) {
@@ -3509,6 +3618,14 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
           episode: parts.length >= 3 ? parseInt(parts[parts.length - 1], 10) : undefined
         };
       }
+      if (parts[0] === 'tmdb') {
+        return {
+          type: parts.length >= 3 ? 'episode' : 'movie',
+          tmdbId: parts[1],
+          season: parts.length >= 3 ? parseInt(parts[2], 10) : undefined,
+          episode: parts.length >= 4 ? parseInt(parts[3], 10) : undefined
+        };
+      }
       const imdbId = normalizeImdbId(parts[0]);
       if (parts.length >= 3) {
         return {
@@ -3523,14 +3640,21 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
 
     async function fetchLinkedTitle(videoId) {
       const parsed = parseVideoId(videoId);
-      if (!parsed || !parsed.imdbId) return null;
-      const key = parsed.imdbId + ':' + (parsed.type === 'episode' ? 'series' : 'movie');
+      if (!parsed) return null;
+      const metaType = parsed.type === 'episode' ? 'series' : 'movie';
+      const metaId = (() => {
+        if (parsed.imdbId && /^tt\d{3,}$/i.test(parsed.imdbId)) return parsed.imdbId.toLowerCase();
+        if (parsed.tmdbId) return 'tmdb:' + parsed.tmdbId;
+        return null;
+      })();
+      if (!metaId) return null;
+      const key = metaId + ':' + metaType;
       if (BOOTSTRAP.videoId === videoId && BOOTSTRAP.linkedTitle) {
         linkedTitleCache.set(key, BOOTSTRAP.linkedTitle);
         return BOOTSTRAP.linkedTitle;
       }
       if (linkedTitleCache.has(key)) return linkedTitleCache.get(key);
-      const metaUrl = 'https://v3-cinemeta.strem.io/meta/' + (parsed.type === 'episode' ? 'series' : 'movie') + '/' + encodeURIComponent(parsed.imdbId) + '.json';
+      const metaUrl = 'https://v3-cinemeta.strem.io/meta/' + metaType + '/' + encodeURIComponent(metaId) + '.json';
       try {
         const resp = await fetch(metaUrl);
         if (!resp.ok) throw new Error('Failed to fetch metadata');
@@ -3579,9 +3703,6 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       els.extractBtn.disabled = disabled;
       const busyLabel = buttonCopy.extracting || tt('toolbox.embedded.buttons.extracting', {}, 'Extracting...');
       els.extractBtn.textContent = state.extractionInFlight ? busyLabel : buttonLabels.extract;
-      if (els.extractError) {
-        els.extractError.style.display = blocked ? 'block' : 'none';
-      }
       if (els.extractBtn) {
         if (hashBlocked) {
           els.extractBtn.title = 'Hash mismatch: refresh the linked stream and paste the matching URL to unlock extraction.';
@@ -3693,12 +3814,21 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       els.reloadHint.style.display = 'block';
     }
 
+    function buildHashStatusContent(headText, bodyLines = []) {
+      const safeHead = escapeHtmlClient(headText || '');
+      const bodyHtml = (bodyLines || [])
+        .filter(Boolean)
+        .map(line => '<div>' + escapeHtmlClient(line) + '</div>')
+        .join('');
+      const body = bodyHtml ? '<div class="alert-body">' + bodyHtml + '</div>' : '';
+      return '<div class="alert-head">' + safeHead + '</div>' + body;
+    }
+
     function buildHashMismatchAlert(linkedHash, streamHash) {
       const safeLinked = escapeHtmlClient(linkedHash || 'unknown');
       const safeStream = escapeHtmlClient(streamHash || 'unknown');
       const head = 'Hash mismatch detected: linked stream (' + safeLinked + ') vs pasted URL (' + safeStream + ').';
-      return '<div class="alert-head">' + head + '</div>' +
-        '<div class="alert-body"><div>' + escapeHtmlClient(HASH_MISMATCH_LINES[0]) + '</div><div>' + escapeHtmlClient(HASH_MISMATCH_LINES[1]) + '</div></div>';
+      return buildHashStatusContent(head, HASH_MISMATCH_LINES);
     }
 
     function setHashMismatchAlert(message, opts = {}) {
@@ -3718,12 +3848,13 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
     }
 
     function renderHashMismatchAlert() {
-      if (!els.hashMismatchAlert) return;
-      if (state.hashMismatchBlocked && state.hashMismatchInfo) {
-        const alertHtml = buildHashMismatchAlert(state.hashMismatchInfo.linked, state.hashMismatchInfo.stream);
-        setHashMismatchAlert(alertHtml, { asHtml: true });
-      } else if (!state.cacheBlocked) {
-        setHashMismatchAlert('');
+      if (els.hashMismatchAlert) {
+        if (state.hashMismatchBlocked && state.hashMismatchInfo) {
+          const alertHtml = buildHashMismatchAlert(state.hashMismatchInfo.linked, state.hashMismatchInfo.stream);
+          setHashMismatchAlert(alertHtml, { asHtml: true });
+        } else if (!state.cacheBlocked) {
+          setHashMismatchAlert('');
+        }
       }
       if (els.hashMismatchInline) {
         els.hashMismatchInline.textContent = HASH_MISMATCH_INLINE;
@@ -3735,17 +3866,40 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       if (!els.hashStatus) return;
       const linked = linkedHash || getVideoHash() || '';
       const stream = streamHash || state.streamHashInfo?.hash || '';
-      const hasMismatch = linked && stream && linked !== stream;
-      els.hashStatus.classList.remove('warn', 'danger', 'success');
+      const mismatchInfo = state.cacheBlocked ? (state.cacheBlockInfo || state.hashMismatchInfo) : state.hashMismatchInfo;
+      const resolvedLinked = mismatchInfo?.linked || linked;
+      const resolvedStream = mismatchInfo?.stream || stream;
+      const hasLinked = !!resolvedLinked;
+      const hasStream = !!resolvedStream;
+      const hasMismatch = (state.hashMismatchBlocked || state.cacheBlocked)
+        ? (hasLinked && hasStream && resolvedLinked !== resolvedStream)
+        : (hasLinked && hasStream && resolvedLinked !== resolvedStream);
+      const hasMatch = hasLinked && hasStream && resolvedLinked === resolvedStream;
+
+      let tone = 'neutral';
+      let head = HASH_STATUS_COPY.neutralTitle;
+      let bodyLines = [HASH_STATUS_COPY.neutralBody || HASH_MISMATCH_LINES[0], HASH_MISMATCH_LINES[1]].filter(Boolean);
+
       if (hasMismatch) {
-        els.hashStatus.textContent = 'Hash 1 != Hash 2';
-        els.hashStatus.classList.add('danger');
-      } else if (linked && stream) {
-        els.hashStatus.textContent = 'Hash 1 = Hash 2';
-        els.hashStatus.classList.add('success');
-      } else {
-        els.hashStatus.textContent = tt('toolbox.autoSubs.hash.waiting', {}, 'Waiting for stream hash...');
+        tone = 'danger';
+        head = 'Hash mismatch detected: linked stream (' + (resolvedLinked || 'unknown') + ') vs pasted URL (' + (resolvedStream || 'unknown') + ').';
+        bodyLines = HASH_MISMATCH_LINES;
+      } else if (hasMatch) {
+        tone = 'success';
+        const hashLabel = resolvedLinked || resolvedStream;
+        head = HASH_STATUS_COPY.validTitle || 'Hashes match';
+        bodyLines = [
+          HASH_STATUS_COPY.validBody || 'Linked and pasted hashes match.',
+          hashLabel ? 'Hash: ' + hashLabel : null
+        ].filter(Boolean);
+      } else if (!hasStream) {
+        head = HASH_STATUS_COPY.waitingTitle || HASH_STATUS_COPY.neutralTitle;
+        bodyLines = [HASH_STATUS_COPY.neutralBody || HASH_MISMATCH_LINES[0], HASH_MISMATCH_LINES[1]].filter(Boolean);
       }
+
+      els.hashStatus.classList.remove('warn', 'danger', 'success', 'neutral');
+      els.hashStatus.classList.add(tone);
+      els.hashStatus.innerHTML = buildHashStatusContent(head, bodyLines);
     }
 
     function updateHashMismatchState(opts = {}) {
@@ -3825,7 +3979,7 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       renderSelectedTrackSummary();
       renderDownloads();
       renderTargets();
-      setStep2Enabled(false);
+      setStep2Enabled(false, lockReasons.needExtraction);
       setTranslationInFlight(false);
       renderHashStatus(getVideoHash(), state.streamHashInfo?.hash || '');
       if (clearLogs) {
@@ -3904,11 +4058,16 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       setTranslationInFlight(busy);
     }
 
-    function setStep2Enabled(enabled) {
+    function setStep2Enabled(enabled, reason) {
       state.step2Enabled = !!enabled;
       if (els.step2Card) {
-        els.step2Card.classList.toggle('is-disabled', !state.step2Enabled);
-        els.step2Card.setAttribute('aria-disabled', state.step2Enabled ? 'false' : 'true');
+        const label = reason || lastStep2LockReason || lockReasons.needExtraction;
+        if (state.step2Enabled) {
+          unlockCard(els.step2Card);
+        } else {
+          lastStep2LockReason = label;
+          lockCard(els.step2Card, label);
+        }
       }
       applyTranslateDisabled();
     }
@@ -4028,7 +4187,7 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       if (!track) {
         els.selectedTrackSummary.textContent = tr('toolbox.downloads.selectPrompt', {}, 'Select a subtitle in Step 1 outputs to unlock this step.');
         els.selectedTrackSummary.className = 'selected-track-placeholder';
-        setStep2Enabled(false);
+        setStep2Enabled(false, lockReasons.needTrack);
         return;
       }
       els.selectedTrackSummary.className = 'selected-track-value';
@@ -4051,14 +4210,14 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
 
     function autoSelectDefaultTrack() {
       if (!state.tracks.length) {
-        setStep2Enabled(false);
+        setStep2Enabled(false, lockReasons.needExtraction);
         return;
       }
       if (state.tracks.length === 1) {
         selectTrack(state.tracks[0].id);
         return;
       }
-      setStep2Enabled(false);
+      setStep2Enabled(false, lockReasons.needTrack);
     }
 
     function renderDownloadCards(container, emptyEl, items) {
@@ -4665,7 +4824,7 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
           resetExtractionState(false, { preserveMismatch: state.cacheBlocked });
           const label = window.t ? window.t('toolbox.logs.failed', { error: msg.error || 'unknown error' }, 'Extraction failed: ' + (msg.error || 'unknown error')) : ('Extraction failed: ' + (msg.error || 'unknown error'));
           logExtract(label);
-          setStep2Enabled(false);
+          setStep2Enabled(false, lockReasons.needExtraction);
         }
         requestExtensionReset('extract-finished');
       }
@@ -4704,11 +4863,7 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
         return;
       }
       if (state.extractionInFlight) return;
-      if (state.placeholderBlocked) {
-        const label = tt('toolbox.embedded.step1.extractBlocked', {}, extractBlockedCopy);
-        logExtract(label);
-        return;
-      }
+      if (state.placeholderBlocked) return;
       const streamUrl = (els.streamUrl.value || '').trim();
       if (!streamUrl) {
         const label = window.t ? window.t('toolbox.logs.pasteUrl', {}, 'Paste a stream URL first.') : 'Paste a stream URL first.';
@@ -4747,7 +4902,7 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       setHashMismatchAlert('');
       const mode = state.extractMode === 'complete' ? 'complete' : 'smart';
       const messageId = 'extract_' + Date.now();
-      setStep2Enabled(false);
+      setStep2Enabled(false, lockReasons.needExtraction);
       setExtractionInFlight(true);
       state.extractMessageId = messageId;
       state.lastProgressStatus = null; // Reset progress tracking for new extraction
@@ -4804,7 +4959,7 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
     renderSelectedTrackSummary();
     renderDownloads();
     updateVideoMeta();
-    setStep2Enabled(!!state.selectedTrackId);
+    setStep2Enabled(!!state.selectedTrackId, state.selectedTrackId ? null : lockReasons.needExtraction);
     if (els.singleBatch) {
       els.singleBatch.value = BOOTSTRAP.defaults.singleBatchMode ? 'single' : 'multi';
     }
@@ -4951,7 +5106,11 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
         extStatus: document.getElementById('ext-status'),
         hashBadge: document.getElementById('hashBadge'),
         hashBadgeDot: document.getElementById('hashBadgeDot'),
-        hashBadgeValue: document.getElementById('hashBadgeValue')
+        hashBadgeValue: document.getElementById('hashBadgeValue'),
+        continueBtn: document.getElementById('autoContinue'),
+        step2Card: document.getElementById('autoStep2Card'),
+        translationCard: document.getElementById('autoTranslationCard'),
+        step3Card: document.getElementById('autoStep3Card')
       };
       const stepPills = {
         fetch: document.getElementById('stepFetch'),
@@ -4966,8 +5125,63 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
       const state = {
         extensionReady: false,
         cacheBlocked: false,
-        autoSubsInFlight: false
+        autoSubsInFlight: false,
+        step1Confirmed: false
       };
+      const lockReasons = {
+        needContinue: (copy?.locks && copy.locks.needContinue) || tt('toolbox.autoSubs.locks.needContinue', {}, 'Click Continue to unlock the next steps.'),
+        needTarget: (copy?.locks && copy.locks.needTarget) || tt('toolbox.autoSubs.locks.needTarget', {}, 'Select a target or disable translation to unlock Run.')
+      };
+      function lockSection(el, label) {
+        if (!el) return;
+        if (label) el.setAttribute('data-locked-label', label);
+        el.classList.add('locked');
+        el.setAttribute('aria-disabled', 'true');
+        el.inert = true;
+      }
+      function unlockSection(el) {
+        if (!el) return;
+        el.classList.remove('locked');
+        el.removeAttribute('aria-disabled');
+        el.inert = false;
+        el.removeAttribute('inert');
+      }
+      function isTranslationReady() {
+        const translateEnabled = els.translateToggle?.checked === true;
+        const hasTarget = !!(els.targetLang && (els.targetLang.value || '').trim());
+        return !translateEnabled || hasTarget;
+      }
+      function isStep3Ready() {
+        return state.step1Confirmed && isTranslationReady();
+      }
+      function applyStartDisabled(ready) {
+        if (!els.startBtn) return;
+        const allow = ready && !state.autoSubsInFlight;
+        els.startBtn.disabled = !allow;
+      }
+      function refreshStepLocks(reason) {
+        const needContinueLabel = reason || lockReasons.needContinue;
+        if (!state.step1Confirmed) {
+          lockSection(els.step2Card, needContinueLabel);
+          lockSection(els.translationCard, needContinueLabel);
+          lockSection(els.step3Card, needContinueLabel);
+          applyStartDisabled(false);
+          return;
+        }
+        unlockSection(els.step2Card);
+        unlockSection(els.translationCard);
+        const step3Ready = isStep3Ready();
+        if (step3Ready) {
+          unlockSection(els.step3Card);
+        } else {
+          lockSection(els.step3Card, lockReasons.needTarget);
+        }
+        applyStartDisabled(step3Ready);
+      }
+      function resetStepFlow(reason) {
+        state.step1Confirmed = false;
+        refreshStepLocks(reason || lockReasons.needContinue);
+      }
       let videoMetaRequestId = 0;
       const urlSchemePattern = new RegExp('^[a-z][a-z0-9+.-]*://', 'i');
       const isLikelyStreamUrl = (val) => urlSchemePattern.test(val || '');
@@ -5219,10 +5433,16 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
         const trimmed = (videoId || '').trim();
         if (!trimmed) return '';
         const parts = trimmed.split(':');
-        const imdbId = (parts[0] || '').replace(/^tt/i, 'tt');
-        if (!imdbId.startsWith('tt')) return '';
+        let metaId = '';
+        if (parts[0] === 'tmdb' && parts[1]) {
+          metaId = 'tmdb:' + parts[1];
+        } else {
+          const imdbId = (parts[0] || '').replace(/^tt/i, 'tt');
+          if (/^tt\\d{3,}$/i.test(imdbId)) metaId = imdbId.toLowerCase();
+        }
+        if (!metaId) return '';
         const metaType = parts.length >= 3 ? 'series' : 'movie';
-        const metaUrl = 'https://v3-cinemeta.strem.io/meta/' + metaType + '/' + encodeURIComponent(imdbId) + '.json';
+        const metaUrl = 'https://v3-cinemeta.strem.io/meta/' + metaType + '/' + encodeURIComponent(metaId) + '.json';
         try {
           const resp = await fetch(metaUrl);
           if (!resp.ok) throw new Error('meta fetch failed');
@@ -5277,9 +5497,9 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
       function setInFlight(active) {
         state.autoSubsInFlight = !!active;
         if (els.startBtn) {
-          els.startBtn.disabled = active;
           els.startBtn.textContent = active ? tt('toolbox.autoSubs.status.running', {}, 'Running...') : startBtnLabel;
         }
+        applyStartDisabled(isStep3Ready());
       }
 
       function getSelectedTargets() {
@@ -5384,6 +5604,7 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
         if (!enabled) {
           toggleTranslationSettings(false);
         }
+        refreshStepLocks();
       }
 
       function toggleTranslationSettings(forceOpen = null) {
@@ -5513,6 +5734,13 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
 
       async function runAutoSubs() {
         if (state.autoSubsInFlight) return;
+        if (!state.step1Confirmed) {
+          const message = lockReasons.needContinue;
+          appendLog(message);
+          setStatus(message);
+          refreshStepLocks(message);
+          return;
+        }
         const stream = (els.streamUrl?.value || '').trim();
         if (!stream) {
           appendLog(tt('toolbox.autoSubs.logs.noStream', {}, 'Paste a stream URL first.'));
@@ -5522,7 +5750,10 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
         const translateEnabled = els.translateToggle?.checked === true;
         const targets = translateEnabled ? getSelectedTargets() : [];
         if (translateEnabled && targets.length === 0) {
-          appendLog(tt('toolbox.autoSubs.logs.noTargets', {}, 'Select at least one target language or disable translation.'));
+          const message = lockReasons.needTarget || tt('toolbox.autoSubs.logs.noTargets', {}, 'Select at least one target language or disable translation.');
+          appendLog(message);
+          setStatus(message);
+          refreshStepLocks(message);
           return;
         }
         setInFlight(true);
@@ -5648,6 +5879,7 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
         toggleTranslationStep();
         toggleTranslationSettings(false);
         updateHashStatusFromInput();
+        refreshStepLocks(lockReasons.needContinue);
       }
 
       function bindEvents() {
@@ -5660,16 +5892,31 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
           } else if (BOOTSTRAP.videoId) {
             els.streamUrl.value = 'stremio://' + BOOTSTRAP.videoId;
           }
+          if (state.step1Confirmed) resetStepFlow(lockReasons.needContinue);
           updateHashStatusFromInput();
         });
+        if (els.streamUrl) {
+          const handleEdit = () => {
+            if (state.step1Confirmed) resetStepFlow(lockReasons.needContinue);
+            updateHashStatusFromInput();
+          };
+          els.streamUrl.addEventListener('input', handleEdit);
+        }
         els.streamUrl?.addEventListener('blur', updateHashStatusFromInput);
         els.streamUrl?.addEventListener('change', updateHashStatusFromInput);
         els.translateToggle?.addEventListener('change', () => {
           toggleTranslationStep();
+          refreshStepLocks();
         });
         els.modeSelect?.addEventListener('change', toggleModeDetails);
         els.translationSettingsToggle?.addEventListener('click', () => toggleTranslationSettings());
         els.provider?.addEventListener('change', renderProviderModels);
+        els.targetLang?.addEventListener('change', () => refreshStepLocks());
+        els.continueBtn?.addEventListener('click', () => {
+          state.step1Confirmed = true;
+          refreshStepLocks();
+          updateHashStatusFromInput();
+        });
       }
 
       // Extension messaging (status only)
@@ -5751,13 +5998,15 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
             '&videoId=' + encodeURIComponent(payload.videoId || '') +
             '&filename=' + encodeURIComponent(payload.filename || '');
         },
+        onEpisode: handleStreamUpdate,
+        notify: forwardMenuNotification
       });
     })();
   }
 
   const defaults = {
     mode: 'cloudflare',
-    whisperModel: '@cf/openai/whisper',
+    whisperModel: config?.whisperModel || '@cf/openai/whisper',
     diarization: false,
     translateToTarget: true,
     streamFilename: filename || '',
@@ -5864,6 +6113,13 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
       translationCardTitle: t('toolbox.autoSubs.steps.translationCardTitle', { lang: '{lang}' }, 'Translated {lang}'),
       translationCardFallback: t('toolbox.autoSubs.steps.translationCardFallback', {}, 'Translated subtitle'),
       enableAfter: t('toolbox.autoSubs.steps.downloadsNote', {}, 'We\'ll enable downloads after the pipeline finishes.')
+    },
+    locks: {
+      needContinue: t('toolbox.autoSubs.locks.needContinue', {}, 'Click Continue to unlock the next steps.'),
+      needTarget: t('toolbox.autoSubs.locks.needTarget', {}, 'Select a target or disable translation to unlock Run.')
+    },
+    actions: {
+      continue: t('toolbox.autoSubs.actions.continue', {}, 'Continue')
     },
     options: {
       addTargets: t('toolbox.autoSubs.options.addTargets', {}, 'Add target languages in Configure')
@@ -6313,6 +6569,28 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
       flex-direction: column;
     }
     .step-card:hover { border-color: var(--primary); box-shadow: 0 14px 30px var(--glow); transform: translateY(-2px); }
+    .step-card.locked { opacity: 0.55; }
+    .step-card.locked::after {
+      content: attr(data-locked-label);
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 1rem;
+      background: rgba(255, 255, 255, 0.82);
+      color: var(--muted);
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      pointer-events: all;
+      z-index: 5;
+    }
+    [data-theme="dark"] .step-card.locked::after,
+    [data-theme="true-dark"] .step-card.locked::after {
+      background: rgba(10, 12, 22, 0.82);
+      color: #d5def3;
+    }
     .step-title { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font-weight: 800; color: var(--text-primary); }
     .step-chip {
       display: inline-flex;
@@ -6545,7 +6823,7 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
     <div class="section section-joined">
       <h2><span class="section-number">1-2</span> ${escapeHtml(copy.sections.linkAndPrep)}</h2>
       <div class="joined-grid">
-        <div class="step-card">
+        <div class="step-card" id="autoStep1Card">
           <div class="step-title"><span class="step-chip">${escapeHtml(copy.steps.one)}</span><span>${escapeHtml(copy.steps.inputTitle)}</span></div>
           <div class="step-body">
             <div class="linked-stream-wrapper">
@@ -6560,10 +6838,11 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
             <div class="notice" id="hashStatus" style="margin-top:10px;">${escapeHtml(copy.videoMeta.waiting)}</div>
             <div class="controls" style="margin-top:12px;">
               <button class="btn secondary" id="prefillFromVideo">${escapeHtml(copy.steps.prefill)}</button>
+              <button class="btn" id="autoContinue"><span>➡️</span> ${escapeHtml(copy.actions.continue)}</button>
             </div>
           </div>
         </div>
-        <div class="step-card">
+        <div class="step-card locked" id="autoStep2Card" data-locked-label="${escapeHtml(copy.locks.needContinue)}">
           <div class="step-title"><span class="step-chip">${escapeHtml(copy.steps.two)}</span><span>${escapeHtml(copy.steps.langModelTitle)}</span></div>
           <div class="step-body">
             <label for="autoSubsMode">${escapeHtml(copy.steps.modeLabel)}</label>
@@ -6605,7 +6884,7 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
 
     <div class="section" id="translationStep">
       <h2><span class="section-number">2.5</span> ${escapeHtml(copy.steps.translationStepTitle)}</h2>
-      <div class="step-card">
+      <div class="step-card locked" id="autoTranslationCard" data-locked-label="${escapeHtml(copy.locks.needContinue)}">
         <div class="step-title"><span class="step-chip">${escapeHtml(copy.steps.translationStepChip)}</span><span>${escapeHtml(copy.steps.translationStepTitle)}</span></div>
         <div class="step-body">
           <div class="row">
@@ -6660,7 +6939,7 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
     <div class="section section-joined">
       <h2><span class="section-number">3-4</span> ${escapeHtml(copy.sections.runAndReview)}</h2>
       <div class="joined-grid">
-        <div class="step-card">
+        <div class="step-card locked" id="autoStep3Card" data-locked-label="${escapeHtml(copy.locks.needContinue)}">
           <div class="step-title"><span class="step-chip">${escapeHtml(copy.steps.three)}</span><span>${escapeHtml(copy.steps.runPipelineTitle)}</span></div>
           <div class="step-body">
             <p style="margin:0 0 8px; color: var(--text-secondary);">${escapeHtml(copy.steps.pipelineDesc)}</p>
@@ -6711,6 +6990,7 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
   <script src="/js/subtitle-menu.js?v=${escapeHtml(appVersion || 'dev')}"></script>
   <script src="/js/combobox.js"></script>
   <script>
+    ${quickNavScript()}
     const BOOTSTRAP = ${safeJsonSerialize({
     configStr,
     videoId,
@@ -6742,7 +7022,6 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
     const copy = ${safeJsonSerialize(copy)};
     (${autoSubsRuntime.toString()})(copy);
 
-    ${quickNavScript()}
     if (window.ComboBox && typeof window.ComboBox.enhanceAll === 'function') {
       window.ComboBox.enhanceAll(document);
     }

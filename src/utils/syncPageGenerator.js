@@ -182,9 +182,12 @@ function resolveSubtitleLanguage(sub, languageMaps) {
 
 async function fetchLinkedTitleServer(videoId) {
     const parsed = parseStremioId(videoId);
-    if (!parsed || !parsed.imdbId) return null;
+    const imdbId = parsed?.imdbId;
+    // Skip Cinemeta lookups when the ID is not a valid IMDb identifier (avoids noisy 404s on placeholders)
+    if (!imdbId || !/^tt\d{3,}$/i.test(imdbId)) return null;
+    const normalizedImdbId = imdbId.toLowerCase();
     const metaType = parsed.type === 'episode' ? 'series' : 'movie';
-    const url = `https://v3-cinemeta.strem.io/meta/${metaType}/${encodeURIComponent(parsed.imdbId)}.json`;
+    const url = `https://v3-cinemeta.strem.io/meta/${metaType}/${encodeURIComponent(normalizedImdbId)}.json`;
     try {
         const resp = await axios.get(url, { timeout: 3500 });
         const meta = resp.data && resp.data.meta;
@@ -2193,7 +2196,8 @@ async function generateSubtitleSyncPage(subtitles, videoId, streamFilename, conf
                 return wordToHexValue;
             }
             function utf8Encode(string) {
-                string = string.replace(/\r\n/g, '\n');
+                // Escape backslashes so the generated script keeps the regex literal intact
+                string = string.replace(/\\r\\n/g, '\\n');
                 let utftext = '';
                 for (let n = 0; n < string.length; n++) {
                     const c = string.charCodeAt(n);

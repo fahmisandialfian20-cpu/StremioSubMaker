@@ -9,6 +9,10 @@ All notable changes to this project will be documented in this file.
 - **Auto-subtitles UI stability:** Auto-subtitles page now bootstraps its runtime with translated copy/video metadata to fix broken rendering and keeps the hash badge/cache-block state consistent.
 - **Embedded extraction logs:** Extraction logs stay visible after successful embedded runs for easier troubleshooting, while auto-sub hash/cache badges keep cache-block flags without noisy warnings.
 - **RTL + flags:** Arabic UI now flips to RTL with isolated LTR tokens for mixed Arabic/English lines, and UI language flags map to real locales (Arabic -> Saudi Arabia, pt-br -> Brazil, en -> US).
+- **Hash/status UX:** Embedded toolbox now shows a linked stream card plus hash status badge, and translation cards lock with overlays until extraction finishes and a track is selected, keeping mismatch messaging clear.
+- **Auto-sub flow locks:** Auto-subtitles flow adds a Continue step that unlocks translation/run cards, disables Start until a target is set, and relocks when the stream is edited so runs can’t start on placeholder links or missing targets.
+- **Metadata fetch guards:** Cinemeta lookups skip invalid IMDb IDs, normalize them to lowercase, and fall back to TMDB IDs when available to avoid noisy 404s while still filling stream titles.
+- **Accessibility/i18n polish:** UI language dock/help buttons now carry translated aria-labels and Step 1 labels get explicit colons/shortened copy for clearer screen-reader prompts.
 
 ## SubMaker v1.4.12
 

@@ -1,5 +1,5 @@
 <div class="container">
-    <div class="ui-language-dock" id="uiLanguageDock" role="group" aria-label="UI language">
+    <div class="ui-language-dock" id="uiLanguageDock" role="group" aria-label="UI language" data-i18n="config.uiLanguageAria" data-i18n-attr="aria-label">
         <div class="ui-language-glow" aria-hidden="true"></div>
         <div class="ui-language-flag-row" id="uiLanguageFlags">
             <!-- Flags are rendered dynamically -->
@@ -22,7 +22,7 @@
 
     <!-- Floating Help Button (Config page) -->
     <button class="help-button toolbox-button" id="subToolboxLauncher" title="Open Sub Toolbox"
-        aria-label="Open Sub Toolbox" style="display:none;" data-i18n="config.actions.openToolbox" data-i18n-attr="title">
+        aria-label="Open Sub Toolbox" style="display:none;" data-i18n="config.actions.openToolbox" data-i18n-attr="title,aria-label">
         <span class="toolbox-icon" aria-hidden="true">
             <svg viewBox="0 0 64 64" role="img" focusable="false">
                 <defs>
@@ -50,7 +50,7 @@
             </svg>
         </span>
     </button>
-    <button class="help-button mario" id="configHelp" title="Help" data-i18n="config.quickActionHelp" data-i18n-attr="title">?</button>
+    <button class="help-button mario" id="configHelp" title="Help" aria-label="Help" data-i18n="config.quickActionHelp" data-i18n-attr="title,aria-label">?</button>
 
     <!-- Disable native HTML validation: we run all validation in config.js and hidden inputs (provider advanced sliders) can trip browser validity when collapsed -->
     <form id="configForm" autocomplete="off" spellcheck="false" novalidate>
