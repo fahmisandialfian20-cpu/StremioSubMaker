@@ -443,6 +443,8 @@ function quickNavScript() {
       let pollTimer = null;
       let pollErrorStreak = 0;
       let pollPausedUntil = 0;
+      let pauseTimer = null;
+      let pauseNotified = false;
       let sseRetryTimer = null;
       let sseRetryCount = 0;
       let sseCooldownUntil = 0;
@@ -452,9 +454,9 @@ function quickNavScript() {
       let hasBaseline = false;
       let lastSeenTs = Date.now();
       const MAX_SSE_RETRIES = 5;
-      const POLL_INTERVAL_MS = Math.max(15000, Number(opts.pollIntervalMs) || 15000); // Faster fallback when SSE is blocked
-      const POLL_BACKOFF_MAX_MS = 60000;
-      const POLL_ERROR_STREAK_CAP = 6;
+      const BACKOFF_STEPS_MS = [15000, 30000, 60000]; // 15s, 30s, 60s
+      const PAUSE_AFTER_FAILURES = BACKOFF_STEPS_MS.length; // pause after 3 consecutive failures
+      const PAUSE_DURATION_MS = 15 * 60 * 1000; // 15 minutes
       const STALE_BACKSTOP_MS = Math.max(20000, Number(opts.staleBackstopMs) || 30000); // Force a poll if nothing arrives for ~30s
       const SSE_PROBE_TIMEOUT_MS = 4000; // If no event arrives quickly, assume SSE is blocked
       const SSE_COOLDOWN_MS = 10 * 60 * 1000; // Wait before retrying SSE after repeated failures
@@ -559,6 +561,36 @@ function quickNavScript() {
         } catch (_) { /* ignore */ }
       }
 
+      function setUpdateButtonVisible(visible) {
+        if (updateBtn) {
+          updateBtn.style.display = visible ? '' : 'none';
+        }
+      }
+
+      function showPauseNotification() {
+        const titleText = opts.labels?.pauseTitle || 'Stream updates paused';
+        // Chosen copy after considering variants:
+        // 1) "Updates paused. Click the refresh arrow by the version badge to sync."
+        // 2) "We lost stream pings. Use the refresh icon near the version badge to reload."
+        // 3) "Stream link went quiet - tap the refresh icon next to the version badge to resync."
+        // Picked #3 for clarity + brevity.
+        const metaText = opts.labels?.pauseBody || 'Stream link went quiet - tap the refresh icon next to the version badge to resync.';
+        if (notify) {
+          const handled = notify({
+            title: titleText,
+            message: metaText,
+            payload: null,
+            updateUrl: null,
+            type: 'pause'
+          });
+          if (handled === true) return;
+        }
+        if (titleEl) titleEl.textContent = titleText;
+        if (metaEl) metaEl.textContent = metaText;
+        setUpdateButtonVisible(false);
+        toast.classList.add('show');
+      }
+
       function showToast(payload) {
         const description = describe(payload);
         const titleText = opts.labels?.title || t('nav.streamDetected', {}, 'New stream detected');
@@ -576,6 +608,7 @@ function quickNavScript() {
           metaEl.textContent = description;
           enhanceMeta(payload);
         }
+        setUpdateButtonVisible(true);
         toast.classList.add('show');
       }
 
@@ -746,6 +779,7 @@ function quickNavScript() {
         if (pollPausedUntil && now >= pollPausedUntil) {
           pollPausedUntil = 0;
           pollErrorStreak = 0;
+          pauseNotified = false;
         }
         const shouldOwnConnection = isOwner || !channel;
         if (!shouldOwnConnection && !force) return;
@@ -758,19 +792,31 @@ function quickNavScript() {
           }
           const data = await resp.json();
           pollErrorStreak = 0;
+          pauseNotified = false;
           handleEpisode(data);
           broadcastEpisode(data);
         } catch (_) {
-          pollErrorStreak = Math.min(pollErrorStreak + 1, POLL_ERROR_STREAK_CAP);
+          pollErrorStreak = Math.min(pollErrorStreak + 1, PAUSE_AFTER_FAILURES);
         } finally {
-          if (pollErrorStreak >= POLL_ERROR_STREAK_CAP) {
-            pollPausedUntil = Date.now() + 10 * 60 * 1000; // cool down after repeated failures
+          if (pollErrorStreak >= PAUSE_AFTER_FAILURES) {
+            pollPausedUntil = Date.now() + PAUSE_DURATION_MS;
+            pollErrorStreak = 0;
+            if (pollTimer) clearTimeout(pollTimer);
+            if (pauseTimer) clearTimeout(pauseTimer);
+            if (!pauseNotified) {
+              showPauseNotification();
+              pauseNotified = true;
+            }
+            pauseTimer = setTimeout(() => {
+              pollPausedUntil = 0;
+              pauseNotified = false;
+              pollErrorStreak = 0;
+              pollOnce(true);
+            }, PAUSE_DURATION_MS);
+            return;
           }
-          const baseDelay = (force || isStale) ? Math.min(POLL_INTERVAL_MS, STALE_BACKSTOP_MS) : POLL_INTERVAL_MS;
-          const delay = Math.min(
-            POLL_BACKOFF_MAX_MS,
-            baseDelay * Math.max(1, Math.pow(2, pollErrorStreak))
-          );
+          const stepIndex = Math.min(pollErrorStreak, BACKOFF_STEPS_MS.length - 1);
+          const delay = (force || isStale) ? BACKOFF_STEPS_MS[0] : BACKOFF_STEPS_MS[stepIndex];
           if (shouldOwnConnection) {
             pollTimer = setTimeout(() => pollOnce(false), delay);
           }
@@ -792,6 +838,7 @@ function quickNavScript() {
             sseReady = true;
             sseRetryCount = 0;
             pollErrorStreak = 0;
+            pauseNotified = false;
             if (sseProbeTimer) {
               clearTimeout(sseProbeTimer);
               sseProbeTimer = null;
@@ -875,6 +922,7 @@ function quickNavScript() {
         if (pollTimer) clearTimeout(pollTimer);
         if (sseRetryTimer) clearTimeout(sseRetryTimer);
         if (sseProbeTimer) clearTimeout(sseProbeTimer);
+        if (pauseTimer) clearTimeout(pauseTimer);
         if (ownerLeaseTimer) clearInterval(ownerLeaseTimer);
         releaseOwner();
         releaseLock();
