@@ -1502,7 +1502,7 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       extractBlocked: t('toolbox.embedded.step1.extractBlocked', {}, ''),
       hashMismatchInline: t('toolbox.embedded.step1.hashMismatchInline', {}, ''),
       hashMismatchLine1: t('toolbox.embedded.step1.hashMismatchLine1', {}, 'Hashes must match before extraction can start.'),
-      hashMismatchLine2: t('toolbox.embedded.step1.hashMismatchLine2', {}, 'Copy the stream link again in Stremio and paste it here to unlock the button.'),
+      hashMismatchLine2: t('toolbox.embedded.step1.hashMismatchLine2', {}, ''),
       logHeader: t('toolbox.embedded.step1.logHeader', {}, 'Live log'),
       logSub: t('toolbox.embedded.step1.logSub', {}, 'Auto-filled while extraction runs.'),
       outputsEyebrow: t('toolbox.embedded.step1.outputsEyebrow', {}, 'Outputs'),
@@ -1570,6 +1570,13 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
     )
   );
   const modeHelperHtml = escapeHtml(copy.step1.modeHelper).replace(/\n/g, '<br>');
+  const step1Helper = (copy.step1.helper && copy.step1.helper !== 'toolbox.embedded.step1.helper')
+    ? copy.step1.helper
+    : '';
+  const hashAlertLines = [copy.step1.hashMismatchLine1].filter(Boolean);
+  const hashAlertBodyHtml = hashAlertLines.length
+    ? `<div class="alert-body">${hashAlertLines.map(line => `<div>${escapeHtml(line)}</div>`).join('')}</div>`
+    : '';
   const providerOptions = (() => {
     const options = [];
     const providers = config.providers || {};
@@ -1658,7 +1665,7 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       },
       hashMismatch: {
         inline: copy.step1.hashMismatchInline,
-        alertLines: [copy.step1.hashMismatchLine1, copy.step1.hashMismatchLine2]
+        alertLines: hashAlertLines
       },
       locks: {
         needExtraction: copy.locks.needExtraction,
@@ -2155,7 +2162,15 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       font-size: 0.85rem;
     }
     .step-header { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
-    .step-header h3, .step-header p { align-self: center; }
+    .step-header h3, .step-header p { align-self: flex-start; text-align: left; }
+    .step-title-row { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .step-helper { margin: 4px 0 0; }
+    #step1Card .section-head { flex-direction: column; align-items: flex-start; justify-content: flex-start; text-align: left; }
+    #step1Card .section-head > div { text-align: left; }
+    #step1Card .step-header { align-items: flex-start; }
+    #step1Card .step-header h3,
+    #step1Card .step-header p { align-self: flex-start; text-align: left; }
+    #step1Card .step-title-row { width: 100%; }
     .centered-section { text-align: center; }
     .centered-section .section-head { flex-direction: column; align-items: center; justify-content: center; text-align: center; }
     .centered-section .section-head > div { text-align: center; }
@@ -2770,9 +2785,11 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       <div class="card section centered-section" id="step1Card">
         <div class="section-head">
           <div class="step-header">
-            <span class="step-chip">${escapeHtml(copy.step1.chip)}</span>
-            <h3>${escapeHtml(copy.step1.title)}</h3>
-            ${copy.step1.helper ? `<p class="muted" style="margin:4px 0 0;">${escapeHtml(copy.step1.helper)}</p>` : ''}
+            <div class="step-title-row">
+              <span class="step-chip">${escapeHtml(copy.step1.chip)}</span>
+              <h3>${escapeHtml(copy.step1.title)}</h3>
+            </div>
+            ${step1Helper ? `<p class="muted step-helper">${escapeHtml(step1Helper)}</p>` : ''}
           </div>
         </div>
         <div class="step-stack">
@@ -2789,10 +2806,7 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
             </div>
             <div class="notice hash-status neutral" id="hash-status" aria-live="polite">
               <div class="alert-head">${escapeHtml(t('toolbox.embedded.step1.hashStatus.neutralTitle', {}, 'Hash check ready'))}</div>
-              <div class="alert-body">
-                <div>${escapeHtml(copy.step1.hashMismatchLine1)}</div>
-                <div>${escapeHtml(copy.step1.hashMismatchLine2)}</div>
-              </div>
+              ${hashAlertBodyHtml}
             </div>
             <div class="mode-controls">
               <label for="extract-mode">${escapeHtml(copy.step1.modeLabel)}</label>
@@ -2826,9 +2840,11 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       <div class="card section centered-section is-disabled locked" id="step2Card" data-locked-label="${escapeHtml(copy.locks.needExtraction)}">
         <div class="section-head">
           <div class="step-header">
-            <span class="step-chip">${escapeHtml(copy.step2.chip)}</span>
-            <h3>${escapeHtml(copy.step2.title)}</h3>
-            <p class="muted" style="margin:4px 0 0;">${escapeHtml(copy.step2.helper)}</p>
+            <div class="step-title-row">
+              <span class="step-chip">${escapeHtml(copy.step2.chip)}</span>
+              <h3>${escapeHtml(copy.step2.title)}</h3>
+            </div>
+            <p class="muted step-helper">${escapeHtml(copy.step2.helper)}</p>
           </div>
         </div>
 
@@ -2931,12 +2947,12 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
     const translationContextFallback = BOOTSTRAP.strings?.translationContextFallback || 'your linked stream';
     const hashMismatchStrings = BOOTSTRAP.strings?.hashMismatch || {};
     const lockCopy = BOOTSTRAP.strings?.locks || {};
+    const HASH_ALERT_DEFAULTS = ${JSON.stringify(hashAlertLines)};
     const HASH_MISMATCH_LINES = Array.isArray(hashMismatchStrings.alertLines) && hashMismatchStrings.alertLines.length
-      ? hashMismatchStrings.alertLines
-      : [
-        'Hashes must match before extraction can start.',
-        'Copy the stream link again in Stremio and paste it here to unlock the button.'
-      ];
+      ? hashMismatchStrings.alertLines.filter(Boolean)
+      : (HASH_ALERT_DEFAULTS.length
+        ? HASH_ALERT_DEFAULTS
+        : [tt('toolbox.embedded.step1.hashMismatchLine1', {}, 'Hashes must match before extraction can start.')]);
     const HASH_MISMATCH_INLINE = hashMismatchStrings.inline || '';
     const HASH_STATUS_COPY = {
       neutralTitle: hashMismatchStrings.neutralTitle || tt('toolbox.embedded.step1.hashStatus.neutralTitle', {}, 'Hash check ready'),
