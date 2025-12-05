@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## SubMaker v1.4.17
+
+- **Config flags dock:** UI language flags stay open after you click them; late translation re-renders no longer auto-collapse the dock on first use.
+
 ## SubMaker v1.4.16
 
 - **Config cache busting:** Config UI assets/partials now force cache-busting redirects and no-store headers to avoid stale CSS/JS on hosts with long-lived CDN caches.

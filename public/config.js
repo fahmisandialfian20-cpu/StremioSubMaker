@@ -907,10 +907,13 @@ Translate to {target_language}.`;
             } catch (_) {}
             return fallback;
         };
+        // Preserve whether the flag dock is currently expanded so we don't auto-close it
+        // when translations finish loading after the user clicks it open.
+        const wasExpanded = uiLanguageExpanded;
         const activeLang = (currentConfig && currentConfig.uiLanguage) || (locale && locale.lang) || 'en';
         renderUiLanguageFlags(activeLang);
         updateUiLanguageBadge(activeLang);
-        setUiLanguageExpanded(false);
+        setUiLanguageExpanded(wasExpanded);
         const heroTitle = document.getElementById('heroTitle');
         if (heroTitle) {
             heroTitle.textContent = translate('config.heroTitle', 'SubMaker');

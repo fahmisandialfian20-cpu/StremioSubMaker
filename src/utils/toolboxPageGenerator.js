@@ -1552,7 +1552,7 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
     step2: {
       chip: t('toolbox.embedded.step2.chip', {}, 'Step 2'),
       title: t('toolbox.embedded.step2.title', {}, 'Tracks & Translation'),
-      helper: t('toolbox.embedded.step2.helper', {}, 'Select a track in Step 1 outputs, then choose a target language and translate.'),
+      helper: t('toolbox.embedded.step2.helper', {}, ''),
       selectedLabel: t('toolbox.embedded.step2.selectedLabel', {}, 'Selected subtitle'),
       selectedPlaceholder: t('toolbox.embedded.step2.selectedPlaceholder', {}, 'Select a subtitle in Step 1 outputs to unlock this step.'),
       targetLabel: t('toolbox.embedded.step2.targetLabel', {}, 'Target language'),
@@ -1685,6 +1685,10 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
     strings: {
       translationContextTemplate: copy.step2.translationContext,
       translationContextFallback: copy.step2.translationContextFallback,
+      reloadHints: {
+        normal: copy.step2.reloadHint,
+        manual: copy.step2.reloadHintManual
+      },
       videoMeta: {
         waiting: copy.videoMeta.waiting,
         none: copy.videoMeta.none,
@@ -2898,7 +2902,6 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
               <span class="step-chip">${escapeHtml(copy.step2.chip)}</span>
               <h3>${escapeHtml(copy.step2.title)}</h3>
             </div>
-            <p class="muted step-helper">${escapeHtml(copy.step2.helper)}</p>
           </div>
         </div>
 
@@ -3001,6 +3004,7 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
     const translationContextFallback = BOOTSTRAP.strings?.translationContextFallback || 'your linked stream';
     const hashMismatchStrings = BOOTSTRAP.strings?.hashMismatch || {};
     const lockCopy = BOOTSTRAP.strings?.locks || {};
+    const reloadHints = BOOTSTRAP.strings?.reloadHints || {};
     const HASH_ALERT_DEFAULTS = ${JSON.stringify(hashAlertLines)};
     const HASH_MISMATCH_LINES = Array.isArray(hashMismatchStrings.alertLines) && hashMismatchStrings.alertLines.length
       ? hashMismatchStrings.alertLines.filter(Boolean)
@@ -3008,6 +3012,10 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
         ? HASH_ALERT_DEFAULTS
         : [tt('toolbox.embedded.step1.hashMismatchLine1', {}, 'Hashes must match before extraction can start.')]);
     const HASH_MISMATCH_INLINE = hashMismatchStrings.inline || '';
+    const RELOAD_HINT_FALLBACKS = {
+      normal: tt('toolbox.embedded.step2.reloadHint', {}, 'Done! Reload the stream subtitle list in Stremio to see xEmbed (Language) entries.'),
+      manual: tt('toolbox.embedded.step2.reloadHintManual', {}, 'Hash mismatch detected; translations were saved locally. Download the SRT above and drag it into Stremio manually.')
+    };
     const HASH_STATUS_COPY = {
       neutralTitle: hashMismatchStrings.neutralTitle || tt('toolbox.embedded.step1.hashStatus.neutralTitle', {}, 'Hash check ready'),
       neutralBody: hashMismatchStrings.neutralBody || tt('toolbox.embedded.step1.hashStatus.neutralBody', {}, 'Paste the stream URL to compare with your linked stream.'),
@@ -3884,7 +3892,9 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
         els.reloadHint.style.display = 'none';
         return;
       }
-      const message = state.cacheBlocked ? copy.step2.reloadHintManual : copy.step2.reloadHint;
+      const message = state.cacheBlocked
+        ? (reloadHints.manual || RELOAD_HINT_FALLBACKS.manual)
+        : (reloadHints.normal || RELOAD_HINT_FALLBACKS.normal);
       els.reloadHint.textContent = message;
       els.reloadHint.style.display = 'block';
     }
