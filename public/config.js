@@ -790,10 +790,46 @@ Translate to {target_language}.`;
         currentConfig.providerParameters = mergeProviderParameters(defaults, currentConfig.providerParameters);
     }
 
+    function ensureUiLanguageDockExists() {
+        let dock = document.getElementById('uiLanguageDock');
+        let row = document.getElementById('uiLanguageFlags');
+
+        // If the partial failed to load (or was stripped), create a minimal dock on the fly
+        if (!dock) {
+            dock = document.createElement('div');
+            dock.id = 'uiLanguageDock';
+            dock.className = 'ui-language-dock';
+            dock.setAttribute('role', 'group');
+            dock.setAttribute('data-i18n', 'config.uiLanguageAria');
+            dock.setAttribute('data-i18n-attr', 'aria-label');
+
+            const glow = document.createElement('div');
+            glow.className = 'ui-language-glow';
+            glow.setAttribute('aria-hidden', 'true');
+            dock.appendChild(glow);
+
+            row = document.createElement('div');
+            row.id = 'uiLanguageFlags';
+            row.className = 'ui-language-flag-row';
+            dock.appendChild(row);
+
+            // Insert at top of body so it matches the original layout
+            (document.body || document.documentElement).appendChild(dock);
+        }
+
+        if (!row) {
+            row = document.createElement('div');
+            row.id = 'uiLanguageFlags';
+            row.className = 'ui-language-flag-row';
+            dock.appendChild(row);
+        }
+
+        return { dock, row };
+    }
+
     function setUiLanguageExpanded(expanded) {
         uiLanguageExpanded = expanded === true;
-        const dock = document.getElementById('uiLanguageDock');
-        const row = document.getElementById('uiLanguageFlags');
+        const { dock, row } = ensureUiLanguageDockExists();
         if (dock) {
             dock.classList.toggle('expanded', uiLanguageExpanded);
             dock.setAttribute('aria-expanded', uiLanguageExpanded ? 'true' : 'false');
@@ -804,8 +840,7 @@ Translate to {target_language}.`;
     }
 
     function renderUiLanguageFlags(selectedLang) {
-        const container = document.getElementById('uiLanguageFlags');
-        const dock = document.getElementById('uiLanguageDock');
+        const { dock, row: container } = ensureUiLanguageDockExists();
         if (!container) return;
 
         const activeMeta = getUiLanguageMeta(selectedLang || currentConfig?.uiLanguage || getPreferredUiLanguage());
