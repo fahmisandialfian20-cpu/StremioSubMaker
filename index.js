@@ -574,7 +574,8 @@ async function transcribeWithCloudflare(audioBuffer, opts = {}) {
     const blobName = opts.filename || 'audio.wav';
     formData.append('file', new BlobCtor([audioBuffer], { type: blobType }), blobName);
     if (opts.sourceLanguage) formData.append('language', opts.sourceLanguage);
-    if (opts.diarization) formData.append('diarization', 'true');
+    // Force diarization for Cloudflare transcription
+    formData.append('diarization', 'true');
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), AUTOSUB_CF_TIMEOUT_MS);
@@ -779,7 +780,8 @@ async function createAssemblyTranscript(apiKey, payload = {}, logger = null) {
     const requestBody = {
         punctuate: true,
         format_text: true,
-        speaker_labels: payload.speaker_labels === true || payload.diarization === true,
+        // Force speaker labels so diarization is always enabled
+        speaker_labels: true,
         filter_profanity: false,
         auto_chapters: false,
         disfluencies: true,
@@ -976,7 +978,8 @@ async function transcribeWithAssemblyAi(streamUrl, opts = {}, logger = null) {
         const transcriptId = await createAssemblyTranscript(apiKey, {
             audio_url: uploadUrl,
             language_code: opts.sourceLanguage || opts.languageCode || '',
-            speaker_labels: opts.diarization === true
+            // Always request speaker labels to preserve turn splits
+            speaker_labels: true
         }, logger);
         transcriptionData = await pollAssemblyTranscript(apiKey, transcriptId, logger);
         let srt = await fetchAssemblySrt(apiKey, transcriptId, logger);
@@ -4466,7 +4469,7 @@ app.post('/api/auto-subtitles/run', autoSubLimiter, async (req, res) => {
     try {
         setNoStore(res);
         let t = res.locals?.t || getTranslatorFromRequest(req, res, req.body);
-        const {
+        let {
             configStr,
             streamUrl,
             videoId,
@@ -4484,6 +4487,8 @@ app.post('/api/auto-subtitles/run', autoSubLimiter, async (req, res) => {
             sendFullVideo = false,
             diarization = false
         } = req.body || {};
+        // Force diarization/speaker labels for all auto-subs modes
+        diarization = true;
         logTrail = [];
         const logStep = (message, level = 'info') => {
             const entry = { ts: Date.now(), level, message: String(message || '') };

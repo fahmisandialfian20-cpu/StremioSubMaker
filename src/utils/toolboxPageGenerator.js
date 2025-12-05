@@ -6451,7 +6451,8 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
               engine: 'assemblyai',
               modelOverride: 'assemblyai',
               sourceLanguageOverride: els.sourceLang?.value || '',
-              sendFullVideo: els.assemblySendFullVideo?.checked === true
+              sendFullVideo: els.assemblySendFullVideo?.checked === true,
+              diarization: true
             });
             serverLogs = Array.isArray(data?.logTrail) ? data.logTrail : [];
             if (!resp.ok || data.success !== true) {
@@ -6484,7 +6485,7 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
                 filename: PAGE.filename || '',
                 model: els.model?.value || '@cf/openai/whisper',
                 sourceLanguage: els.sourceLang?.value || '',
-                diarization: false,
+                diarization: true,
                 cfAccountId: cfCreds.accountId,
                 cfToken: cfCreds.token
               }
