@@ -756,6 +756,8 @@
         "geminiModelRequired": "يرجى اختيار نموذج Gemini",
         "assemblyAiKeyRequired": "مطلوب مفتاح AssemblyAI API لوضع AssemblyAI",
         "assemblyAiKeyInvalid": "مفتاح AssemblyAI API غير صالح",
+        "cloudflareWorkersKeyRequired": "مطلوب مفتاح Cloudflare Workers AI للتسميات التلقائية (xSync)",
+        "cloudflareWorkersKeyFormat": "يجب أن يكون مفتاح Cloudflare Workers AI بصيغة ACCOUNT_ID|TOKEN",
         "mainProviderEnable": "مكّن {provider} لاستخدامه كمزود رئيسي",
         "mainProviderKeyRequired": "مفتاح API مطلوب لـ {provider}",
         "mainProviderModelRequired": "اختر نموذجاً لـ {provider}",
@@ -888,6 +890,13 @@
       },
       "otherApiKeys": {
         "title": "مفاتيح API أخرى",
+        "cloudflare": {
+          "label": "Cloudflare Workers AI (التسميات التلقائية)",
+          "helper": "يُستخدم للتسميات التلقائية عبر xSync. التنسيق: ACCOUNT_ID|TOKEN.",
+          "placeholder": "ACCOUNT_ID|TOKEN",
+          "validateTitle": "التحقق من مفتاح Cloudflare Workers AI",
+          "validateCta": "اختبار"
+        },
         "assembly": {
           "label": "مفتاح AssemblyAI API",
           "helper": "يُستخدم للترجمات التلقائية عبر AssemblyAI.",

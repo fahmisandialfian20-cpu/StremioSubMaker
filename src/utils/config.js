@@ -204,7 +204,7 @@ const DEPRECATED_MODEL_NAMES = [
 /**
  * Parse configuration from config string or session token
  * @param {string} configStr - Base64 encoded config string OR session token
- * @param {Object} options - Options { isLocalhost: boolean }
+ * @param {Object} options - Options { allowBase64: boolean }
  * @returns {Promise<Object>} - Parsed configuration
  */
 async function parseConfig(configStr, options = {}) {
@@ -213,6 +213,7 @@ async function parseConfig(configStr, options = {}) {
       return getDefaultConfig();
     }
 
+    const allowBase64 = options.allowBase64 === true || process.env.ALLOW_BASE64_CONFIG === 'true';
     // Check if this is a session token (32 hex chars) or base64 config
     const isSessionToken = /^[a-f0-9]{32}$/.test(configStr);
 
@@ -233,8 +234,8 @@ async function parseConfig(configStr, options = {}) {
       }
     }
 
-    // For localhost, allow old base64 encoding method (backward compatibility)
-    if (options.isLocalhost || process.env.ALLOW_BASE64_CONFIG === 'true') {
+    // Allow legacy base64 configs only when explicitly enabled
+    if (allowBase64) {
       return parseBase64Config(configStr);
     }
 
@@ -779,6 +780,7 @@ function getDefaultConfig(modelName = null) {
     learnPlacement: 'top', // default: pin top language at top of screen
     geminiApiKey: '',
     assemblyAiApiKey: DEFAULT_API_KEYS.ASSEMBLYAI || '',
+    cloudflareWorkersApiKey: DEFAULT_API_KEYS.CF_WORKERS_AUTOSUBS || '',
     otherApiKeysEnabled: true,
     autoSubs: {
       defaultMode: 'cloudflare',
@@ -1100,4 +1102,3 @@ module.exports = {
   getDefaultProviderParameters,
   mergeProviderParameters
 };
-

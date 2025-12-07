@@ -621,6 +621,23 @@
                             <button type="button" class="collapse-btn collapsed" data-collapse="other-api"></button>
                         </div>
                         <div class="card-content">
+                            <div class="form-group" style="padding-bottom: 1.25rem; border-bottom: 1px solid var(--border); margin-bottom: 1.25rem;">
+                                <label for="cloudflareWorkersApiKey">
+                                    <span data-i18n="config.otherApiKeys.cloudflare.label">Cloudflare Workers AI (Auto-Subs)</span>
+                                    <span class="label-description" data-i18n="config.otherApiKeys.cloudflare.helper">Used by Automatic Subtitles via xSync. Format: ACCOUNT_ID|TOKEN.</span>
+                                </label>
+                                <div style="display: flex; gap: 0.5rem; align-items: start;">
+                                    <input type="text" class="sensitive-input masked" id="cloudflareWorkersApiKey"
+                                        placeholder="ACCOUNT_ID|TOKEN" data-i18n="config.otherApiKeys.cloudflare.placeholder" data-i18n-attr="placeholder"
+                                        style="flex: 1;" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="text">
+                                    <button type="button" class="validate-api-btn" id="validateCloudflareWorkers" title="Validate Cloudflare Workers AI key" data-i18n="config.otherApiKeys.cloudflare.validateTitle" data-i18n-attr="title">
+                                        <span class="validate-icon">✓</span>
+                                        <span class="validate-text" data-i18n="config.otherApiKeys.cloudflare.validateCta">Test</span>
+                                    </button>
+                                </div>
+                                <div class="validation-feedback" id="cloudflareWorkersValidationFeedback"></div>
+                                <div class="field-error" id="cloudflareWorkersApiKeyError" data-i18n="config.validation.cloudflareWorkersKeyRequired">API key is required for Cloudflare Workers auto-subs</div>
+                            </div>
                             <div class="form-group">
                                 <label for="assemblyAiApiKey">
                                     <span data-i18n="config.otherApiKeys.assembly.label">AssemblyAI API Key</span>

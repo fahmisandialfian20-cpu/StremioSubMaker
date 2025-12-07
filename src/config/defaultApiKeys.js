@@ -25,7 +25,11 @@ const DEFAULT_API_KEYS = {
 
   // AssemblyAI API Key
   // Get your own at: https://www.assemblyai.com/dashboard
-  ASSEMBLYAI: ''
+  ASSEMBLYAI: '',
+
+  // Cloudflare Workers AI (auto-subs via xSync extension)
+  // Format: ACCOUNT_ID|TOKEN
+  CF_WORKERS_AUTOSUBS: ''
 };
 
 module.exports = DEFAULT_API_KEYS;

@@ -3093,16 +3093,16 @@ app.post('/api/create-session', sessionCreationLimiter, enforceConfigPayloadSize
             return res.status(400).json({ error: t('server.session.configRequired', {}, 'Configuration is required') });
         }
 
-        // For localhost, can use either session or base64 (backward compatibility)
         const localhost = isLocalhost(req);
         const storageType = process.env.STORAGE_TYPE || 'redis';
+        const forceSessions = process.env.FORCE_SESSIONS === 'true';
+        const allowBase64 = process.env.ALLOW_BASE64_CONFIG === 'true';
 
-        // Use base64 only if: localhost AND not forced sessions AND not using Redis storage
-        // Redis storage should always use sessions for proper data persistence
-        if (localhost && process.env.FORCE_SESSIONS !== 'true' && storageType !== 'redis') {
-            // For localhost, return base64 encoded config (old method)
+        // Base64 configs are deprecated; only allow when explicitly enabled.
+        const shouldUseBase64 = allowBase64 && localhost && !forceSessions && storageType !== 'redis';
+        if (shouldUseBase64) {
             const configStr = toBase64Url(JSON.stringify(config));
-            log.debug(() => '[Session API] Localhost detected - using base64 encoding');
+            log.debug(() => '[Session API] Localhost detected and ALLOW_BASE64_CONFIG enabled - using base64 encoding');
             return res.json({
                 token: configStr,
                 type: 'base64',
@@ -3148,17 +3148,18 @@ app.post('/api/update-session/:token', sessionCreationLimiter, enforceConfigPayl
             return res.status(400).json({ error: t('server.session.tokenRequired', {}, 'Session token is required') });
         }
 
-        // For localhost with base64, we can't update (create new instead)
         const localhost = isLocalhost(req);
         const storageType = process.env.STORAGE_TYPE || 'redis';
+        const forceSessions = process.env.FORCE_SESSIONS === 'true';
+        const allowBase64 = process.env.ALLOW_BASE64_CONFIG === 'true';
         const isBase64Token = !/^[a-f0-9]{32}$/.test(token);
 
-        // Use base64 only if: localhost AND base64 token AND not forced sessions AND not using Redis storage
-        // Redis storage should always use sessions for proper data persistence
-        if (localhost && isBase64Token && process.env.FORCE_SESSIONS !== 'true' && storageType !== 'redis') {
+        // Base64 configs are deprecated; only allow when explicitly enabled.
+        const shouldUseBase64 = allowBase64 && localhost && isBase64Token && !forceSessions && storageType !== 'redis';
+        if (shouldUseBase64) {
             // For localhost base64, just return new encoded config
             const configStr = toBase64Url(JSON.stringify(config));
-            log.debug(() => '[Session API] Localhost detected - creating new base64 token');
+            log.debug(() => '[Session API] Localhost detected and ALLOW_BASE64_CONFIG enabled - creating new base64 token');
             invalidateRouterCache(token, 'base64 config update');
             return res.json({
                 token: configStr,
@@ -3166,6 +3167,10 @@ app.post('/api/update-session/:token', sessionCreationLimiter, enforceConfigPayl
                 updated: true,
                 message: t('server.session.createdBase64Localhost', {}, 'Created new base64 token for localhost')
             });
+        }
+
+        if (isBase64Token) {
+            return res.status(400).json({ error: t('server.errors.sessionTokenFormat', {}, 'Invalid session token format') });
         }
 
         // Try to update existing session (now checks Redis if not in cache)
@@ -3775,7 +3780,8 @@ async function resolveConfigAsync(configStr, req) {
     }
 
     if (!isToken) {
-        const config = await parseConfig(configStr, { isLocalhost: localhost });
+        const allowBase64 = process.env.ALLOW_BASE64_CONFIG === 'true' && localhost;
+        const config = await parseConfig(configStr, { allowBase64 });
         // Attach deterministic config hash derived from normalized payload
         ensureConfigHash(config, configStr);
 

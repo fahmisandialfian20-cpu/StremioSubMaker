@@ -781,6 +781,8 @@
         "geminiModelRequired": "Selecciona un modelo de Gemini",
         "assemblyAiKeyRequired": "Se requiere la clave API de AssemblyAI para el modo AssemblyAI",
         "assemblyAiKeyInvalid": "La clave API de AssemblyAI no es válida",
+        "cloudflareWorkersKeyRequired": "La clave de Cloudflare Workers AI es obligatoria para auto-subs (xSync)",
+        "cloudflareWorkersKeyFormat": "La clave de Cloudflare Workers AI debe tener formato ACCOUNT_ID|TOKEN",
         "mainProviderEnable": "Activa {provider} para usarlo como Proveedor principal",
         "mainProviderKeyRequired": "Se requiere clave API para {provider}",
         "mainProviderModelRequired": "Selecciona un modelo para {provider}",
@@ -913,6 +915,13 @@
       },
       "otherApiKeys": {
         "title": "Otras claves API",
+        "cloudflare": {
+          "label": "Cloudflare Workers AI (Auto-Subs)",
+          "helper": "Usado por Subtítulos automáticos vía xSync. Formato: ACCOUNT_ID|TOKEN.",
+          "placeholder": "ACCOUNT_ID|TOKEN",
+          "validateTitle": "Validar clave de Cloudflare Workers AI",
+          "validateCta": "Probar"
+        },
         "assembly": {
           "label": "Clave API de AssemblyAI",
           "helper": "Usada para Subtítulos Automáticos vía AssemblyAI.",
@@ -1626,5 +1635,3 @@
     }
   }
 }
-
-

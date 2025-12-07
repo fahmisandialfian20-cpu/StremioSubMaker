@@ -282,7 +282,8 @@
         SUBDL: '',
         SUBSOURCE: '',
         GEMINI: '',
-        ASSEMBLYAI: ''
+        ASSEMBLYAI: '',
+        CF_WORKERS_AUTOSUBS: ''
     };
 
     // Popular languages for quick selection
@@ -636,6 +637,7 @@ Translate to {target_language}.`;
             learnPlacement: 'top',
             geminiApiKey: DEFAULT_API_KEYS.GEMINI,
             assemblyAiApiKey: DEFAULT_API_KEYS.ASSEMBLYAI,
+            cloudflareWorkersApiKey: DEFAULT_API_KEYS.CF_WORKERS_AUTOSUBS,
             otherApiKeysEnabled: true,
             autoSubs: {
                 defaultMode: 'cloudflare',
@@ -765,25 +767,12 @@ Translate to {target_language}.`;
     }
 
     /**
-     * Validate legacy/base64 tokens (used for localhost configs)
-     * @param {string} token - Token to validate
-     * @returns {boolean} - True if token is a plausible base64/base64url string
-     */
-    function isValidBase64Token(token) {
-        return token &&
-            typeof token === 'string' &&
-            token.length > 0 &&
-            token.length <= 12000 &&
-            /^[A-Za-z0-9+/_-]+=*$/.test(token);
-    }
-
-    /**
-     * Validate any supported config token (session hex or base64/base64url)
+     * Validate any supported config token (session tokens only)
      * @param {string} token
      * @returns {boolean}
      */
     function isValidConfigToken(token) {
-        return isValidSessionToken(token) || isValidBase64Token(token);
+        return isValidSessionToken(token);
     }
 
     /**
@@ -996,11 +985,11 @@ Translate to {target_language}.`;
 
         const params = new URLSearchParams(window.location.search);
         const rawConfigParam = params.get('config');
-        const hasExplicitUrlConfig = params.has('config');
+        const urlSessionToken = isValidSessionToken(rawConfigParam) ? rawConfigParam : null;
+        const hasExplicitUrlConfig = !!urlSessionToken;
         const urlConfig = parseConfigFromUrl();
 
         // Identify which session token should scope any cached config usage
-        const urlSessionToken = isValidSessionToken(rawConfigParam) ? rawConfigParam : null;
         const storedToken = localStorage.getItem(TOKEN_KEY);
         const persistentSessionToken = isValidSessionToken(storedToken) ? storedToken : null;
         const intendedToken = urlSessionToken || persistentSessionToken || null;
@@ -1017,7 +1006,7 @@ Translate to {target_language}.`;
             // Use cached config - this is the most common case
             currentConfig = cachedConfig;
         } else if (hasExplicitUrlConfig) {
-            // URL has explicit config - could be base64 or a session token
+            // URL has explicit config - session token provided
             currentConfig = urlConfig;
 
             // New: If URL param looks like a session token, fetch stored config from server
@@ -1721,18 +1710,7 @@ Translate to {target_language}.`;
     }, true); // Use capture phase to handle before other listeners
 
     function parseConfigFromUrl() {
-        const params = new URLSearchParams(window.location.search);
-        const configStr = params.get('config');
-
-        if (configStr) {
-            try {
-                const decoded = atob(configStr);
-                return JSON.parse(decoded);
-            } catch (e) {
-                // Failed to parse config
-            }
-        }
-
+        // Legacy base64 configs are no longer supported; default to a fresh config
         return getDefaultConfig();
     }
 
@@ -2196,6 +2174,20 @@ Translate to {target_language}.`;
             });
         }
 
+        const cloudflareKeyInput = document.getElementById('cloudflareWorkersApiKey');
+        if (cloudflareKeyInput) {
+            cloudflareKeyInput.addEventListener('input', () => {
+                if (cloudflareKeyInput.value.trim()) {
+                    toggleOtherApiKeysSection();
+                }
+            });
+        }
+
+        const validateCloudflareBtn = document.getElementById('validateCloudflareWorkers');
+        if (validateCloudflareBtn) {
+            validateCloudflareBtn.addEventListener('click', () => validateCloudflareWorkersKey(true));
+        }
+
         const validateAssemblyAiBtn = document.getElementById('validateAssemblyAi');
         if (validateAssemblyAiBtn) {
             validateAssemblyAiBtn.addEventListener('click', validateAssemblyAiKey);
@@ -2307,6 +2299,9 @@ Translate to {target_language}.`;
             if (!section) return;
             const header = section.querySelector('.section-header');
             if (!header) return;
+            const rect = header.getBoundingClientRect();
+            const isHeaderVisible = rect.bottom > 0 && rect.top < window.innerHeight;
+            if (isHeaderVisible) return;
             const targetY = Math.max(0, header.getBoundingClientRect().top + window.scrollY - SECTION_SCROLL_OFFSET);
             const delta = Math.abs(window.scrollY - targetY);
             if (delta < 4) return;
@@ -2314,6 +2309,8 @@ Translate to {target_language}.`;
         };
         sectionCollapseConfigs.forEach(({ id, toggleAttr }) => {
             const section = document.getElementById(id);
+            const sectionBody = section ? section.querySelector('.section-grid') : null;
+            const sectionFooter = section ? section.querySelector('.section-footer') : null;
             const sectionHeader = section ? section.querySelector('.section-header') : null;
             const toggles = Array.from(document.querySelectorAll(
                 `[data-collapse-section="${toggleAttr}"], [data-section-close="${toggleAttr}"]`
@@ -2346,6 +2343,19 @@ Translate to {target_language}.`;
             if (section && sectionHeader) {
                 sectionHeader.addEventListener('click', (e) => {
                     if (e.target.closest('.collapse-btn')) return;
+                    // Header should toggle the section without bubbling to the section-level handler (avoids double toggles)
+                    e.stopPropagation();
+                    toggleSection();
+                });
+            }
+            if (section) {
+                section.addEventListener('click', (e) => {
+                    // When expanded, only the header should toggle; ignore clicks elsewhere
+                    const isCollapsed = section.classList.contains('collapsed');
+                    if (!isCollapsed) return;
+                    // Ignore dedicated toggle buttons
+                    if (e.target.closest('.collapse-btn')) return;
+                    if (e.target.closest('[data-section-close]')) return;
                     toggleSection();
                 });
             }
@@ -3322,6 +3332,70 @@ Translate to {target_language}.`;
             }
             return false;
         }
+    }
+
+    function validateCloudflareWorkersKey(showNotification = true) {
+        const input = document.getElementById('cloudflareWorkersApiKey');
+        const feedback = document.getElementById('cloudflareWorkersValidationFeedback');
+        const error = document.getElementById('cloudflareWorkersApiKeyError');
+        if (!input) return false;
+
+        const value = input.value.trim();
+        const requiredMsg = tConfig('config.validation.cloudflareWorkersKeyRequired', {}, '⚠️ Cloudflare Workers AI key is required for auto-subs (xSync)');
+        const formatMsg = tConfig('config.validation.cloudflareWorkersKeyFormat', {}, '⚠️ Add Cloudflare Workers AI key as ACCOUNT_ID|TOKEN');
+
+        if (!value) {
+            input.classList.add('invalid');
+            if (error) {
+                error.textContent = requiredMsg;
+                error.classList.add('show');
+            }
+            if (feedback) {
+                feedback.textContent = '';
+                feedback.classList.remove('success', 'error');
+            }
+            if (showNotification) {
+                showAlert(requiredMsg, 'error');
+            }
+            return false;
+        }
+
+        const creds = parseCfWorkersKey(value);
+        const valid = !!(creds.accountId && creds.token);
+
+        if (!valid) {
+            input.classList.add('invalid');
+            if (error) {
+                error.textContent = formatMsg;
+                error.classList.add('show');
+            }
+            if (feedback) {
+                feedback.textContent = formatMsg;
+                feedback.classList.add('error');
+                feedback.classList.remove('success');
+            }
+            if (showNotification) {
+                showAlert(formatMsg, 'error');
+            }
+            return false;
+        }
+
+        input.classList.remove('invalid');
+        input.classList.add('valid');
+        if (error) {
+            error.classList.remove('show');
+        }
+        if (feedback) {
+            const okMsg = tConfig('config.validation.apiKeyAppearsValid', {}, 'API key appears valid');
+            feedback.textContent = okMsg;
+            feedback.classList.remove('error');
+            feedback.classList.add('success');
+        }
+        if (showNotification) {
+            const okMsg = tConfig('config.validation.apiKeyAppearsValid', {}, 'API key appears valid');
+            showAlert(okMsg, 'success');
+        }
+        return true;
     }
 
     function validateGeminiModel() {
@@ -4374,6 +4448,10 @@ Translate to {target_language}.`;
                 }
             }
 
+            // Preserve standalone API keys for auto-subs flows
+            newConfig.assemblyAiApiKey = (oldConfig.assemblyAiApiKey || '').trim();
+            newConfig.cloudflareWorkersApiKey = (oldConfig.cloudflareWorkersApiKey || '').trim();
+
             // Preserve alternative AI providers
             newConfig.betaModeEnabled = oldConfig.betaModeEnabled === true;
             newConfig.multiProviderEnabled = oldConfig.multiProviderEnabled === true;
@@ -4511,6 +4589,10 @@ Translate to {target_language}.`;
         const assemblyKeyInput = document.getElementById('assemblyAiApiKey');
         if (assemblyKeyInput) {
             assemblyKeyInput.value = currentConfig.assemblyAiApiKey || '';
+        }
+        const cloudflareKeyInput = document.getElementById('cloudflareWorkersApiKey');
+        if (cloudflareKeyInput) {
+            cloudflareKeyInput.value = currentConfig.cloudflareWorkersApiKey || '';
         }
         toggleOtherApiKeysSection();
 
@@ -4761,6 +4843,7 @@ Translate to {target_language}.`;
             uiLanguage: (currentConfig.uiLanguage || (navigator.language || 'en')).toString().toLowerCase(),
             geminiApiKey: document.getElementById('geminiApiKey').value.trim(),
             assemblyAiApiKey: (function(){ const el = document.getElementById('assemblyAiApiKey'); return el ? el.value.trim() : ''; })(),
+            cloudflareWorkersApiKey: (function(){ const el = document.getElementById('cloudflareWorkersApiKey'); return el ? el.value.trim() : ''; })(),
             otherApiKeysEnabled: true,
             autoSubs: {
                 ...currentConfig.autoSubs,
@@ -5048,19 +5131,15 @@ Translate to {target_language}.`;
         
 
         try {
-                if (existingToken) {
-                    // FIXED: Validate token format before attempting update
-                    // Support both session tokens (hex) and URL-safe base64 tokens for localhost
-                    const isValidTokenFormat = isValidConfigToken(existingToken);
+            if (existingToken) {
+                // Validate token format before attempting update (session tokens only)
+                const isValidTokenFormat = isValidSessionToken(existingToken);
 
-
-                    if (!isValidTokenFormat) {
-                        
-                        localStorage.removeItem(TOKEN_KEY);
-                        existingToken = null;
+                if (!isValidTokenFormat) {
+                    localStorage.removeItem(TOKEN_KEY);
+                    existingToken = null;
                 } else {
                     // Try to update existing session first
-                    
                     try {
                         const encodedToken = encodeURIComponent(existingToken);
                         const updateResponse = await fetch(`/api/update-session/${encodedToken}`, {
@@ -5073,10 +5152,8 @@ Translate to {target_language}.`;
                         });
 
                         // FIXED: Better error handling for different response codes
-                        
                         if (updateResponse.status === 404 || updateResponse.status === 410) {
                             // Token not found or expired - create new session
-                            
                             showAlert(tConfig('config.alerts.sessionExpiredCreating', {}, 'Session expired. Creating new session...'), 'info', 'config.alerts.sessionExpiredCreating', {});
                             localStorage.removeItem(TOKEN_KEY);
                             existingToken = null;

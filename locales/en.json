@@ -777,6 +777,8 @@
         "geminiModelRequired": "Please select a Gemini model",
         "assemblyAiKeyRequired": "AssemblyAI API key is required for AssemblyAI mode",
         "assemblyAiKeyInvalid": "AssemblyAI API key is invalid",
+        "cloudflareWorkersKeyRequired": "Cloudflare Workers AI key is required for auto-subs (xSync)",
+        "cloudflareWorkersKeyFormat": "Cloudflare Workers AI key must be in ACCOUNT_ID|TOKEN format",
         "validating": "Validating...",
         "mainProviderEnable": "Enable {provider} to use it as Main Provider",
         "mainProviderKeyRequired": "API key required for {provider}",
@@ -910,6 +912,13 @@
       },
       "otherApiKeys": {
         "title": "Other API Keys",
+        "cloudflare": {
+          "label": "Cloudflare Workers AI (Auto-Subs)",
+          "helper": "Used by Automatic Subtitles via xSync. Format: ACCOUNT_ID|TOKEN.",
+          "placeholder": "ACCOUNT_ID|TOKEN",
+          "validateTitle": "Validate Cloudflare Workers AI key",
+          "validateCta": "Test"
+        },
         "assembly": {
           "label": "AssemblyAI API Key",
           "helper": "Used for Automatic Subtitles via AssemblyAI.",

@@ -1688,7 +1688,7 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
     }
     return { accountId: '', token: cleaned };
   };
-  const cfKey = (config.providers?.cfworkers?.apiKey || config.providers?.cloudflare?.apiKey || '').toString();
+  const cfKey = (config.cloudflareWorkersApiKey || '').toString();
   const cfClient = (() => {
     const creds = parseCfCreds(cfKey);
     return creds.accountId && creds.token ? creds : null;
@@ -5221,17 +5221,18 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
       const model = entry?.config?.model || (config.secondaryProvider.toLowerCase() === 'gemini' ? config.geminiModel : '');
       addIfEnabled(config.secondaryProvider, `Secondary: ${formatLabel(config.secondaryProvider, model)}`, model);
     }
-    Object.keys(providers || {}).forEach(key => {
-      const model = providers[key]?.model || '';
-      addIfEnabled(key, `Provider: ${formatLabel(key, model)}`, model);
-    });
-    return options;
-  })();
-  const cfKey = (config.providers?.cfworkers?.apiKey || config.providers?.cloudflare?.apiKey || '').toString();
+  Object.keys(providers || {}).forEach(key => {
+    const model = providers[key]?.model || '';
+    addIfEnabled(key, `Provider: ${formatLabel(key, model)}`, model);
+  });
+  return options;
+})();
+  const cfKey = (config.cloudflareWorkersApiKey || '').toString();
   const cfClient = (() => {
     const creds = parseCfCreds(cfKey);
     return creds.accountId && creds.token ? creds : null;
   })();
+  const cloudflareEnabled = Boolean(cfClient);
   // AssemblyAI mode should only be selectable when a key is configured
   const assemblyEnabled = Boolean(config.providers?.assemblyai?.apiKey || config.assemblyAiApiKey);
 
@@ -6405,7 +6406,7 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
         if (!isAssembly) {
           const cfCreds = getCfCredentials();
           if (!cfCreds) {
-            const msg = 'Cloudflare Workers AI credentials missing in config; extension cannot transcribe.';
+            const msg = 'Cloudflare Workers AI key missing (Configure > Other API Keys); extension cannot transcribe.';
             appendLog(msg, 'error');
             setStatus(msg);
             return;
@@ -6792,7 +6793,15 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
   }
 
   const preferredMode = (config?.autoSubs?.defaultMode || 'cloudflare').toLowerCase();
-  const defaultMode = (preferredMode === 'assemblyai' && !assemblyEnabled) ? 'cloudflare' : preferredMode;
+  const defaultMode = (() => {
+    if (preferredMode === 'cloudflare' && !cloudflareEnabled) {
+      return assemblyEnabled ? 'assemblyai' : preferredMode;
+    }
+    if (preferredMode === 'assemblyai' && !assemblyEnabled && cloudflareEnabled) {
+      return 'cloudflare';
+    }
+    return preferredMode;
+  })();
   const defaults = {
     mode: defaultMode,
     whisperModel: config?.whisperModel || '@cf/openai/whisper',
@@ -7802,7 +7811,7 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
             <label for="autoSubsMode">${escapeHtml(copy.steps.modeLabel)}</label>
             <select id="autoSubsMode">
               <option value="local" disabled>${escapeHtml(copy.steps.modeLocal)}</option>
-              <option value="cloudflare" selected>${escapeHtml(copy.steps.modeRemote)}</option>
+              <option value="cloudflare"${cloudflareEnabled ? '' : ' disabled'}>${escapeHtml(copy.steps.modeRemote)}</option>
               <option value="assemblyai"${assemblyEnabled ? '' : ' disabled'}>${escapeHtml(copy.steps.modeAssembly)}</option>
             </select>
             <p class="muted mode-helper" id="modeHelperText">${escapeHtml(copy.steps.modeHelper)}</p>
