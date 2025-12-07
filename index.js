@@ -18,7 +18,6 @@ const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
 const { pipeline } = require('stream/promises');
-const ffmpegPath = require('ffmpeg-static');
 
 const { parseConfig, getDefaultConfig, buildManifest, normalizeConfig, getLanguageSelectionLimits, getDefaultProviderParameters, mergeProviderParameters } = require('./src/utils/config');
 const { srtPairToWebVTT } = require('./src/utils/subtitle');
@@ -359,81 +358,11 @@ async function extractAudioWithFfmpeg(streamUrl, options = {}, logger = null) {
             if (typeof logger === 'function') logger(message, level);
         } catch (_) { /* ignore logger errors */ }
     };
-    const binary = ffmpegPath;
-    if (!binary) {
-        throw new Error('FFmpeg binary not available. Install ffmpeg-static to enable audio extraction.');
-    }
-    const maxBytes = Number(options.maxBytes) > 0 ? Number(options.maxBytes) : AUTOSUB_MAX_AUDIO_BYTES;
-    const timeoutMs = Number(options.timeoutMs) > 0 ? Number(options.timeoutMs) : Math.max(AUTOSUB_FETCH_TIMEOUT_MS, 60_000);
-    const args = [
-        '-hide_banner',
-        '-loglevel', 'error',
-        '-nostdin',
-        '-i', streamUrl,
-        '-vn',
-        '-ac', '1',
-        '-ar', '16000',
-        '-f', 'wav',
-        'pipe:1'
-    ];
-
-    logStep(`FFmpeg fallback: decoding audio from stream (limit ${formatBytes(maxBytes)})`, 'info');
-
-    return await new Promise((resolve, reject) => {
-        const child = spawn(binary, args, { stdio: ['ignore', 'pipe', 'pipe'] });
-        const chunks = [];
-        let total = 0;
-        let killed = false;
-        let stderrBuf = '';
-        const timer = setTimeout(() => {
-            killed = true;
-            child.kill('SIGKILL');
-        }, timeoutMs);
-
-        const cleanup = () => clearTimeout(timer);
-
-        child.stdout.on('data', (chunk) => {
-            total += chunk.length;
-            if (total > maxBytes) {
-                killed = true;
-                stderrBuf = `FFmpeg output exceeded ${formatBytes(maxBytes)}`;
-                child.kill('SIGKILL');
-                return;
-            }
-            chunks.push(chunk);
-        });
-
-        child.stderr.on('data', (chunk) => {
-            if (stderrBuf.length < 4000) {
-                stderrBuf += chunk.toString('utf8');
-            }
-        });
-
-        child.on('error', (error) => {
-            cleanup();
-            reject(new Error(`FFmpeg failed to start: ${error.message || error}`));
-        });
-
-        child.on('close', (code, signal) => {
-            cleanup();
-            if (killed && total === 0) {
-                return reject(new Error(`FFmpeg was terminated (${signal || 'killed'}). ${stderrBuf || 'No output captured.'}`));
-            }
-            if (code !== 0 || killed) {
-                const reason = stderrBuf ? stderrBuf.trim() : `exit code ${code}`;
-                return reject(new Error(`FFmpeg exited with error: ${reason}`));
-            }
-            const buffer = Buffer.concat(chunks);
-            logStep(`FFmpeg produced ${formatBytes(buffer.length)} of audio`, 'info');
-            resolve({
-                buffer,
-                bytes: buffer.length,
-                source: 'ffmpeg',
-                contentType: 'audio/wav',
-                filename: 'audio.wav'
-            });
-        });
-    });
+    // FFmpeg support disabled outside SubMaker xSync to avoid bundled binary installs
+    logStep('FFmpeg extraction is disabled in this build', 'warn');
+    const error = new Error('FFmpeg extraction is disabled in this build');
+    error.code = 'FFMPEG_DISABLED';
+    throw error;
 }
 
 async function downloadStreamAudio(streamUrl, options = {}, logger = null) {
@@ -510,20 +439,17 @@ async function downloadStreamAudio(streamUrl, options = {}, logger = null) {
             if (playlistLike || isPlaylistContentType) reasons.push('playlist/manifest detected');
             if (htmlLike) reasons.push('HTML response detected');
             if (!looksAudioType && !looksAudioByUrl) reasons.push('content is not recognised as audio');
-            logStep(`HTTP fetch not usable (${reasons.join('; ') || 'untrusted response'}); switching to FFmpeg fallback`, 'warn');
+            logStep(`HTTP fetch not usable (${reasons.join('; ') || 'untrusted response'}); FFmpeg fallback is disabled`, 'warn');
         } else if (response) {
             clearTimeout(timeout);
             logStep(`HTTP fetch failed (status ${response.status})`, 'warn');
         }
     }
 
-    // Fallback to FFmpeg extraction for adaptive streams or when HTTP fetch failed
-    try {
-        return await extractAudioWithFfmpeg(streamUrl, { maxBytes, timeoutMs }, logger);
-    } catch (error) {
-        logStep(`FFmpeg extraction failed: ${error.message || error}`, 'error');
-        throw error;
-    }
+    // FFmpeg fallback disabled; if we reach here, we cannot fetch audio safely
+    const err = new Error('Unable to fetch audio stream without FFmpeg support');
+    err.code = 'FFMPEG_DISABLED';
+    throw err;
 }
 
 function formatTimestamp(seconds = 0) {
