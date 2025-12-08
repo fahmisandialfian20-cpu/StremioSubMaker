@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## SubMaker v1.4.19
+
+- **Learn mode stability:** Fixes missing `videoId` handling that was causing Learn-mode VTT requests to throw, and logs full error objects for translation/Learn failures to aid debugging.
+
 ## SubMaker v1.4.18
 
 - **Config page experience:** Config UI copy reorganized (new Cloudflare Workers auto-subs field + validator, refreshed toolbox instructions, advanced settings split, icon/section styling, mobile preview), and Cloudflare/Assembly keys are preserved for auto-subs flows.
