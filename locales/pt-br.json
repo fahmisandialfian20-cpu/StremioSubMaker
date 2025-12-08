@@ -379,10 +379,10 @@
           "hash": "Hash",
           "decode": "Decodificação",
           "decodeWorking": "Decodificando com FFmpeg",
-          "decodeReady": "Decodificação pronta",
+          "decodeReady": "OK",
           "decodeError": "Falha na decodificação",
           "versionFallback": "n/a",
-          "pending": "pendente"
+          "pending": "WAITING"
         },
         "extension": {
           "waiting": "Aguardando extensão...",

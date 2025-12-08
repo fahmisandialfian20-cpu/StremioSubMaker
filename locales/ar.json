@@ -379,10 +379,10 @@
           "hash": "تجزئة (Hash)",
           "decode": "فك التشفير",
           "decodeWorking": "فك التشفير عبر FFmpeg",
-          "decodeReady": "اكتمل فك التشفير",
+          "decodeReady": "OK",
           "decodeError": "فشل فك التشفير",
           "versionFallback": "غير متاح",
-          "pending": "قيد الانتظار"
+          "pending": "WAITING"
         },
         "extension": {
           "waiting": "بانتظار الامتداد...",

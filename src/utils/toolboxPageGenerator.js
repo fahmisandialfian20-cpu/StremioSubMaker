@@ -2881,7 +2881,7 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
           <span class="status-dot ok"></span>
           <div class="status-labels">
             <span class="label-eyebrow">${t('toolbox.autoSubs.badges.hash', {}, 'Hash')}</span>
-            <strong>${escapeHtml(videoHash || t('toolbox.autoSubs.badges.pending', {}, 'pending'))}</strong>
+            <strong>${escapeHtml(videoHash || t('toolbox.autoSubs.badges.pending', {}, 'WAITING'))}</strong>
           </div>
         </div>
       </div>
@@ -5397,9 +5397,9 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
         needRun: (copy?.locks && copy.locks.needRun) || tt('toolbox.autoSubs.locks.needRun', {}, 'Run auto-subs to unlock downloads.')
       };
       const decodeLabels = {
-        pending: copy?.badges?.pending || tt('toolbox.autoSubs.badges.pending', {}, 'pending'),
+        pending: copy?.badges?.pending || tt('toolbox.autoSubs.badges.pending', {}, 'WAITING'),
         working: copy?.badges?.decodeWorking || tt('toolbox.autoSubs.badges.decodeWorking', {}, 'FFmpeg decoding'),
-        ready: tt('toolbox.autoSubs.badges.decodeReady', {}, 'Ready'),
+        ready: tt('toolbox.autoSubs.badges.decodeReady', {}, 'OK'),
         error: copy?.badges?.decodeError || tt('toolbox.autoSubs.badges.decodeError', {}, 'Decode failed')
       };
       function setDecodeBadge(tone, text, pulsing = false) {
@@ -5970,9 +5970,16 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
         const { valueEl, dotEl, baseLabel } = getPillParts(pill);
         pill.classList.remove('check', 'warn', 'danger');
         pill.classList.add(state);
-        const okLabel = tt('toolbox.autoSubs.status.ok', {}, 'Ready');
+        const okLabel = tt('toolbox.autoSubs.status.ok', {}, 'OK');
+        const waitingLabel = copy?.badges?.pending || tt('toolbox.autoSubs.badges.pending', {}, 'WAITING');
         if (valueEl && baseLabel) {
-          valueEl.textContent = state === 'check' ? okLabel : `- ${baseLabel}`;
+          if (state === 'check') {
+            valueEl.textContent = okLabel;
+          } else if (state === 'warn') {
+            valueEl.textContent = waitingLabel;
+          } else {
+            valueEl.textContent = baseLabel;
+          }
         }
         if (dotEl) {
           const tone = state === 'check' ? 'ok' : state === 'danger' ? 'bad' : 'warn';
@@ -6274,7 +6281,7 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
         const cacheFlag = cacheBlocked || hasMismatch;
         state.cacheBlocked = cacheFlag;
         if (els.hashBadgeValue) {
-          const fallback = tt('toolbox.autoSubs.badges.pending', {}, 'pending');
+          const fallback = tt('toolbox.autoSubs.badges.pending', {}, 'WAITING');
           const badgeValue = linked || streamHash || fallback;
           els.hashBadgeValue.textContent = badgeValue;
         }
@@ -6978,10 +6985,10 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
       hash: t('toolbox.autoSubs.badges.hash', {}, 'Hash'),
       decode: t('toolbox.autoSubs.badges.decode', {}, 'Decode'),
       decodeWorking: t('toolbox.autoSubs.badges.decodeWorking', {}, 'FFmpeg decoding'),
-      decodeReady: t('toolbox.autoSubs.badges.decodeReady', {}, 'Decode ready'),
+      decodeReady: t('toolbox.autoSubs.badges.decodeReady', {}, 'OK'),
       decodeError: t('toolbox.autoSubs.badges.decodeError', {}, 'Decode failed'),
       versionFallback: t('toolbox.autoSubs.badges.versionFallback', {}, 'n/a'),
-      pending: t('toolbox.autoSubs.badges.pending', {}, 'pending')
+      pending: t('toolbox.autoSubs.badges.pending', {}, 'WAITING')
     },
     hash: {
       waiting: t('toolbox.autoSubs.hash.waiting', {}, 'Waiting for stream hash...'),
