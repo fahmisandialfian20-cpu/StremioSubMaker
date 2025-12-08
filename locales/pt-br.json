@@ -178,7 +178,7 @@
         "eyebrow": "Sub Toolbox",
         "title": "Escolha uma ferramenta sem sair do seu stream",
         "body": "Use o botão Sub Toolbox na lista de legendas do Stremio. Suas chaves de API salvas, idiomas de destino e cache vêm com você automaticamente.",
-        "primary": "Painel de tradução",
+        "primary": "Status da tradução",
         "secondary": "Configurar"
       },
       "toast": {
@@ -194,10 +194,10 @@
         "stream": "Stream"
       },
       "tools": {
-        "eyebrow": "Prateleira de Ferramentas",
+        "eyebrow": "Prateleira de ferramentas",
         "translate": {
           "title": "Traduzir arquivos SRT",
-          "body": "Faça upload de arquivos .srt/.vtt/.ass e mantenha cache + preferências de idioma intactos.",
+          "body": "Envie arquivos .srt/.vtt/.ass e mantenha o cache e as preferências de idioma.",
           "cta": "Traduzir um arquivo"
         },
         "embedded": {

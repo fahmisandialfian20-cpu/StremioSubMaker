@@ -2735,7 +2735,7 @@ Translate to {target_language}.`;
             } else {
                 if (requiresSelection && learnCount === 0) {
                     if (errorDiv) {
-                        errorDiv.textContent = tConfig('validation.learnTargetMissing', {}, 'Learn Mode requires at least one target language');
+                        errorDiv.textContent = tConfig('config.validation.learnRequired', {}, 'Learn Mode requires at least one target language');
                         errorDiv.classList.add('show');
                     }
                     return false;
@@ -5093,7 +5093,7 @@ Translate to {target_language}.`;
             }
 
             if (config.learnMode && !validateLanguageSelection('learn')) {
-                errors.push(`⚠️ ${tConfig('config.validation.noTranslationRequired', {}, 'Please select at least one language for Just Fetch mode')}`);
+                errors.push(`⚠️ ${tConfig('config.validation.learnRequired', {}, 'Learn Mode requires at least one target language')}`);
             }
         } else {
             // In no-translation mode, validate language count bounds

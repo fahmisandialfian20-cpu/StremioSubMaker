@@ -30,7 +30,7 @@
     },
     "api": {
       "fileUpload": {
-        "missingConfig": "Falta config o videoId",
+        "missingConfig": "Falta la configuración o el videoId",
         "loadFailed": "No se pudo cargar la página de traducción de archivos"
       }
     },
@@ -208,7 +208,7 @@
         "sync": {
           "title": "Sincronizar subtítulos",
           "body": "Corrige desajustes de tiempo con offsets o la extensión de Chrome y guarda en tu sesión.",
-          "cta": "Abrir estudio de sync"
+          "cta": "Abrir estudio de sincronización"
         },
         "auto": {
           "title": "Subtítulos automáticos",
@@ -1119,20 +1119,20 @@
       }
     },
     "nav": {
-      "refresh": "Refrescar stream",
-      "refreshTitle": "Ir a tu último stream",
-      "refreshLoading": "Refrescando...",
-      "refreshEmpty": "No hay stream reciente",
-      "refreshError": "Error al refrescar",
+      "refresh": "Actualizar stream",
+      "refreshTitle": "Ir a tu stream más reciente",
+      "refreshLoading": "Actualizando...",
+      "refreshEmpty": "No hay ningún stream reciente",
+      "refreshError": "Error al actualizar",
       "refreshCurrent": "Ya es el último",
       "refreshMissing": "Faltan datos del stream",
       "streamDetected": "Nuevo stream detectado",
       "mobileMenu": "Abrir menú",
       "subToolbox": "Sub Toolbox",
       "translateFiles": "Traducir archivos",
-      "embeddedSubs": "Extraer subs",
+      "embeddedSubs": "Extraer subtítulos",
       "syncSubtitles": "Sincronizar subtítulos",
-      "automaticSubs": "Subs automáticos",
+      "automaticSubs": "Subtítulos automáticos",
       "configure": "Configurar",
       "youAreHere": "Estás aquí"
     },

@@ -435,14 +435,23 @@
           "transcribePill": "تفريغ صوتي",
           "alignPill": "محاذاة + طوابع زمنية",
           "translatePill": "ترجمة",
-          "deliverPill": "جاهز للتسليم"
+          "deliverPill": "جاهز للتسليم",
+          "singleBatch": "وضع دفعة واحدة",
+          "sendTimestamps": "إرسال الطوابع الزمنية للذكاء الاصطناعي",
+          "providerLabel": "مزود الترجمة",
+          "providerModelLabel": "نموذج الترجمة",
+          "providerModelPlaceholder": "استخدام الإعداد الافتراضي للمزود",
+          "translationsEmpty": "لا توجد ترجمات بعد.",
+          "translationCardTitle": "ترجمة {lang}",
+          "translationCardFallback": "ترجمة مترجمة"
         },
         "actions": {
           "start": "بدء الترجمات التلقائية",
           "preview": "معاينة الخطة",
           "progress": "التقدم",
           "downloadSrt": "تحميل SRT",
-          "downloadVtt": "تحميل VTT"
+          "downloadVtt": "تحميل VTT",
+          "downloadTranslation": "تحميل {lang}"
         },
         "options": {
           "addTargets": "أضف لغات الهدف في الإعدادات"
@@ -461,11 +470,27 @@
           "done": "تم. جاهز للتحميل.",
           "previewPlan": "المسار: جلب -> تفريغ صوتي -> محاذاة -> ترجمة -> تسليم.",
           "noOutput": "لا توجد مخرجات بعد.",
-          "translateFallbackTarget": "الأهداف"
+          "translateFallbackTarget": "الأهداف",
+          "transcriptionDone": "اكتمل التفريغ الصوتي. جارٍ تجهيز التحميلات...",
+          "failedPrefix": "فشل: "
         },
         "logs": {
           "assemblyMissingKey": "يتطلب وضع AssemblyAI مفتاح API. أضفه في الإعدادات.",
-          "errorPrefix": "خطأ: "
+          "errorPrefix": "خطأ: ",
+          "noStream": "الصق رابط بث أولاً.",
+          "noTargets": "اختر لغة هدف واحدة على الأقل أو عطّل الترجمة.",
+          "sendingRequest": "جارٍ إرسال الطلب إلى Cloudflare Workers AI...",
+          "finished": "تم. التحميلات جاهزة.",
+          "cacheSkipped": "تم تخطي رفع التخزين المؤقت بسبب عدم تطابق التجزئة."
+        },
+        "hash": {
+          "mismatch": "عدم تطابق في التجزئة: المرتبط {linked} مقابل المُدخل {stream}. تم تعطيل رفع التخزين المؤقت.",
+          "linked": "مرتبط: {linked} | البث: {stream}{cache}",
+          "waiting": "بانتظار تجزئة البث...",
+          "cacheDisabled": "تم تعطيل التخزين المؤقت لهذه العملية."
+        },
+        "providers": {
+          "missing": "لا يوجد مزود مُكوَّن"
         }
       },
       "footnote": "صندوق الأدوات مرتبط بجلستك والبث الحالي. اترك علامة التبويب هذه مفتوحة أثناء البث لأفضل تجربة."
