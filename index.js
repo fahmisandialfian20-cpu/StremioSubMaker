@@ -4154,7 +4154,7 @@ app.get('/addon/:config/translate/:sourceFileId/:targetLang', normalizeSubtitleF
     } catch (error) {
         const t = res.locals?.t || getTranslatorFromRequest(req, res);
         if (respondStorageUnavailable(res, error, '[Translation]', t)) return;
-        log.error(() => '[Translation] Error:', error);
+        log.error(() => ['[Translation] Error:', error]);
         res.status(500).send(t('server.errors.translationFailed', { reason: error.message }, `Translation failed: ${error.message}`));
     }
 });
@@ -4195,6 +4195,7 @@ app.get('/addon/:config/learn/:sourceFileId/:targetLang', normalizeSubtitleForma
                 enabled: true
             }
         };
+        const videoId = req.query?.videoId || req.query?.id || config.videoId || config.lastStream?.videoId || '';
 
         const { cacheKey, runtimeKey } = generateCacheKeys(config, sourceFileId, targetLang);
 
@@ -4276,7 +4277,7 @@ app.get('/addon/:config/learn/:sourceFileId/:targetLang', normalizeSubtitleForma
         if (hasCache) {
             const translatedSrt = await handleTranslation(sourceFileId, targetLang, config, {
                 filename: sourceContent ? `learn_${targetLang}.srt` : 'unknown',
-                videoId: config.videoId || videoId || 'unknown',
+                videoId: videoId || 'unknown',
                 sourceLanguage: 'und',
                 from: 'learn'
             });
@@ -4289,7 +4290,7 @@ app.get('/addon/:config/learn/:sourceFileId/:targetLang', normalizeSubtitleForma
         // Start translation in background and serve a loading VTT (source on top, status on bottom)
         handleTranslation(sourceFileId, targetLang, config, {
             filename: sourceContent ? `learn_${targetLang}.srt` : 'unknown',
-            videoId: config.videoId || videoId || 'unknown',
+            videoId: videoId || 'unknown',
             sourceLanguage: 'und',
             from: 'learn'
         }).catch(() => { });
@@ -4303,7 +4304,7 @@ app.get('/addon/:config/learn/:sourceFileId/:targetLang', normalizeSubtitleForma
     } catch (error) {
         const t = res.locals?.t || getTranslatorFromRequest(req, res);
         if (respondStorageUnavailable(res, error, '[Learn]', t)) return;
-        log.error(() => '[Learn] Error:', error);
+        log.error(() => ['[Learn] Error:', error]);
         res.status(500).send(t('server.errors.learnFailed', {}, 'Failed to build learning subtitles'));
     }
 });
