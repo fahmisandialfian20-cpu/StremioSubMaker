@@ -866,10 +866,6 @@
         "secondary": {
           "label": "Provedor Secundário<br><span class=\"label-description\">Se o provedor principal der erro (429/503/proibido/outro), repete o lote falho com este provedor, depois continua com o provedor principal.</span>"
         },
-        "fallback": {
-          "label": "Provedor de Fallback",
-          "description": "Usado apenas quando o provedor principal retorna um erro. Alterna sem problemas."
-        },
         "placeholders": {
           "openai": "Chave da API OpenAI",
           "anthropic": "Chave da API Anthropic",
@@ -963,7 +959,8 @@
         "title": "Configurações de Tradução",
         "workflow": {
           "label": "Fluxo de Trabalho de Tradução",
-          "description": "Alternar entre modos é recomendado se você tiver problemas de sincronia de tradução. O modo \"Timestamps Originais\" remove os timestamps e envia para a IA uma lista numerada de entradas, depois reconstrói o SRT com os timestamps originais. \"Enviar Timestamps para IA\" envia as legendas COM códigos de tempo e confia que a IA devolva os tempos corretos. Adicionado para preparar o addon para o futuro.",
+          "description": "Alternar entre modos é recomendado se você tiver problemas de sincronia de tradução.",
+          "tooltip": "O modo \"Timestamps Originais\" remove os timestamps e envia para a IA uma lista numerada de entradas, depois reconstrói o SRT com os timestamps originais. \"Enviar Timestamps para IA\" envia as legendas COM códigos de tempo e confia que a IA devolva os tempos corretos. Adicionado para preparar o addon para o futuro.",
           "original": "Timestamps Originais (Padrão)",
           "ai": "Enviar Timestamps para IA"
         },
@@ -977,7 +974,7 @@
         },
         "database": {
           "label": "Banco de Dados SubMaker",
-          "description": "O banco de dados do SubMaker armazena traduções permanentemente para reduzir custos/uso de API de IA da comunidade. O modo Bypass ignora o banco compartilhado e guarda traduções temporariamente (12 horas).",
+          "description": "O banco de dados do SubMaker armazena traduções permanentemente para reduzir custos/uso de API de IA da comunidade.\nO modo Bypass ignora o banco compartilhado e guarda traduções temporariamente (12 horas).",
           "use": "Usar Banco de Dados SubMaker",
           "bypass": "Ignorar Cache (Forçar Retradução)",
           "noteTitle": "⚠️ Modo Bypass Necessário:"

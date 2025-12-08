@@ -863,10 +863,6 @@
         "secondary": {
           "label": "Secondary Provider<br><span class=\"label-description\">If the main provider errors (429/503/prohibited/other), retry the failed batch with this provider, then continue with the main provider.</span>"
         },
-        "fallback": {
-          "label": "Fallback Provider",
-          "description": "Used only when the main provider returns an error. Falls back seamlessly."
-        },
         "placeholders": {
           "openai": "OpenAI API key",
           "anthropic": "Anthropic API key",
@@ -960,7 +956,8 @@
         "title": "Translation Settings",
         "workflow": {
           "label": "Translation Workflow",
-          "description": "Switching between modes is recommended if you have translation sync problems. \"Original Timestamps\" mode removes timestamps and sends a numbered list of subtitle entries to the AI, then reconstructs the SRT with the original timestamps. \"Send Timestamps to AI\" sends the subtitles WITH timecodes and trusts the AI to return correct timestamps. Added for future-proofing the addon.",
+          "description": "Switching between modes is recommended if you have translation sync problems.",
+          "tooltip": "\"Original Timestamps\" mode removes timestamps and sends a numbered list of subtitle entries to the AI, then reconstructs the SRT with the original timestamps. \"Send Timestamps to AI\" sends the subtitles WITH timecodes and trusts the AI to return correct timestamps. Added for future-proofing the addon.",
           "original": "Original Timestamps (Default)",
           "ai": "Send Timestamps to AI"
         },
@@ -974,7 +971,7 @@
         },
         "database": {
           "label": "SubMaker Database",
-          "description": "SubMaker's database caches translations permanently to reduce community AI API costs/usage. Bypass mode skips the shared database and stores translations temporarily (12 hours).",
+          "description": "SubMaker's database caches translations permanently to reduce community AI API costs/usage.\nBypass mode skips the shared database and stores translations temporarily (12 hours).",
           "use": "Use SubMaker Database",
           "bypass": "Bypass Cache (Force Retranslation)",
           "noteTitle": "⚠️ Bypass Mode Required:"

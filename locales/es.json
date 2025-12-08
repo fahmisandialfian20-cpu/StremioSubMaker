@@ -866,10 +866,6 @@
         "secondary": {
           "label": "Proveedor secundario<br><span class=\"label-description\">Si el principal falla (429/503/prohibido/u otro), reintenta con este proveedor y luego continúa con el principal.</span>"
         },
-        "fallback": {
-          "label": "Proveedor de respaldo",
-          "description": "Solo se usa cuando el proveedor principal devuelve un error. Cambia automáticamente."
-        },
         "placeholders": {
           "openai": "API key de OpenAI",
           "anthropic": "API key de Anthropic",
@@ -963,7 +959,8 @@
         "title": "Ajustes de traducción",
         "workflow": {
           "label": "Flujo de traducción",
-          "description": "Se recomienda alternar si tienes problemas de sincronía. El modo \"Timestamps originales\" quita las marcas de tiempo y envía a la IA una lista numerada de entradas, luego reconstruye el SRT con los tiempos originales. \"Enviar marcas de tiempo a la IA\" envía los subtítulos CON tiempos y confía en que la IA los devuelva correctos. Añadido para futuro.",
+          "description": "Se recomienda alternar si tienes problemas de sincronía.",
+          "tooltip": "El modo \"Timestamps originales\" quita las marcas de tiempo y envía a la IA una lista numerada de entradas, luego reconstruye el SRT con los tiempos originales. \"Enviar marcas de tiempo a la IA\" envía los subtítulos CON tiempos y confía en que la IA los devuelva correctos. Añadido para futuro.",
           "original": "Marcas de tiempo originales (por defecto)",
           "ai": "Enviar marcas de tiempo a la IA"
         },
@@ -977,7 +974,7 @@
         },
         "database": {
           "label": "Base de datos SubMaker",
-          "description": "La base de datos de SubMaker guarda traducciones de forma permanente para reducir costos/uso de API de IA comunitaria. El modo Omitir caché ignora la base compartida y guarda traducciones temporalmente (12 h).",
+          "description": "La base de datos de SubMaker guarda traducciones de forma permanente para reducir costos/uso de API de IA comunitaria.\nEl modo Omitir caché ignora la base compartida y guarda traducciones temporalmente (12 h).",
           "use": "Usar base de datos SubMaker",
           "bypass": "Omitir caché (forzar retraducción)",
           "noteTitle": "⚠️ Se requiere omitir caché:"

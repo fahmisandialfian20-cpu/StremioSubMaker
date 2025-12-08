@@ -970,12 +970,7 @@
                         </div>
                     </label>
                     <div id="secondaryProviderSelectRow" style="margin-top: 0.5rem; display: none;">
-                        <label for="secondaryProviderSelect">
-                            <span data-i18n="config.providersUi.fallback.label">Fallback Provider</span>
-                            <span class="label-description" data-i18n="config.providersUi.fallback.description">Used only when the main provider returns an error. Falls
-                                back seamlessly.</span>
-                        </label>
-                        <select id="secondaryProviderSelect" disabled>
+                        <select id="secondaryProviderSelect" disabled aria-label="Secondary provider selection">
                             <option value="" data-i18n="config.providersUi.selectProvider">Select provider</option>
                         </select>
                     </div>
@@ -984,7 +979,16 @@
                 <div class="form-group">
                     <label for="sendTimestampsToAI" class="form-label">
                         <span class="label-title" data-i18n="config.translationSettings.workflow.label">Translation Workflow</span>
-                        <span class="label-description" data-i18n="config.translationSettings.workflow.description">Switching between modes is recommended if you have translation sync problems. "Original Timestamps" mode removes timestamps and sends a numbered list of subtitle entries to the AI, then reconstructs the SRT with the original timestamps. "Send Timestamps to AI" sends the subtitles WITH timecodes and trusts the AI to return correct timestamps. Added for future-proofing the addon.</span>
+                        <div style="display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap;">
+                            <span class="label-description" data-i18n="config.translationSettings.workflow.description">Switching between modes is recommended if you have translation sync problems.</span>
+                            <div class="v3-warning-tooltip">
+                                <span class="warning-icon" tabindex="0"
+                                    aria-label="Translation workflow details" data-i18n="config.translationSettings.workflow.tooltip" data-i18n-attr="aria-label">?</span>
+                                <div class="tooltip-bubble" role="tooltip" aria-hidden="true" id="translationWorkflowTooltip" data-i18n="config.translationSettings.workflow.tooltip">
+                                    "Original Timestamps" mode removes timestamps and sends a numbered list of subtitle entries to the AI, then reconstructs the SRT with the original timestamps. "Send Timestamps to AI" sends the subtitles WITH timecodes and trusts the AI to return correct timestamps. Added for future-proofing the addon.
+                                </div>
+                            </div>
+                        </div>
                     </label>
                     <select id="sendTimestampsToAI" class="styled-select">
                         <option value="original" data-i18n="config.translationSettings.workflow.original">Original Timestamps (Default)</option>
@@ -995,7 +999,7 @@
                 <div class="form-group">
                     <label for="databaseMode" class="form-label">
                         <span class="label-title" data-i18n="config.translationSettings.database.label">SubMaker Database</span>
-                        <span class="label-description" data-i18n="config.translationSettings.database.description">SubMaker's database caches translations permanently to reduce community AI API costs/usage. Bypass mode skips the shared database and stores translations temporarily (12 hours).</span>
+                        <span class="label-description" data-i18n="config.translationSettings.database.description">SubMaker's database caches translations permanently to reduce community AI API costs/usage.<br>Bypass mode skips the shared database and stores translations temporarily (12 hours).</span>
                     </label>
                     <select id="databaseMode" class="styled-select">
                         <option value="use" data-i18n="config.translationSettings.database.use">Use SubMaker Database</option>

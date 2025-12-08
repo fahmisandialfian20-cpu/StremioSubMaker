@@ -866,10 +866,6 @@
         "secondary": {
           "label": "المزود الثانوي<br><span class=\"label-description\">إذا أخطأ المزود الرئيسي (429/503/محظور/آخر)، أعد محاولة الدفعة الفاشلة مع هذا المزود، ثم استمر مع المزود الرئيسي.</span>"
         },
-        "fallback": {
-          "label": "المزود الاحتياطي",
-          "description": "يستخدم فقط عندما يعيد المزود الرئيسي خطأ. يعمل كبديل بسلاسة."
-        },
         "placeholders": {
           "openai": "مفتاح OpenAI API",
           "anthropic": "مفتاح Anthropic API",
@@ -963,7 +959,8 @@
         "title": "إعدادات الترجمة",
         "workflow": {
           "label": "سير عمل الترجمة",
-          "description": "Switching between modes is recommended if you have translation sync problems. \"Original Timestamps\" mode removes timestamps and sends a numbered list of subtitle entries to the AI, then reconstructs the SRT with the original timestamps. \"Send Timestamps to AI\" sends the subtitles WITH timecodes and trusts the AI to return correct timestamps. Added for future-proofing the addon.",
+          "description": "Switching between modes is recommended if you have translation sync problems.",
+          "tooltip": "\"Original Timestamps\" mode removes timestamps and sends a numbered list of subtitle entries to the AI, then reconstructs the SRT with the original timestamps. \"Send Timestamps to AI\" sends the subtitles WITH timecodes and trusts the AI to return correct timestamps. Added for future-proofing the addon.",
           "original": "الطوابع الزمنية الأصلية (الافتراضي)",
           "ai": "إرسال الطوابع الزمنية إلى الذكاء الاصطناعي"
         },
@@ -977,7 +974,7 @@
         },
         "database": {
           "label": "قاعدة بيانات SubMaker",
-          "description": "SubMaker's database caches translations permanently to reduce community AI API costs/usage. Bypass mode skips the shared database and stores translations temporarily (12 hours).",
+          "description": "تخزن قاعدة بيانات SubMaker الترجمات بشكل دائم لتقليل تكلفة/استهلاك واجهات برمجة تطبيقات الذكاء الاصطناعي المجتمعية.\nوضع التجاوز يتخطى قاعدة البيانات المشتركة ويخزن الترجمات مؤقتاً (12 ساعة).",
           "use": "استخدام قاعدة بيانات SubMaker",
           "bypass": "تجاوز الذاكرة المؤقتة (فرض إعادة الترجمة)",
           "noteTitle": "⚠️ وضع التجاوز مطلوب:"
