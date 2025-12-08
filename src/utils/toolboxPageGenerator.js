@@ -7037,6 +7037,7 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
       --danger: #ef4444;
       --bg-primary: #f7fafc;
       --surface: #ffffff;
+      --surface-2: #f4f7fc;
       --surface-light: #f3f7fb;
       --surface-muted: #eef2f7;
       --text-primary: #0f172a;
@@ -7057,6 +7058,7 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
       --danger: #ef4444;
       --bg-primary: #0A0E27;
       --surface: #141931;
+      --surface-2: #1e2539;
       --surface-light: #1E2539;
       --surface-muted: #1b2236;
       --text-primary: #E8EAED;
@@ -7077,6 +7079,7 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
       --danger: #ef4444;
       --bg-primary: #000000;
       --surface: #0a0a0a;
+      --surface-2: #151515;
       --surface-light: #151515;
       --surface-muted: #1b1b1b;
       --text-primary: #E8EAED;
