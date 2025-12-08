@@ -68,10 +68,50 @@ function recordStreamActivity(payload) {
   if (!payload || typeof payload.configHash !== 'string' || !payload.configHash.length) return;
 
   const previous = latestByConfig.get(payload.configHash);
+  const incomingId = (payload.videoId || '').toString().trim();
+  const incomingFilename = (payload.filename || '').toString().trim();
+  const incomingHash = (payload.videoHash || '').toString().trim();
+
+  // Treat placeholders/empties as non-authoritative so we don't blow away a good entry
+  const isPlaceholderId = (val) => {
+    const str = (val || '').toString().trim().toLowerCase();
+    if (!str) return true;
+    return str === 'stream and refresh' || str === 'stream & refresh' || str === 'unknown' || str === 'unknown title';
+  };
+
+  const keepPrevious = !!previous;
+  const placeholder = isPlaceholderId(incomingId);
+
+  // If the first ping is a placeholder (with or without details), ignore it; wait for a real stream event
+  if (!keepPrevious && placeholder) {
+    return;
+  }
+
+  let effectiveId = incomingId || previous?.videoId || '';
+  let effectiveFilename = incomingFilename || '';
+  let effectiveHash = incomingHash || '';
+
+  // If this ping carries no useful fields or is clearly a placeholder, treat it as a heartbeat
+  if (keepPrevious && (placeholder || (!incomingFilename && !incomingHash && !incomingId))) {
+    effectiveId = previous.videoId || effectiveId;
+    effectiveFilename = previous.filename || effectiveFilename;
+    effectiveHash = previous.videoHash || effectiveHash;
+  } else {
+    // Fill gaps from previous when the videoId matches but fields are missing
+    if (keepPrevious && previous.videoId === incomingId) {
+      if (!effectiveFilename) effectiveFilename = previous.filename || '';
+      if (!effectiveHash) effectiveHash = previous.videoHash || '';
+    }
+  }
+
+  // If we have no useful data at all and nothing stored, skip recording
+  const hasMeaningfulPayload = Boolean((effectiveId && !isPlaceholderId(effectiveId)) || effectiveFilename || effectiveHash);
+  if (!hasMeaningfulPayload && !previous) return;
+
   const entry = {
-    videoId: payload.videoId || '',
-    filename: payload.filename || '',
-    videoHash: payload.videoHash || '',
+    videoId: effectiveId,
+    filename: effectiveFilename,
+    videoHash: effectiveHash,
     updatedAt: Date.now()
   };
 

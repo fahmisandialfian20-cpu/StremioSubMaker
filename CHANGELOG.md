@@ -7,6 +7,8 @@ All notable changes to this project will be documented in this file.
 - **History storage upgrade:** Translation history now stores all entries per user in a single Redis record with pruning (60 retained, 20 shown) instead of many per-entry keys, eliminating keyspace SCANs on history loads.
 - **Legacy migration:** Older per-entry history keys are auto-read and migrated into the new per-user store on first access, keeping existing history visible without manual cleanup.
 - **Write efficiency:** History updates merge into the per-user store with TTL refresh, reducing Redis churn while still capturing status transitions and metadata changes.
+- **Stream update stability:** Placeholder Stremio pings (missing filename/hash or "Stream and Refresh") no longer overwrite a good linked stream snapshot, preventing duplicate/broken "Update linked stream" toasts on toolbox/sync pages.
+- **Offscreen buffer reuse:** Autosubs and embedded-subtitles offscreen demux now reuse shared buffers and avoid cloning full-span views, so IDB stash logs no longer balloon with one entry per window/buffer.
 
 ## SubMaker v1.4.20
 

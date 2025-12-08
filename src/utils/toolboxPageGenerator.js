@@ -5968,6 +5968,14 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
         return { valueEl, dotEl, baseLabel };
       }
 
+      function setPillLabel(step, label) {
+        if (!label) return;
+        const pill = stepPills[step];
+        if (!pill) return;
+        const { valueEl } = getPillParts(pill);
+        if (valueEl) valueEl.textContent = label;
+      }
+
       function applyPillState(pill, state = 'warn') {
         const { valueEl, dotEl, baseLabel } = getPillParts(pill);
         pill.classList.remove('check', 'warn', 'danger');
@@ -6001,6 +6009,24 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
         const pill = stepPills[step];
         if (!pill) return;
         applyPillState(pill, state);
+      }
+
+      function getSelectedModelLabel() {
+        const selected = (els.model && els.model.selectedOptions && els.model.selectedOptions[0])
+          ? (els.model.selectedOptions[0].textContent || els.model.selectedOptions[0].value || '')
+          : '';
+        const fallback = (els.model && (els.model.value || '')) || '';
+        return (selected || fallback || 'Whisper').toString().trim() || 'Whisper';
+      }
+
+      function getTranscribeStatusLabel(statusText) {
+        if (statusText) return statusText;
+        const mode = (els.modeSelect?.value || '').toLowerCase();
+        if (mode === 'assemblyai') {
+          return tt('toolbox.autoSubs.status.transcribing', { model: 'AssemblyAI' }, 'Transcribing with AssemblyAI');
+        }
+        const modelLabel = getSelectedModelLabel();
+        return tt('toolbox.autoSubs.status.transcribing', { model: modelLabel }, 'Transcribing with Whisper (' + modelLabel + ')');
       }
 
       function setInFlight(active) {
@@ -6216,6 +6242,7 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
         appendServerLogs(serverLogs);
         handleHashStatus(data?.hashes || {}, data?.cacheBlocked);
         markStep('align', 'check');
+        setPillLabel('align', tt('toolbox.autoSubs.logs.alignmentDone', {}, 'Alignment and timestamp generation complete.'));
         setProgress(80);
         appendLog(tt('toolbox.autoSubs.logs.alignmentDone', {}, 'Alignment and timestamp generation complete.'), 'info');
         setPreview((data?.original && data.original.srt) || transcript?.srt || '');
@@ -6231,10 +6258,14 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
           if (failedCount) translateParts.push(tt('toolbox.autoSubs.logs.translationFailed', { count: failedCount }, `${failedCount} failed`));
           const translateLog = [translateSummary, translateParts.join(', ')].filter(Boolean).join(' ');
           appendLog(translateLog, failedCount ? 'warn' : 'success');
+          setPillLabel('translate', translateParts.join(', ') || translateSummary);
         } else {
           markStep('translate', 'warn');
+          const skipLabel = tt('toolbox.autoSubs.status.skipTranslate', {}, 'Skipping translation');
+          setPillLabel('translate', skipLabel);
         }
         markStep('deliver', 'check');
+        setPillLabel('deliver', tt('toolbox.autoSubs.status.done', {}, 'Done. Ready to download.'));
         if (state.decodeStatus !== 'done') {
           markDecodeDone(copy?.badges?.decodeReady || decodeLabels.ready);
         }
@@ -6456,16 +6487,23 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
         if (msg.stage === 'fetch') {
           markDecodeWorking(copy?.badges?.decodeWorking || decodeLabels.working);
           markStep('fetch', logTone === 'error' ? 'danger' : 'check');
+          if (statusText) setPillLabel('fetch', statusText);
         } else if (msg.stage === 'transcribe') {
           if (state.decodeStatus !== 'done') {
             markDecodeDone(copy?.badges?.decodeReady || decodeLabels.ready);
           }
           markStep('transcribe', logTone === 'error' ? 'danger' : 'warn');
+          setPillLabel('transcribe', getTranscribeStatusLabel(statusText));
         } else if (msg.stage === 'package') {
           markStep('align', 'warn');
+          if (statusText) setPillLabel('align', statusText);
         } else if (msg.stage === 'error') {
           markStep('fetch', 'danger');
           markStep('transcribe', 'danger');
+          if (statusText) {
+            setPillLabel('fetch', statusText);
+            setPillLabel('transcribe', statusText);
+          }
         }
       }
 
@@ -6570,7 +6608,13 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
         markStep('transcribe', 'warn');
         markStep('align', 'warn');
         markStep('translate', 'warn');
-        setStatus(tt('toolbox.autoSubs.status.fetching', {}, 'Fetching stream...'));
+        if (!translateEnabled) {
+          const skipLabel = tt('toolbox.autoSubs.status.skipTranslate', {}, 'Skipping translation');
+          setPillLabel('translate', skipLabel);
+        }
+        const fetchLabel = tt('toolbox.autoSubs.status.fetching', {}, 'Fetching stream...');
+        setStatus(fetchLabel);
+        setPillLabel('fetch', fetchLabel);
         setProgress(8);
 
         const assemblyJobId = isAssembly ? ('autosub_' + Date.now() + '_' + Math.random().toString(16).slice(2, 10)) : '';
@@ -6582,7 +6626,9 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
             stopLiveLogs = startAssemblyLiveLogStream(assemblyJobId);
             markStep('fetch', 'warn');
             markStep('transcribe', 'warn');
-            setStatus(tt('toolbox.autoSubs.status.transcribing', { model: 'AssemblyAI' }, 'Transcribing with AssemblyAI'));
+            const transcribeLabel = tt('toolbox.autoSubs.status.transcribing', { model: 'AssemblyAI' }, 'Transcribing with AssemblyAI');
+            setStatus(transcribeLabel);
+            setPillLabel('transcribe', getTranscribeStatusLabel(transcribeLabel));
             const messageId = assemblyJobId || ('autosub_' + Date.now());
             const waitForTranscript = waitForAutoSubResponse(messageId);
             window.postMessage({
@@ -6681,6 +6727,9 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
           markStep('align', 'danger');
           markStep('translate', 'danger');
           const failMsg = tt('toolbox.autoSubs.status.failedPrefix', {}, 'Failed: ') + (error.message || error);
+          setPillLabel('transcribe', failMsg);
+          setPillLabel('align', failMsg);
+          setPillLabel('translate', failMsg);
           setStatus(failMsg);
           appendServerLogs(error?.serverLogs || serverLogs);
           if (error?.cfStatus) {
