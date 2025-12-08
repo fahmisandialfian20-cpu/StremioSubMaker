@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 ## SubMaker v1.4.19
 
 - **Learn mode stability:** Fixes missing `videoId` handling that was causing Learn-mode VTT requests to throw, and logs full error objects for translation/Learn failures to aid debugging.
+- **RTL detection hardening:** RTL language detection now tokenizes language labels (with diacritic stripping) to avoid substring false positives (e.g., Bulgarian/Hungarian) while still wrapping RTL outputs correctly.
+- **Secondary provider persistence:** Config page now keeps the Secondary Provider toggle/selection checked after save + reload, instead of silently clearing the fallback choice.
 
 ## SubMaker v1.4.18
 
