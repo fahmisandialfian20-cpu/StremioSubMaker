@@ -322,10 +322,10 @@
           "extractButton": "Extract Subtitles",
           "extractBlocked": "",
           "hashMismatchInline": "Hashes do not match. Extraction stays blocked until the pasted URL matches your linked stream.",
-        "hashMismatchLine1": "Hashes must match (Linked Stream and Stream URL) before extraction can start.",
-        "hashMismatchLine2": "",
-        "logHeader": "Live log",
-        "logSub": "Auto-filled while extraction runs.",
+          "hashMismatchLine1": "Hashes must match (Linked Stream and Stream URL) before extraction can start.",
+          "hashMismatchLine2": "",
+          "logHeader": "Live log",
+          "logSub": "Auto-filled while extraction runs.",
           "outputsEyebrow": "Outputs",
           "outputsTitle": "Extracted files",
           "outputsEmpty": "No tracks extracted yet. Run extraction above to see them here."
@@ -418,7 +418,7 @@
           "modelMedium": "medium (balanced)",
           "modelTurbo": "Whisper Large V3 Turbo",
           "translateOutput": "Translate to target languages",
-          "sendFullVideo": "Send full video to AssemblyAI (\u22645GB)",
+          "sendFullVideo": "Send full video to AssemblyAI (≤5GB)",
           "sendFullVideoHelper": "If the stream is larger than 5GB, we will fall back to audio extraction automatically.",
           "singleBatch": "Single batch mode",
           "sendTimestamps": "Send timestamps to AI",
@@ -659,7 +659,7 @@
         "loadFallback": "Failed to load {src}"
       },
       "footer": {
-        "love": "Made with <span class=\"footer-heart\">\u2764\ufe0f</span> for Stremio users everywhere",
+        "love": "Made with <span class=\"footer-heart\">❤️</span> for Stremio users everywhere",
         "thanks": "Thank you for using SubMaker! Your support helps make content accessible to everyone."
       },
       "actions": {
@@ -693,8 +693,8 @@
           "onlyOneSourceBody": "When the \"Make\" translation lists are created, they load the subtitles list in the same order of the source language.<br>That means you can test the source language subtitles for the correct sync and only then select the same one on the translation list instead of translating unsync'd subtitles."
         },
         "toolbox": {
-          "title": "\ud83e\uddf0 Sub Toolbox Instructions",
-          "howTitle": "\ud83d\ude80 How to use Sub Toolbox:",
+          "title": "🧰 Sub Toolbox Instructions",
+          "howTitle": "🚀 How to use Sub Toolbox:",
           "step1": "In Stremio, open the subtitles list and click <strong>\"Sub Toolbox\"</strong>.",
           "step2": "Right-click the playing stream/video in Stremio and choose <strong>\"Download Subtitles\"</strong> to launch the toolbox in your browser.",
           "step3": "Pick a tool: Extract & translate embedded subs, Translate subtitle files, Synchronize subtitles, or Automatic subtitles.",
@@ -904,9 +904,9 @@
           },
           "hintTitle": "Bad/broken or out-of-sync translation?",
           "hintBody": "Quickly triple-click the subtitle to force a re-translation.",
-          "betaTitle": "\u26a1 2.5 Pro usage is still in Beta.",
+          "betaTitle": "⚡ 2.5 Pro usage is still in Beta.",
           "betaAdvice": "If you have translation problems, use Flash-Lite.",
-          "rateWarningTitle": "\u26a0\ufe0f Free Tier Limitation:",
+          "rateWarningTitle": "⚠️ Free Tier Limitation:",
           "rateWarningBody": "If using a free API key, Gemini 2.5 Pro may trigger rate limits (HTTP 429). You'll likely only be able to translate one subtitle at a time."
         }
       },
@@ -950,7 +950,7 @@
       },
       "learnMode": {
         "label": "Learn Mode",
-        "description": "Adds \"Learn (Language)\" entries that output dual-language WebVTT with source and translated lines for language learning.",
+        "description": "Adds \"Learn (Language)\" entries that output dual-language WebVTT with source and translated lines for language learning. After enabling, set Target Learn Languages in the section above.",
         "orderLabel": "Learn Mode Subtitle Order",
         "orderDescription": "Choose which language appears at the top and bottom of the screen.",
         "sourceTop": "Source Top - Target Bottom",
@@ -960,7 +960,7 @@
         "title": "Translation Settings",
         "workflow": {
           "label": "Translation Workflow",
-          "description": "Switching between modes is recommended if you have translation sync problems. Our main translation workflow removes timestamps and sends the subtitles numbered to the AI, then reconstructs the SRT with the original timestamps. \"Send Timestamps to AI\" sends the subtitles WITH timecodes and trusts the AI to return correct timestamps. Added for future-proofing the addon.",
+          "description": "Switching between modes is recommended if you have translation sync problems. \"Original Timestamps\" mode removes timestamps and sends a numbered list of subtitle entries to the AI, then reconstructs the SRT with the original timestamps. \"Send Timestamps to AI\" sends the subtitles WITH timecodes and trusts the AI to return correct timestamps. Added for future-proofing the addon.",
           "original": "Original Timestamps (Default)",
           "ai": "Send Timestamps to AI"
         },
@@ -974,10 +974,10 @@
         },
         "database": {
           "label": "SubMaker Database",
-          "description": "Choose how to handle the SubMaker translation database. The main database caches translations permanently to reduce API usage. Bypass mode forces fresh translations and stores them temporarily (12 hours).",
+          "description": "SubMaker's database caches translations permanently to reduce community AI API costs/usage. Bypass mode skips the shared database and stores translations temporarily (12 hours).",
           "use": "Use SubMaker Database",
           "bypass": "Bypass Cache (Force Retranslation)",
-          "noteTitle": "\u26a0\ufe0f Bypass Mode Required:"
+          "noteTitle": "⚠️ Bypass Mode Required:"
         },
         "chunking": {
           "label": "Enable Single Batch",
@@ -1236,7 +1236,7 @@
           "label": "Max Retries",
           "helper": "Number of retry attempts for this translation (0-5). Default: 2"
         },
-      "reset": "Reset to Defaults",
+        "reset": "Reset to Defaults",
         "modelStatus": {
           "unavailable": "Model override not available for Google Translate",
           "fetching": "Fetching models...",

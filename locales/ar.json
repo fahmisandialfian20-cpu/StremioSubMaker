@@ -741,11 +741,11 @@
         "apiKeyRequired": "يرجى إدخال مفتاح API",
         "apiKeyValid": "مفتاح API صالح",
         "testResults": "({count} نتائج الاختبار)",
-  "connectionError": "خطأ في الاتصال. يرجى المحاولة مرة أخرى.",
-  "validationFailed": "فشل التحقق",
-  "testing": "جاري الاختبار...",
-  "validating": "جاري التحقق...",
-  "valid": "صالح",
+        "connectionError": "خطأ في الاتصال. يرجى المحاولة مرة أخرى.",
+        "validationFailed": "فشل التحقق",
+        "testing": "جاري الاختبار...",
+        "validating": "جاري التحقق...",
+        "valid": "صالح",
         "invalid": "غير صالح",
         "error": "خطأ",
         "testCredentials": "اختبار بيانات الاعتماد",
@@ -927,8 +927,8 @@
         "learnDescription": "ينشئ إدخالات \"تعلم (اللغة)\" التي تخرج WebVTT مزدوج اللغة مع سطور المصدر والمترجم لتعلم اللغة. اختر لغات \"تعلم\" المستهدفة أعلاه بعد التمكين."
       },
       "learnMode": {
-    "label": "Learn Mode",
-        "description": "يضيف إدخالات \"تعلم (اللغة)\" التي تخرج WebVTT مزدوج اللغة مع سطور المصدر والمترجم لتعلم اللغة.",
+        "label": "Learn Mode",
+        "description": "يضيف إدخالات \"تعلم (اللغة)\" التي تخرج WebVTT مزدوج اللغة مع سطور المصدر والمترجم لتعلم اللغة. بعد التفعيل، قم بتعيين لغات التعلم المستهدفة في القسم أعلاه.",
         "orderLabel": "ترتيب ترجمة وضع التعلم",
         "orderDescription": "اختر اللغة التي تظهر في أعلى وأسفل الشاشة.",
         "sourceTop": "المصدر بالأعلى - الهدف بالأسفل",
@@ -938,7 +938,7 @@
         "title": "إعدادات الترجمة",
         "workflow": {
           "label": "سير عمل الترجمة",
-          "description": "يوصى بالتبديل بين الأوضاع إذا كان لديك مشاكل في مزامنة الترجمة. سير عمل الترجمة الرئيسي لدينا يزيل الطوابع الزمنية ويرسل الترجمات مرقمة إلى الذكاء الاصطناعي، ثم يعيد بناء SRT بالطوابع الزمنية الأصلية. \"إرسال الطوابع الزمنية إلى الذكاء الاصطناعي\" يرسل الترجمات مع الأكواد الزمنية ويثق في الذكاء الاصطناعي لإعادة الطوابع الزمنية الصحيحة. أضيف لضمان مستقبل الإضافة.",
+          "description": "Switching between modes is recommended if you have translation sync problems. \"Original Timestamps\" mode removes timestamps and sends a numbered list of subtitle entries to the AI, then reconstructs the SRT with the original timestamps. \"Send Timestamps to AI\" sends the subtitles WITH timecodes and trusts the AI to return correct timestamps. Added for future-proofing the addon.",
           "original": "الطوابع الزمنية الأصلية (الافتراضي)",
           "ai": "إرسال الطوابع الزمنية إلى الذكاء الاصطناعي"
         },
@@ -952,7 +952,7 @@
         },
         "database": {
           "label": "قاعدة بيانات SubMaker",
-          "description": "اختر كيفية التعامل مع قاعدة بيانات ترجمة SubMaker. تخزن قاعدة البيانات الرئيسية الترجمات مؤقتاً بشكل دائم لتقليل استخدام API. وضع التجاوز يفرض ترجمات جديدة ويخزنها مؤقتاً (12 ساعة).",
+          "description": "SubMaker's database caches translations permanently to reduce community AI API costs/usage. Bypass mode skips the shared database and stores translations temporarily (12 hours).",
           "use": "استخدام قاعدة بيانات SubMaker",
           "bypass": "تجاوز الذاكرة المؤقتة (فرض إعادة الترجمة)",
           "noteTitle": "⚠️ وضع التجاوز مطلوب:"

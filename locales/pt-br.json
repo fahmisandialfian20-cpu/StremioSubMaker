@@ -421,7 +421,7 @@
           "modelMedium": "medium (equilibrado)",
           "modelTurbo": "Whisper Large V3 Turbo",
           "translateOutput": "Traduzir para idiomas de destino",
-          "sendFullVideo": "Enviar vídeo completo para a AssemblyAI (\u22645GB)",
+          "sendFullVideo": "Enviar vídeo completo para a AssemblyAI (≤5GB)",
           "sendFullVideoHelper": "Se o stream ultrapassar 5GB, faremos fallback para extração de áudio automaticamente.",
           "singleBatch": "Modo de lote único",
           "sendTimestamps": "Enviar timestamps para a IA",
@@ -662,7 +662,7 @@
         "loadFallback": "Falha ao carregar {src}"
       },
       "footer": {
-        "love": "Feito com <span class=\"footer-heart\">\u2764\ufe0f</span> para usuários do Stremio em todo o lugar",
+        "love": "Feito com <span class=\"footer-heart\">❤️</span> para usuários do Stremio em todo o lugar",
         "thanks": "Obrigado por usar o SubMaker! Seu apoio ajuda a tornar o conteúdo acessível a todos."
       },
       "actions": {
@@ -696,8 +696,8 @@
           "onlyOneSourceBody": "Quando as listas de tradução \"Criar\" são criadas, elas carregam a lista de legendas na mesma ordem do idioma de origem.<br>Isso significa que você pode testar as legendas do idioma de origem para a sincronia correta e só então selecionar a mesma na lista de tradução, em vez de traduzir legendas dessincronizadas."
         },
         "toolbox": {
-          "title": "\ud83e\uddf0 Instruções do Sub Toolbox",
-          "howTitle": "\ud83d\ude80 Como usar o Sub Toolbox:",
+          "title": "🧰 Instruções do Sub Toolbox",
+          "howTitle": "🚀 Como usar o Sub Toolbox:",
           "step1": "No Stremio, abra a lista de legendas e clique em <strong>\"Sub Toolbox\"</strong>.",
           "step2": "Clique com o botão direito no stream/vídeo em reprodução no Stremio e escolha <strong>\"Download Subtitles\"</strong> para abrir o toolbox no navegador.",
           "step3": "Escolha uma ferramenta: Extrair e traduzir legendas embutidas, Traduzir arquivos de legenda, Sincronizar legendas ou Legendas automáticas.",
@@ -765,12 +765,12 @@
         "credentialsRequired": "Por favor, insira nome de usuário e senha",
         "apiKeyRequired": "Por favor, insira uma chave de API",
         "apiKeyValid": "Chave da API é válida",
-      "testResults": "({count} resultados de teste)",
-      "connectionError": "Erro de conexão. Por favor, tente novamente.",
-      "validationFailed": "Validação falhou",
-      "testing": "Testando...",
-      "validating": "Validando...",
-      "valid": "Válido",
+        "testResults": "({count} resultados de teste)",
+        "connectionError": "Erro de conexão. Por favor, tente novamente.",
+        "validationFailed": "Validação falhou",
+        "testing": "Testando...",
+        "validating": "Validando...",
+        "valid": "Válido",
         "invalid": "Inválido",
         "error": "Erro",
         "testCredentials": "Testar Credenciais",
@@ -907,9 +907,9 @@
           },
           "hintTitle": "Tradução ruim/quebrada ou fora de sincronia?",
           "hintBody": "Clique três vezes rapidamente na legenda para forçar uma retradução.",
-          "betaTitle": "\u26a1 O uso do 2.5 Pro ainda está em Beta.",
+          "betaTitle": "⚡ O uso do 2.5 Pro ainda está em Beta.",
           "betaAdvice": "Se tiver problemas de tradução, use o Flash-Lite.",
-          "rateWarningTitle": "\u26a0\ufe0f Limitação da Camada Gratuita:",
+          "rateWarningTitle": "⚠️ Limitação da Camada Gratuita:",
           "rateWarningBody": "Se estiver usando uma chave de API gratuita, o Gemini 2.5 Pro pode acionar limites de taxa (HTTP 429). Você provavelmente só conseguirá traduzir uma legenda por vez."
         }
       },
@@ -953,7 +953,7 @@
       },
       "learnMode": {
         "label": "Learn Mode",
-        "description": "Adiciona entradas \"Learn (Language)\" que geram WebVTT de idioma duplo com linhas de origem e traduzidas para aprendizado de idiomas.",
+        "description": "Adiciona entradas \"Learn (Language)\" que geram WebVTT bilíngue com linhas de origem e traduzidas. Depois de habilitar, defina os Idiomas de Learn na seção acima.",
         "orderLabel": "Ordem das Legendas do Learn Mode",
         "orderDescription": "Escolha qual idioma aparece no topo e na parte inferior da tela.",
         "sourceTop": "Origem no Topo - Destino na Base",
@@ -963,7 +963,7 @@
         "title": "Configurações de Tradução",
         "workflow": {
           "label": "Fluxo de Trabalho de Tradução",
-          "description": "Alternar entre modos é recomendado se você tiver problemas de sincronia de tradução. Nosso fluxo de trabalho principal de tradução remove timestamps e envia as legendas numeradas para a IA, depois reconstrói o SRT com os timestamps originais. \"Enviar Timestamps para IA\" envia as legendas COM códigos de tempo e confia na IA para retornar timestamps corretos. Adicionado para garantir o futuro do addon.",
+          "description": "Alternar entre modos é recomendado se você tiver problemas de sincronia de tradução. O modo \"Timestamps Originais\" remove os timestamps e envia para a IA uma lista numerada de entradas, depois reconstrói o SRT com os timestamps originais. \"Enviar Timestamps para IA\" envia as legendas COM códigos de tempo e confia que a IA devolva os tempos corretos. Adicionado para preparar o addon para o futuro.",
           "original": "Timestamps Originais (Padrão)",
           "ai": "Enviar Timestamps para IA"
         },
@@ -977,10 +977,10 @@
         },
         "database": {
           "label": "Banco de Dados SubMaker",
-          "description": "Escolha como lidar com o banco de dados de tradução do SubMaker. O banco de dados principal armazena traduções permanentemente para reduzir o uso da API. O modo Bypass força traduções novas e as armazena temporariamente (12 horas).",
+          "description": "O banco de dados do SubMaker armazena traduções permanentemente para reduzir custos/uso de API de IA da comunidade. O modo Bypass ignora o banco compartilhado e guarda traduções temporariamente (12 horas).",
           "use": "Usar Banco de Dados SubMaker",
           "bypass": "Ignorar Cache (Forçar Retradução)",
-          "noteTitle": "\u26a0\ufe0f Modo Bypass Necessário:"
+          "noteTitle": "⚠️ Modo Bypass Necessário:"
         },
         "chunking": {
           "label": "Habilitar Lote Único",
@@ -1110,9 +1110,9 @@
           }
         }
       },
-  "dev": {
-    "title": "Desenvolvimento"
-  },
+      "dev": {
+        "title": "Desenvolvimento"
+      },
       "reset": {
         "hint": "Algum problema? Redefinir configurações para o padrão ->",
         "cta": "Redefinir"
@@ -1239,7 +1239,7 @@
           "label": "Máximo de Tentativas",
           "helper": "Número de tentativas de reenvio para esta tradução (0-5). Padrão: 2"
         },
-      "reset": "Redefinir para Padrões",
+        "reset": "Redefinir para Padrões",
         "modelStatus": {
           "unavailable": "Sobrescrita de modelo não disponível para Google Translate",
           "fetching": "Buscando modelos...",
