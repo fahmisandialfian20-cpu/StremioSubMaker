@@ -984,11 +984,7 @@
                 <div class="form-group">
                     <label for="sendTimestampsToAI" class="form-label">
                         <span class="label-title" data-i18n="config.translationSettings.workflow.label">Translation Workflow</span>
-                        <span class="label-description" data-i18n="config.translationSettings.workflow.description">Switching between modes is recommended if you have translation
-                            sync problems. Our main translation workflow removes timestamps and sends the subtitles
-                            numbered to the AI, then reconstructs the SRT with the original timestamps. "Send Timestamps
-                            to AI" sends the subtitles WITH timecodes and trusts the AI to return correct timestamps.
-                            Added for future-proofing the addon.</span>
+                        <span class="label-description" data-i18n="config.translationSettings.workflow.description">Switching between modes is recommended if you have translation sync problems. "Original Timestamps" mode removes timestamps and sends a numbered list of subtitle entries to the AI, then reconstructs the SRT with the original timestamps. "Send Timestamps to AI" sends the subtitles WITH timecodes and trusts the AI to return correct timestamps. Added for future-proofing the addon.</span>
                     </label>
                     <select id="sendTimestampsToAI" class="styled-select">
                         <option value="original" data-i18n="config.translationSettings.workflow.original">Original Timestamps (Default)</option>
