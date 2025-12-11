@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## SubMaker v1.4.22
+
+- **Auto-subs cue splitting:** Long auto-sub entries split more naturally by sentence boundaries with duration weighted by segment length, improving readability and timing stability.
+- **Audio track selection prompt:** When multiple audio tracks are detected for auto-subs, the toolbox now surfaces an inline track picker and a dedicated "Continue with track" action.
+- **Raw transcript downloads:** Auto-subs can now expose a downloadable raw transcript alongside SRT/VTT outputs.
+- **Retranslate target languages:** Translation cards include a "Retranslate {lang}" action that reruns translation for a specific target without restarting the full auto-subs pipeline.
+- **Cloudflare window sizing:** Added an optional Cloudflare Workers AI "window size (MB)" control to tune chunk size (up to 25 MB) for long/complex audio.
+- **Status badge accuracy + UI tightening:** Decode badges update only when decoding actually completes, and pill badges are slightly smaller for a cleaner auto-subs status layout.
+- **Partial cache busting:** HTML partial includes now append a cache-buster query to avoid stale UI fragments on cached hosts/CDNs.
+- **BOM stripping for providers:** Subtitle downloads from OpenSubtitles (auth/v3), SubDL, and SubSource strip UTF-8 BOMs to prevent first-character/cue corruption, especially in RTL languages.
+
 ## SubMaker v1.4.21
 
 - **History storage upgrade:** Translation history now stores all entries per user in a single Redis record with pruning (60 retained, 20 shown) instead of many per-entry keys, eliminating keyspace SCANs on history loads.
@@ -12,7 +23,7 @@ All notable changes to this project will be documented in this file.
 - **Auto-subs UI polish:** Status pills start at `WAITING`/`OK`, update labels per stage (fetch/transcribe/align/translate/deliver), and reset when Step 1 edits occur; translation chips show skipped/failed counts, hash/linked-stream cards and Step 2/targets are centered/narrowed to match the embedded page, and errors surface clearly via badges/tooltips.
 - **AssemblyAI via extension + live logs:** AssemblyAI auto-subs now request transcripts through the xSync extension (with optional full-video uploads) and stream live log trails via `/api/auto-subtitles/logs` (SSE or JSON) keyed by `jobId`; auto-subs accept extension-supplied transcripts/diagnostics, force diarization, and strip speaker labels from Cloudflare/Assembly outputs.
 - **Stream update stability:** Placeholder Stremio pings (missing filename/hash or "Stream and Refresh") no longer overwrite a good linked stream snapshot, and QuickNav tracks the latest signature/timestamp so duplicate or stale "Update linked stream" toasts are cleared promptly on toolbox/sync pages.
-- **xSync/xEmbed language scoping:** Synced/embedded subtitle cache entries are only surfaced when their language matches the user’s configured source/target (or no-translation) languages, preventing cross-language leakage and unnecessary cache scans.
+- **xSync/xEmbed language scoping:** Synced/embedded subtitle cache entries are only surfaced when their language matches the user's configured source/target (or no-translation) languages, preventing cross-language leakage and unnecessary cache scans.
 
 ## SubMaker v1.4.20
 
