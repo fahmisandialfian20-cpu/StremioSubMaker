@@ -14,7 +14,13 @@ function normalizeTargetLanguageForPrompt(targetLanguage) {
   const nameKey = normalizeKey(resolvedName);
   const codeKey = normalizeKey(resolvedCode).replace(/_/g, '-');
 
-  if (codeKey === 'pt-pt' || nameKey === 'portuguese (portugal)' || nameKey === 'portuguese portugal') {
+  // Portuguese (our config page uses ISO-639-2: por=PT default, pob=PT-BR)
+  if (
+    codeKey === 'pt-pt' ||
+    codeKey === 'por' ||
+    nameKey === 'portuguese (portugal)' ||
+    nameKey === 'portuguese portugal'
+  ) {
     return 'European Portuguese (Português de Portugal)';
   }
   if (
@@ -32,17 +38,24 @@ function normalizeTargetLanguageForPrompt(targetLanguage) {
     return 'European Portuguese (Português de Portugal)';
   }
 
-  if (codeKey === 'es-419' || nameKey.includes('latin america') || nameKey.includes('latam')) {
+  // Spanish (spa=ES default, spn=LATAM)
+  if (
+    codeKey === 'es-419' ||
+    codeKey === 'spn' ||
+    nameKey.includes('latin america') ||
+    nameKey.includes('latam')
+  ) {
     return 'Latin American Spanish (Español de Latinoamérica)';
   }
-  if (nameKey === 'spanish' || codeKey === 'es') {
+  if (nameKey === 'spanish' || codeKey === 'es' || codeKey === 'spa') {
     return 'Castilian Spanish (Español de España)';
   }
 
-  if (codeKey === 'zh-hant' || nameKey.includes('traditional')) {
+  // Chinese (chi=ZH default; zhs/zht are our simplified/traditional variants)
+  if (codeKey === 'zh-hant' || codeKey === 'zht' || nameKey.includes('traditional')) {
     return 'Traditional Chinese (繁體中文)';
   }
-  if (codeKey === 'zh-hans' || nameKey.includes('simplified')) {
+  if (codeKey === 'zh-hans' || codeKey === 'zhs' || codeKey === 'chi' || nameKey.includes('simplified')) {
     return 'Simplified Chinese (简体中文)';
   }
   if (nameKey === 'chinese' || codeKey === 'zh') {

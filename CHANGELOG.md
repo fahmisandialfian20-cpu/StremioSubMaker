@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## SubMaker v1.4.23
+
+- **Target language prompt normalization:** Translation providers now use consistent, canonical target language labels across config codes (e.g., `por`/`pob` Portuguese variants, `spa`/`spn` Spanish variants, `chi`/`zhs`/`zht` Chinese variants) to reduce dialect mismatches and improve prompt reliability.
+
 ## SubMaker v1.4.22
 
 - **Auto-subs cue splitting:** Long auto-sub entries split more naturally by sentence boundaries with duration weighted by segment length, improving readability and timing stability.
