@@ -460,7 +460,9 @@
           "downloadSrt": "تحميل SRT",
           "downloadVtt": "تحميل VTT",
           "downloadTranslation": "تحميل {lang}",
-          "continue": "متابعة"
+          "continue": "متابعة",
+          "downloadRawTranscript": "Download raw transcript",
+          "retranslate": "Retranslate {lang}"
         },
         "options": {
           "addTargets": "أضف لغات الهدف في الإعدادات"

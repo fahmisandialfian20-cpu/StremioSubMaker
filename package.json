@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "check:locale-headers": "node scripts/check-locale-headers.js"
+    "check:locale-headers": "node scripts/check-locale-headers.js",
+    "sync:locales": "node scripts/sync-locales.js"
   },
   "keywords": [
     "stremio",
