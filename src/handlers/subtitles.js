@@ -3485,7 +3485,7 @@ async function performTranslation(sourceFileId, targetLanguage, config, { cacheK
     const targetLangName = getLanguageName(targetLanguage) || targetLanguage;
 
     // Initialize translation provider (Gemini default, others when enabled)
-    const { provider, providerName, model, fallbackProviderName } = createTranslationProvider(config);
+    const { provider, providerName, model, fallbackProviderName } = await createTranslationProvider(config);
     const effectiveModel = model || config.geminiModel;
     log.debug(() => `[Translation] Using provider=${providerName} model=${effectiveModel}`);
 

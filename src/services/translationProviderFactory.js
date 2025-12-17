@@ -304,7 +304,7 @@ function createProviderInstance(providerKey, providerConfig = {}, providerParams
  * Create the translation provider based on configuration.
  * Falls back to Gemini when multi-provider mode is disabled or misconfigured.
  */
-function createTranslationProvider(config) {
+async function createTranslationProvider(config) {
   const multiEnabled = config?.multiProviderEnabled === true;
   const providersConfig = config?.providers || {};
   const mainProvider = String(config?.mainProvider || (multiEnabled ? 'gemini' : 'gemini')).toLowerCase();
@@ -328,13 +328,13 @@ function createTranslationProvider(config) {
     const matchKey = Object.keys(mergedProviderParams || {}).find(k => String(k).toLowerCase() === lower);
     return matchKey ? mergedProviderParams[matchKey] : (mergedProviderParams?.[lower] || {});
   };
-  const findSecondaryConfig = (key) => {
+  const findSecondaryConfig = async (key) => {
     if (!secondaryEnabled) return null;
     const normalized = String(key || '').toLowerCase();
     if (normalized === 'gemini') {
       return {
         enabled: true,
-        apiKey: selectGeminiApiKey(config),
+        apiKey: await selectGeminiApiKey(config),
         model: config?.geminiModel
       };
     }
@@ -350,10 +350,10 @@ function createTranslationProvider(config) {
     return !!(cfg.apiKey && cfg.model);
   };
 
-  const buildGeminiProvider = () => ({
+  const buildGeminiProvider = async () => ({
     providerName: 'gemini',
     provider: new GeminiService(
-      selectGeminiApiKey(config),
+      await selectGeminiApiKey(config),
       config?.geminiModel,
       config?.advancedSettings || {}
     ),
@@ -361,17 +361,17 @@ function createTranslationProvider(config) {
   });
 
   if (!multiEnabled) {
-    return buildGeminiProvider();
+    return await buildGeminiProvider();
   }
 
   if (mainProvider === 'gemini') {
-    const primary = buildGeminiProvider();
+    const primary = await buildGeminiProvider();
     let fallbackProvider = null;
     let fallbackName = '';
     let fallbackModel = '';
 
     if (secondaryEnabled && secondaryProviderKey && secondaryProviderKey !== 'gemini') {
-      const secondaryConfig = findSecondaryConfig(secondaryProviderKey);
+      const secondaryConfig = await findSecondaryConfig(secondaryProviderKey);
       if (isConfigured(secondaryConfig, secondaryProviderKey)) {
         const secondaryParams = findProviderParams(secondaryProviderKey);
         fallbackProvider = createProviderInstance(secondaryProviderKey, secondaryConfig, secondaryParams);
@@ -406,7 +406,7 @@ function createTranslationProvider(config) {
     return {
       providerName: 'gemini',
       provider: new GeminiService(
-        selectGeminiApiKey(config),
+        await selectGeminiApiKey(config),
         config?.geminiModel,
         config?.advancedSettings || {}
       ),
@@ -421,7 +421,7 @@ function createTranslationProvider(config) {
     return {
       providerName: 'gemini',
       provider: new GeminiService(
-        selectGeminiApiKey(config),
+        await selectGeminiApiKey(config),
         config?.geminiModel,
         config?.advancedSettings || {}
       ),
@@ -434,7 +434,7 @@ function createTranslationProvider(config) {
   let fallbackModel = '';
 
   if (secondaryEnabled && secondaryProviderKey && secondaryProviderKey !== mainProvider) {
-    const secondaryConfig = findSecondaryConfig(secondaryProviderKey);
+    const secondaryConfig = await findSecondaryConfig(secondaryProviderKey);
     if (isConfigured(secondaryConfig, secondaryProviderKey)) {
       if (secondaryProviderKey === 'gemini') {
         fallbackProvider = new GeminiService(

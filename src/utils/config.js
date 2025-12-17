@@ -1155,16 +1155,25 @@ function buildManifest(config, baseUrl = '') {
   };
 }
 
+// In-memory fallback counters for filesystem mode (keyed by configHash)
+const memoryRotationCounters = new Map();
+
 /**
- * Select a Gemini API key from config.
- * When rotation is enabled and there are multiple keys, selects randomly (stateless).
- * This approach is multi-instance safe for HA/Redis deployments where each instance
- * would otherwise have its own counter.
- * Otherwise returns the single geminiApiKey.
+ * Select a Gemini API key from config using per-user sequential rotation.
+ * 
+ * When rotation is enabled and there are multiple keys, uses Redis INCR for
+ * atomic sequential rotation per user (identified by config hash). This ensures:
+ * - Multi-instance safe: Redis stores the shared counter across all instances
+ * - Sequential: Each call increments and picks the next key in order
+ * - Per-user: Each user has their own independent rotation counter
+ * - Resource-light: Single Redis INCR per call (atomic, O(1), negligible cost)
+ * 
+ * Falls back to in-memory counters per configHash for filesystem mode.
+ * 
  * @param {Object} config - Normalized configuration
- * @returns {string} - Selected API key (may be empty if none configured)
+ * @returns {Promise<string>} - Selected API key (may be empty if none configured)
  */
-function selectGeminiApiKey(config) {
+async function selectGeminiApiKey(config) {
   if (!config) return '';
 
   // If rotation is enabled and we have keys in the array
@@ -1174,10 +1183,38 @@ function selectGeminiApiKey(config) {
       : [];
 
     if (keys.length > 0) {
-      // Stateless random selection for multi-instance safety in HA/Redis setups
-      const randomIndex = Math.floor(Math.random() * keys.length);
-      const selectedKey = keys[randomIndex];
-      log.debug(() => `[Config] Gemini key rotation: selected key ${randomIndex + 1} of ${keys.length} (random)`);
+      // Get the user's config hash for per-user rotation
+      const configHash = config.__configHash || 'default';
+      let counter = 0;
+
+      try {
+        // Try to use Redis for multi-instance safe rotation
+        const StorageFactory = require('../storage/StorageFactory');
+        const adapter = await StorageFactory.getStorageAdapter();
+
+        // Check if this is a Redis adapter by checking for the client property
+        if (adapter && adapter.client && typeof adapter.client.incr === 'function') {
+          // Use Redis INCR for atomic sequential rotation
+          const redisKey = `keyrotation:${configHash}`;
+          counter = await adapter.client.incr(redisKey);
+          // Set a TTL of 24 hours to auto-cleanup old counters
+          await adapter.client.expire(redisKey, 86400);
+        } else {
+          // Filesystem mode: use in-memory counter per configHash
+          counter = (memoryRotationCounters.get(configHash) || 0) + 1;
+          memoryRotationCounters.set(configHash, counter);
+        }
+      } catch (err) {
+        // If Redis fails, fall back to in-memory counter
+        log.warn(() => `[Config] Redis key rotation counter failed, using in-memory: ${err.message}`);
+        counter = (memoryRotationCounters.get(configHash) || 0) + 1;
+        memoryRotationCounters.set(configHash, counter);
+      }
+
+      // Sequential round-robin: counter modulo number of keys
+      const keyIndex = (counter - 1) % keys.length;
+      const selectedKey = keys[keyIndex];
+      log.debug(() => `[Config] Gemini key rotation: selected key ${keyIndex + 1} of ${keys.length} (counter=${counter}, user=${configHash.substring(0, 8)})`);
       return selectedKey;
     }
   }

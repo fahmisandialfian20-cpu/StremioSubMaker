@@ -1335,7 +1335,7 @@ function normalizeSyncLang(lang) {
     return canonicalSyncLanguageCode(val) || val || 'und';
 }
 
-function resolveAutoSubTranslationProvider(config, providerKeyOverride, modelOverride) {
+async function resolveAutoSubTranslationProvider(config, providerKeyOverride, modelOverride) {
     const providers = (config && config.providers) || {};
     const mergedParams = mergeProviderParameters(getDefaultProviderParameters(), config?.providerParameters || {});
     const normalizeKey = (key) => String(key || '').trim().toLowerCase();
@@ -1352,20 +1352,20 @@ function resolveAutoSubTranslationProvider(config, providerKeyOverride, modelOve
             fallbackProviderName: ''
         };
     };
-    const findProviderConfig = () => {
+    const findProviderConfig = async () => {
         if (providers[desiredKey]) return providers[desiredKey];
         const match = Object.keys(providers || {}).find((k) => normalizeKey(k) === desiredKey);
         if (match) return providers[match];
         if (desiredKey === 'gemini') {
             return {
                 enabled: true,
-                apiKey: selectGeminiApiKey(config),
+                apiKey: await selectGeminiApiKey(config),
                 model: modelOverride || config?.geminiModel
             };
         }
         return null;
     };
-    const providerConfig = findProviderConfig();
+    const providerConfig = await findProviderConfig();
     if (providerConfig && providerConfig.enabled !== false) {
         const params = mergedParams[desiredKey] || mergedParams.default || {};
         const cfg = { ...providerConfig, model: modelOverride || providerConfig.model || config?.geminiModel };
@@ -1380,7 +1380,7 @@ function resolveAutoSubTranslationProvider(config, providerKeyOverride, modelOve
         }
     }
     // Fallback: try any enabled provider with a key (Gemini first)
-    const geminiKey = selectGeminiApiKey(config);
+    const geminiKey = await selectGeminiApiKey(config);
     if (geminiKey) {
         const fallback = maybeBuildProvider('gemini', {
             enabled: true,
@@ -2853,7 +2853,7 @@ app.post('/api/gemini-models', async (req, res) => {
                 return res.status(401).json({ error: t('server.errors.invalidSessionToken', {}, 'Invalid or expired session token') });
             }
             t = getTranslatorFromRequest(req, res, resolvedConfig);
-            geminiApiKey = selectGeminiApiKey(resolvedConfig) || process.env.GEMINI_API_KEY;
+            geminiApiKey = await selectGeminiApiKey(resolvedConfig) || process.env.GEMINI_API_KEY;
         }
 
         if (!geminiApiKey) {
@@ -2907,7 +2907,7 @@ app.post('/api/models/:provider', async (req, res) => {
 
             if (providerKey === 'gemini') {
                 return {
-                    apiKey: selectGeminiApiKey(resolvedConfig) || process.env.GEMINI_API_KEY,
+                    apiKey: await selectGeminiApiKey(resolvedConfig) || process.env.GEMINI_API_KEY,
                     model: resolvedConfig?.geminiModel || '',
                     params: resolvedConfig?.advancedSettings || {}
                 };
@@ -3655,7 +3655,7 @@ app.post('/api/translate-file', fileTranslationLimiter, validateRequest(fileTran
         const providerDefaults = getDefaultProviderParameters();
         const optionalProviders = new Set(['googletranslate']);
         const normalizeProviderKey = (key) => String(key || '').toLowerCase();
-        const enabledProviders = (() => {
+        const enabledProviders = await (async () => {
             const providers = [];
             const providerConfigs = config.providers || {};
             Object.entries(providerConfigs).forEach(([key, cfg]) => {
@@ -3667,7 +3667,7 @@ app.post('/api/translate-file', fileTranslationLimiter, validateRequest(fileTran
                 }
             });
             // Check if Gemini is configured (handles both single key and rotation modes)
-            const geminiKey = selectGeminiApiKey(config);
+            const geminiKey = await selectGeminiApiKey(config);
             if (geminiKey && config.geminiModel) {
                 providers.push('gemini');
             } else if (config.multiProviderEnabled !== true) {
@@ -3870,7 +3870,7 @@ app.post('/api/translate-file', fileTranslationLimiter, validateRequest(fileTran
         }
 
         // Initialize translation provider (Gemini by default, alternative providers when enabled)
-        const { provider: translationProvider, providerName, model, fallbackProviderName } = createTranslationProvider(config);
+        const { provider: translationProvider, providerName, model, fallbackProviderName } = await createTranslationProvider(config);
         if (!translationProvider || typeof translationProvider.translateSubtitle !== 'function') {
             throw new Error('Translation provider is not configured correctly');
         }
@@ -5275,7 +5275,7 @@ app.post('/api/auto-subtitles/run', autoSubLimiter, async (req, res) => {
             : [];
 
         if (translate !== false && normalizedTargets.length > 0) {
-            const providerBundle = resolveAutoSubTranslationProvider(config, providerKey, translationModel);
+            const providerBundle = await resolveAutoSubTranslationProvider(config, providerKey, translationModel);
             if (!providerBundle || !providerBundle.provider) {
                 log.warn(() => '[Auto Subs API] No translation provider resolved; skipping translations');
                 logStep('No translation provider configured; skipping translations', 'warn');
@@ -6083,7 +6083,7 @@ app.post('/api/translate-embedded', embeddedTranslationLimiter, async (req, res)
         }
 
         const targetLangName = getLanguageName(safeTargetLanguage) || safeTargetLanguage;
-        const { provider, providerName, model, fallbackProviderName } = createTranslationProvider(workingConfig);
+        const { provider, providerName, model, fallbackProviderName } = await createTranslationProvider(workingConfig);
         if (historyEntry) {
             historyEntry.provider = providerName || fallbackProviderName || historyEntry.provider || requestedProviderName || 'unknown';
             historyEntry.model = model || requestedModel || historyEntry.model || workingConfig.geminiModel || 'default';
