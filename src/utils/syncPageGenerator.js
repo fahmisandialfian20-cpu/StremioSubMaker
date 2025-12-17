@@ -532,10 +532,10 @@ async function generateSubtitleSyncPage(subtitles, videoId, streamFilename, conf
     const fetchableSubtitles = subtitles.filter(sub => {
         const id = sub?.id || '';
         return id !== 'sync_subtitles' &&
-               id !== 'file_upload' &&
-               id !== 'sub_toolbox' &&
-               !id.startsWith('translate_') &&
-               !id.startsWith('xsync_');
+            id !== 'file_upload' &&
+            id !== 'sub_toolbox' &&
+            !id.startsWith('translate_') &&
+            !id.startsWith('xsync_');
     });
 
     // Group subtitles by language
@@ -554,18 +554,18 @@ async function generateSubtitleSyncPage(subtitles, videoId, streamFilename, conf
 
     // Generate subtitle options HTML
     let subtitleOptionsHTML = `<option value="" disabled selected>${escapeHtml(copy.step2.selectPlaceholder)}</option>`;
-        for (const { label, code, items } of subtitlesByLang.values()) {
-            const langLabel = label || 'Unknown';
-            subtitleOptionsHTML += `
+    for (const { label, code, items } of subtitlesByLang.values()) {
+        const langLabel = label || 'Unknown';
+        subtitleOptionsHTML += `
             <optgroup label="${escapeHtml(langLabel)}">`;
-            for (let i = 0; i < items.length; i++) {
-                const sub = items[i].entry;
-                const langCode = items[i].langInfo?.code || code || langLabel || 'unknown';
-                const displayName = t('sync.step2.subtitleOption', { language: langLabel, index: i + 1 }, `${langLabel} - Subtitle #${i + 1}`);
-                subtitleOptionsHTML += `
-                <option value="${escapeHtml(sub.id)}" data-lang="${escapeHtml(langCode)}" data-url="${escapeHtml(sub.url)}">${escapeHtml(displayName)}</option>`;
-            }
+        for (let i = 0; i < items.length; i++) {
+            const sub = items[i].entry;
+            const langCode = items[i].langInfo?.code || code || langLabel || 'unknown';
+            const displayName = t('sync.step2.subtitleOption', { language: langLabel, index: i + 1 }, `${langLabel} - Subtitle #${i + 1}`);
             subtitleOptionsHTML += `
+                <option value="${escapeHtml(sub.id)}" data-lang="${escapeHtml(langCode)}" data-url="${escapeHtml(sub.url)}">${escapeHtml(displayName)}</option>`;
+        }
+        subtitleOptionsHTML += `
             </optgroup>`;
     }
 
@@ -2162,16 +2162,16 @@ async function generateSubtitleSyncPage(subtitles, videoId, streamFilename, conf
 
         // Configuration and state
         const CONFIG = ${safeJsonSerialize({
-            configStr,
-            videoId,
-            streamFilename,
-            videoHash,
-            linkedTitle,
-            languageMaps,
-            geminiApiKey: config.geminiApiKey || '',
-            sourceLanguages: config.sourceLanguages || [],
-            targetLanguages: config.targetLanguages || []
-        })};
+        configStr,
+        videoId,
+        streamFilename,
+        videoHash,
+        linkedTitle,
+        languageMaps,
+        geminiApiKey: config.geminiApiKey || '',
+        sourceLanguages: config.sourceLanguages || [],
+        targetLanguages: config.targetLanguages || []
+    })};
         const subtitleMenuTargets = ${JSON.stringify(targetLanguages.map(lang => ({ code: lang, name: getLanguageName(lang) || lang })))};
         const hashStatusEl = document.getElementById('hashStatus');
         const hashMismatchEl = document.getElementById('hashMismatchAlert');
@@ -2375,14 +2375,31 @@ async function generateSubtitleSyncPage(subtitles, videoId, streamFilename, conf
         function extractStreamFilename(streamUrl) {
             try {
                 const url = new URL(streamUrl);
-                const paramKeys = ['filename', 'file', 'name', 'download', 'dn'];
-                for (const key of paramKeys) {
+                // First, check for explicit filename-type params (these are reliable)
+                const explicitParams = ['filename', 'file', 'download', 'dn'];
+                for (const key of explicitParams) {
                     const val = url.searchParams.get(key);
                     if (val && val.trim()) return decodeURIComponent(val.trim().split('/').pop());
                 }
+                // Next, check pathname for a real filename (has extension)
                 const parts = (url.pathname || '').split('/').filter(Boolean);
-                if (!parts.length) return '';
-                return decodeURIComponent(parts[parts.length - 1]);
+                if (parts.length) {
+                    const lastPart = decodeURIComponent(parts[parts.length - 1]);
+                    // If it looks like a real filename (has extension), use it
+                    if (/\.[a-z0-9]{2,5}$/i.test(lastPart)) {
+                        return lastPart;
+                    }
+                }
+                // Then check 'name' param as fallback (often just title, not filename)
+                const nameVal = url.searchParams.get('name');
+                if (nameVal && nameVal.trim()) {
+                    return decodeURIComponent(nameVal.trim().split('/').pop());
+                }
+                // Last resort: return pathname last part even without extension
+                if (parts.length) {
+                    return decodeURIComponent(parts[parts.length - 1]);
+                }
+                return '';
             } catch (_) {
                 return '';
             }

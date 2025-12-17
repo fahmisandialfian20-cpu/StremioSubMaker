@@ -257,13 +257,43 @@ function deriveStreamHashFromUrlServer(streamUrl, fallback = {}) {
     if (streamUrl) {
         try {
             const url = new URL(streamUrl);
-            const paramKeys = ['filename', 'file', 'name', 'download', 'dn'];
-            for (const key of paramKeys) {
+            // First, check for explicit filename-type params (these are reliable)
+            const explicitParams = ['filename', 'file', 'download', 'dn'];
+            let foundFilename = '';
+            for (const key of explicitParams) {
                 const val = url.searchParams.get(key);
                 if (val && val.trim()) {
-                    filename = decodeURIComponent(val.trim().split('/').pop());
+                    foundFilename = decodeURIComponent(val.trim().split('/').pop());
                     break;
                 }
+            }
+            // Next, check pathname for a real filename (has extension)
+            if (!foundFilename) {
+                const parts = (url.pathname || '').split('/').filter(Boolean);
+                if (parts.length) {
+                    const lastPart = decodeURIComponent(parts[parts.length - 1]);
+                    // If it looks like a real filename (has extension), use it
+                    if (/\.[a-z0-9]{2,5}$/i.test(lastPart)) {
+                        foundFilename = lastPart;
+                    }
+                }
+            }
+            // Then check 'name' param as fallback (often just title, not filename)
+            if (!foundFilename) {
+                const nameVal = url.searchParams.get('name');
+                if (nameVal && nameVal.trim()) {
+                    foundFilename = decodeURIComponent(nameVal.trim().split('/').pop());
+                }
+            }
+            // Last resort: use pathname last part even without extension
+            if (!foundFilename) {
+                const parts = (url.pathname || '').split('/').filter(Boolean);
+                if (parts.length) {
+                    foundFilename = decodeURIComponent(parts[parts.length - 1]);
+                }
+            }
+            if (foundFilename) {
+                filename = foundFilename;
             }
             const idKeys = ['videoId', 'video', 'id', 'mediaid', 'imdb', 'tmdb', 'kitsu', 'anidb', 'mal', 'anilist'];
             for (const key of idKeys) {
