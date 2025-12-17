@@ -144,7 +144,41 @@ class TranslationEngine {
     // Timestamp mode: when enabled, trust AI to return timestamps instead of reusing originals
     this.sendTimestampsToAI = this.advancedSettings.sendTimestampsToAI === true;
 
-    log.debug(() => `[TranslationEngine] Initialized with model: ${model || 'unknown'}, batch size: ${this.batchSize}, batch context: ${this.enableBatchContext ? 'enabled' : 'disabled'}, timestamps: ${this.sendTimestampsToAI ? 'ai-managed' : 'source-preserved'}, mode: ${this.singleBatchMode ? 'single-batch' : 'batched'}`);
+    // Key rotation configuration for per-batch rotation
+    // keyRotationConfig: { enabled: boolean, mode: 'per-request' | 'per-batch', keys: string[], advancedSettings: {} }
+    this.keyRotationConfig = options.keyRotationConfig || null;
+    this.perBatchRotationEnabled = this.keyRotationConfig?.enabled === true &&
+      this.keyRotationConfig?.mode === 'per-batch' &&
+      Array.isArray(this.keyRotationConfig?.keys) &&
+      this.keyRotationConfig.keys.length > 1 &&
+      this.providerName === 'gemini';
+
+    if (this.perBatchRotationEnabled) {
+      log.debug(() => `[TranslationEngine] Per-batch key rotation enabled with ${this.keyRotationConfig.keys.length} keys`);
+    }
+
+    log.debug(() => `[TranslationEngine] Initialized with model: ${model || 'unknown'}, batch size: ${this.batchSize}, batch context: ${this.enableBatchContext ? 'enabled' : 'disabled'}, timestamps: ${this.sendTimestampsToAI ? 'ai-managed' : 'source-preserved'}, mode: ${this.singleBatchMode ? 'single-batch' : 'batched'}${this.perBatchRotationEnabled ? ', key-rotation: per-batch' : ''}`);
+  }
+
+  /**
+   * Rotate to a new API key before translating a batch (when per-batch rotation is enabled)
+   * Creates a fresh GeminiService instance with a randomly selected key
+   */
+  maybeRotateKeyForBatch(batchIndex) {
+    if (!this.perBatchRotationEnabled) return;
+
+    const keys = this.keyRotationConfig.keys;
+    const randomIndex = Math.floor(Math.random() * keys.length);
+    const selectedKey = keys[randomIndex];
+
+    // Create a new GeminiService with the rotated key
+    this.gemini = new GeminiService(
+      selectedKey,
+      this.model,
+      this.keyRotationConfig.advancedSettings || this.advancedSettings
+    );
+
+    log.debug(() => `[TranslationEngine] Rotated to key index ${randomIndex + 1}/${keys.length} for batch ${batchIndex + 1}`);
   }
 
   /**
@@ -187,6 +221,9 @@ class TranslationEngine {
       const streamingBatchEntries = new Map();
 
       try {
+        // Rotate API key for this batch if per-batch rotation is enabled
+        this.maybeRotateKeyForBatch(batchIndex);
+
         // Prepare context for this batch (if enabled)
         const context = this.enableBatchContext
           ? this.prepareContextForBatch(batch, entries, translatedEntries, batchIndex)
@@ -374,6 +411,10 @@ class TranslationEngine {
     for (let batchIndex = 0; batchIndex < chunks.length; batchIndex++) {
       const batch = chunks[batchIndex];
       const useStreaming = chunkCount === 1 && this.enableStreaming;
+
+      // Rotate API key for this batch if per-batch rotation is enabled
+      this.maybeRotateKeyForBatch(batchIndex);
+
       // Preserve coherence when the "single-batch" path auto-splits by reusing the same context builder
       const context = this.enableBatchContext
         ? this.prepareContextForBatch(batch, entries, translatedEntries, batchIndex)

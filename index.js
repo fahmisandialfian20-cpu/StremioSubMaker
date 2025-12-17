@@ -19,7 +19,7 @@ const fs = require('fs');
 const os = require('os');
 const { pipeline } = require('stream/promises');
 
-const { parseConfig, getDefaultConfig, buildManifest, normalizeConfig, getLanguageSelectionLimits, getDefaultProviderParameters, mergeProviderParameters } = require('./src/utils/config');
+const { parseConfig, getDefaultConfig, buildManifest, normalizeConfig, getLanguageSelectionLimits, getDefaultProviderParameters, mergeProviderParameters, selectGeminiApiKey } = require('./src/utils/config');
 const { parseSRT, toSRT, sanitizeSubtitleText, srtPairToWebVTT } = require('./src/utils/subtitle');
 const { version } = require('./src/utils/version');
 const { redactToken } = require('./src/utils/security');
@@ -1359,7 +1359,7 @@ function resolveAutoSubTranslationProvider(config, providerKeyOverride, modelOve
         if (desiredKey === 'gemini') {
             return {
                 enabled: true,
-                apiKey: config?.geminiApiKey || config?.geminiKey,
+                apiKey: selectGeminiApiKey(config),
                 model: modelOverride || config?.geminiModel
             };
         }
@@ -1380,7 +1380,7 @@ function resolveAutoSubTranslationProvider(config, providerKeyOverride, modelOve
         }
     }
     // Fallback: try any enabled provider with a key (Gemini first)
-    const geminiKey = config?.geminiApiKey || config?.geminiKey;
+    const geminiKey = selectGeminiApiKey(config);
     if (geminiKey) {
         const fallback = maybeBuildProvider('gemini', {
             enabled: true,
@@ -2853,7 +2853,7 @@ app.post('/api/gemini-models', async (req, res) => {
                 return res.status(401).json({ error: t('server.errors.invalidSessionToken', {}, 'Invalid or expired session token') });
             }
             t = getTranslatorFromRequest(req, res, resolvedConfig);
-            geminiApiKey = resolvedConfig?.geminiApiKey || process.env.GEMINI_API_KEY;
+            geminiApiKey = selectGeminiApiKey(resolvedConfig) || process.env.GEMINI_API_KEY;
         }
 
         if (!geminiApiKey) {
@@ -2907,7 +2907,7 @@ app.post('/api/models/:provider', async (req, res) => {
 
             if (providerKey === 'gemini') {
                 return {
-                    apiKey: resolvedConfig?.geminiApiKey || process.env.GEMINI_API_KEY,
+                    apiKey: selectGeminiApiKey(resolvedConfig) || process.env.GEMINI_API_KEY,
                     model: resolvedConfig?.geminiModel || '',
                     params: resolvedConfig?.advancedSettings || {}
                 };
@@ -3666,7 +3666,9 @@ app.post('/api/translate-file', fileTranslationLimiter, validateRequest(fileTran
                     providers.push(normalized);
                 }
             });
-            if (config.geminiApiKey && config.geminiModel) {
+            // Check if Gemini is configured (handles both single key and rotation modes)
+            const geminiKey = selectGeminiApiKey(config);
+            if (geminiKey && config.geminiModel) {
                 providers.push('gemini');
             } else if (config.multiProviderEnabled !== true) {
                 // Legacy single-provider configs default to Gemini

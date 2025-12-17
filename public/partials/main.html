@@ -410,6 +410,25 @@
                                 <div class="field-error" id="geminiApiKeysError"
                                     data-i18n="config.validation.geminiKeysRequired" style="display: none;">At least one
                                     API key is required for rotation</div>
+
+                                <!-- Key Rotation Mode Selector -->
+                                <div class="form-group"
+                                    style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border);">
+                                    <label for="geminiKeyRotationMode">
+                                        <span data-i18n="config.gemini.keyRotation.modeLabel">Rotation Frequency</span>
+                                        <span class="label-description"
+                                            data-i18n="config.gemini.keyRotation.modeDescription">
+                                            How often to switch between API keys
+                                        </span>
+                                    </label>
+                                    <select id="geminiKeyRotationMode">
+                                        <option value="per-request"
+                                            data-i18n="config.gemini.keyRotation.modePerRequest">Per Request (once per
+                                            file)</option>
+                                        <option value="per-batch" data-i18n="config.gemini.keyRotation.modePerBatch">Per
+                                            Batch (each translation batch)</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
 

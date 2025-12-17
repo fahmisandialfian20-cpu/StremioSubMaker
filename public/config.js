@@ -646,6 +646,7 @@ Translate to {target_language}.`;
             geminiApiKey: DEFAULT_API_KEYS.GEMINI,
             geminiKeyRotationEnabled: false,
             geminiApiKeys: [],
+            geminiKeyRotationMode: 'per-request', // 'per-request' or 'per-batch'
             assemblyAiApiKey: DEFAULT_API_KEYS.ASSEMBLYAI,
             cloudflareWorkersApiKey: DEFAULT_API_KEYS.CF_WORKERS_AUTOSUBS,
             otherApiKeysEnabled: true,
@@ -4843,6 +4844,12 @@ Translate to {target_language}.`;
         // Toggle UI visibility based on state
         toggleGeminiKeyRotationUI(keyRotationEnabled);
 
+        // Load rotation mode
+        const rotationModeSelect = document.getElementById('geminiKeyRotationMode');
+        if (rotationModeSelect) {
+            rotationModeSelect.value = currentConfig.geminiKeyRotationMode || 'per-request';
+        }
+
         const assemblyKeyInput = document.getElementById('assemblyAiApiKey');
         if (assemblyKeyInput) {
             assemblyKeyInput.value = currentConfig.assemblyAiApiKey || '';
@@ -5129,6 +5136,7 @@ Translate to {target_language}.`;
             geminiApiKey: document.getElementById('geminiApiKey').value.trim(),
             geminiKeyRotationEnabled: document.getElementById('geminiKeyRotationEnabled')?.checked === true,
             geminiApiKeys: getGeminiApiKeys(),
+            geminiKeyRotationMode: document.getElementById('geminiKeyRotationMode')?.value || 'per-request',
             assemblyAiApiKey: (function () { const el = document.getElementById('assemblyAiApiKey'); return el ? el.value.trim() : ''; })(),
             cloudflareWorkersApiKey: (function () { const el = document.getElementById('cloudflareWorkersApiKey'); return el ? el.value.trim() : ''; })(),
             otherApiKeysEnabled: isDevModeEnabled(),

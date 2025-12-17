@@ -3492,11 +3492,24 @@ async function performTranslation(sourceFileId, targetLanguage, config, { cacheK
     // Initialize new Translation Engine (structure-first approach)
     // Pass model to enable model-specific batch size optimization
     // Pass advancedSettings to enable optional features (like batch context)
+    // Pass keyRotationConfig for per-batch key rotation when enabled
+    const keyRotationConfig = (config.geminiKeyRotationEnabled === true && providerName === 'gemini') ? {
+      enabled: true,
+      mode: config.geminiKeyRotationMode || 'per-request',
+      keys: Array.isArray(config.geminiApiKeys) ? config.geminiApiKeys.filter(k => typeof k === 'string' && k.trim()) : [],
+      advancedSettings: config.advancedSettings || {}
+    } : null;
+
     const translationEngine = new TranslationEngine(
       provider,
       effectiveModel,
       config.advancedSettings || {},
-      { singleBatchMode: config.singleBatchMode === true, providerName, fallbackProviderName }
+      {
+        singleBatchMode: config.singleBatchMode === true,
+        providerName,
+        fallbackProviderName,
+        keyRotationConfig
+      }
     );
 
     log.debug(() => '[Translation] Using unified translation engine');
