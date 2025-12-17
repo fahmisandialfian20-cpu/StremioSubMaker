@@ -5288,7 +5288,6 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
         modeSelect: document.getElementById('autoSubsMode'),
         modeDetails: document.getElementById('modeDetails'),
         sourceLang: document.getElementById('detectedLang'),
-        cfWindowSize: document.getElementById('cfWindowSizeMb'),
         targetLang: document.getElementById('targetLang'),
         model: document.getElementById('whisperModel'),
         translateToggle: document.getElementById('translateOutput'),
@@ -6231,22 +6230,14 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
           els.assemblyOptions.style.display = mode === 'assemblyai' ? '' : 'none';
         }
         const isAssembly = mode === 'assemblyai';
-        const isCloudflare = mode === 'cloudflare';
         const langAudioRow = els.modeDetails ? els.modeDetails.querySelector('.row') : null;
         const sourceLangRow = els.sourceLang ? els.sourceLang.closest('div') : null;
         const modelRow = els.model ? els.model.closest('div') : null;
-        const cfWindowRow = els.cfWindowSize ? els.cfWindowSize.closest('.cf-window-row') || els.cfWindowSize.closest('div') : null;
         if (langAudioRow) langAudioRow.style.display = isAssembly ? 'none' : '';
         if (sourceLangRow) sourceLangRow.style.display = isAssembly ? 'none' : '';
         if (modelRow) modelRow.style.display = isAssembly ? 'none' : '';
         if (els.sourceLang) els.sourceLang.disabled = isAssembly;
         if (els.model) els.model.disabled = isAssembly;
-        if (cfWindowRow) {
-          cfWindowRow.style.display = isCloudflare ? '' : 'none';
-        }
-        if (els.cfWindowSize) {
-          els.cfWindowSize.disabled = !isCloudflare;
-        }
       }
 
       function toggleTranslationStep() {
@@ -6615,8 +6606,7 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
         };
         if (engine === 'assemblyai') {
           delete payload.model;
-          // AssemblyAI always uses automatic language detection - don't send sourceLanguage
-          delete payload.sourceLanguage;
+          // sourceLanguage is kept - server normalizes to AssemblyAI format (e.g., 'jpn' -> 'ja')
         }
         if (overrides.sendFullVideo === true) {
           payload.sendFullVideo = true;
@@ -6917,7 +6907,7 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
               data: {
                 streamUrl: stream,
                 filename: PAGE.filename || '',
-                // AssemblyAI uses automatic language detection - no sourceLanguage needed
+                sourceLanguage: els.sourceLang?.value || '', // Extension normalizes to AssemblyAI format
                 diarization: true,
                 useAssembly: true,
                 assemblyApiKey: BOOTSTRAP.assemblyApiKey || '',
@@ -6959,8 +6949,6 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
             const cfCreds = getCfCredentials();
             const messageId = 'autosub_' + Date.now();
             const waitForTranscript = waitForAutoSubResponse(messageId);
-            const cfWindowRaw = els.cfWindowSize ? parseFloat(els.cfWindowSize.value) : NaN;
-            const cfWindowSizeMb = Number.isFinite(cfWindowRaw) && cfWindowRaw > 0 ? Math.min(cfWindowRaw, 25) : null;
             window.postMessage({
               type: 'SUBMAKER_AUTOSUB_REQUEST',
               source: 'webpage',
@@ -6972,8 +6960,7 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
                 sourceLanguage: els.sourceLang?.value || '',
                 diarization: true,
                 cfAccountId: cfCreds.accountId,
-                cfToken: cfCreds.token,
-                cfWindowSizeMb: cfWindowSizeMb
+                cfToken: cfCreds.token
               }
             }, '*');
             appendLog('Sent auto-sub request to extension (Cloudflare path)', 'info');
@@ -7075,9 +7062,6 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
         }
         if (els.assemblySendFullVideo) {
           els.assemblySendFullVideo.checked = BOOTSTRAP.defaults?.assemblySendFullVideo === true;
-        }
-        if (els.cfWindowSize) {
-          els.cfWindowSize.value = '';
         }
         hydrateVideoMeta({
           title: BOOTSTRAP.linkedTitle || '',
@@ -7365,9 +7349,6 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
       modeLocal: t('toolbox.autoSubs.steps.modeLocal', {}, 'Local (xSync)'),
       modeRemote: t('toolbox.autoSubs.steps.modeRemote', {}, 'Cloudflare Workers AI'),
       modeAssembly: t('toolbox.autoSubs.steps.modeAssembly', {}, 'AssemblyAI'),
-      cfWindowLabel: t('toolbox.autoSubs.steps.cfWindowLabel', {}, 'Cloudflare window size'),
-      cfWindowHelper: t('toolbox.autoSubs.steps.cfWindowHelper', {}, 'Approximate audio per chunk (MB). Leave empty to use the default (~3 MB / ~90 seconds).'),
-      cfWindowPlaceholder: t('toolbox.autoSubs.steps.cfWindowPlaceholder', {}, 'e.g., 3 (MB, max 25)'),
       sourceLabel: t('toolbox.autoSubs.steps.sourceLabel', {}, 'Source audio language'),
       autoDetect: t('toolbox.autoSubs.steps.autoDetect', {}, 'Auto-detect'),
       modelLabel: t('toolbox.autoSubs.steps.modelLabel', {}, 'Whisper model'),
@@ -8004,7 +7985,7 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
     #autoStep2Card .step-body {
       flex: 0 0 auto;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
       text-align: center;
       gap: 10px;
     }
@@ -8428,13 +8409,6 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
                   </select>
                 </div>
               </div>
-              <div class="row cf-window-row">
-                <div>
-                  <label for="cfWindowSizeMb">${escapeHtml(copy.steps.cfWindowLabel)}</label>
-                  <input type="number" id="cfWindowSizeMb" min="1" max="25" step="0.5" placeholder="${escapeHtml(copy.steps.cfWindowPlaceholder)}">
-                  <p class="muted" style="margin-top:4px;">${escapeHtml(copy.steps.cfWindowHelper)}</p>
-                </div>
-              </div>
               <div class="controls wrap">
                 <label class="inline-checkbox">
                   <input type="checkbox" id="translateOutput" checked> ${escapeHtml(copy.steps.translateOutput)}
@@ -8514,7 +8488,7 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
         <div class="step-card locked" id="autoStep3Card" data-locked-label="${escapeHtml(copy.locks.needContinue)}">
           <div class="step-title"><span class="step-chip">${escapeHtml(copy.steps.three)}</span><span>${escapeHtml(copy.steps.runPipelineTitle)}</span></div>
           <div class="step-body">
-            <div class="chips" style="margin-top:10px;">
+            <div class="chips" style="margin-top:10px; display:none;">
               <div class="status-badge pill-badge warn" id="stepFetch" data-label="${escapeHtml(copy.steps.pills.fetch)}" style="gap:8px;">
                 <span class="status-dot warn" id="stepFetchDot"></span>
                 <div class="status-labels">
@@ -8558,6 +8532,16 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
                 </div>
               </div>
             </div>
+            <div class="log-block">
+              <div class="log-header" aria-hidden="true">
+                <span class="pulse"></span>
+                <div class="log-header-text">
+                  <span class="label">${escapeHtml(copy.log.header)}</span>
+                  <span class="muted">${escapeHtml(copy.log.sub)}</span>
+                </div>
+              </div>
+              <div id="logArea" class="log" aria-live="polite"></div>
+            </div>
             <div class="progress" aria-label="${escapeHtml(copy.steps.progressAria)}">
               <div class="progress-fill" id="progressFill"></div>
             </div>
@@ -8572,16 +8556,6 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
             </div>
             <div class="controls">
               <button class="btn" id="startAutoSubs">${escapeHtml(copy.steps.start)}</button>
-            </div>
-            <div class="log-block">
-              <div class="log-header" aria-hidden="true">
-                <span class="pulse"></span>
-                <div class="log-header-text">
-                  <span class="label">${escapeHtml(copy.log.header)}</span>
-                  <span class="muted">${escapeHtml(copy.log.sub)}</span>
-                </div>
-              </div>
-              <div id="logArea" class="log" aria-live="polite"></div>
             </div>
           </div>
         </div>

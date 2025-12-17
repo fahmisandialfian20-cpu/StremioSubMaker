@@ -251,6 +251,16 @@ function encryptUserConfig(config) {
       encrypted.geminiApiKey = encrypt(encrypted.geminiApiKey);
     }
 
+    // Encrypt Gemini API keys array (for key rotation feature)
+    if (Array.isArray(encrypted.geminiApiKeys) && encrypted.geminiApiKeys.length > 0) {
+      encrypted.geminiApiKeys = encrypted.geminiApiKeys.map(key => {
+        if (typeof key === 'string' && key.trim()) {
+          return encrypt(key);
+        }
+        return key;
+      });
+    }
+
     // Encrypt AssemblyAI API key
     if (encrypted.assemblyAiApiKey) {
       encrypted.assemblyAiApiKey = encrypt(encrypted.assemblyAiApiKey);
@@ -328,6 +338,17 @@ function decryptUserConfig(config) {
       decrypted.geminiApiKey = decrypt(decrypted.geminiApiKey, true);
     }
 
+    // Decrypt Gemini API keys array (for key rotation feature)
+    if (Array.isArray(decrypted.geminiApiKeys) && decrypted.geminiApiKeys.length > 0) {
+      decrypted.geminiApiKeys = decrypted.geminiApiKeys.map(key => {
+        if (key && (isConfigEncrypted || isEncrypted(key))) {
+          return decrypt(key, true);
+        }
+        return key;
+      });
+      log.debug(() => `[Encryption] Decrypted ${decrypted.geminiApiKeys.length} Gemini API keys`);
+    }
+
     // Decrypt AssemblyAI API key
     if (decrypted.assemblyAiApiKey && (isConfigEncrypted || isEncrypted(decrypted.assemblyAiApiKey))) {
       log.debug(() => '[Encryption] Decrypting AssemblyAI API key');
@@ -339,13 +360,13 @@ function decryptUserConfig(config) {
       // OpenSubtitles username/password
       if (decrypted.subtitleProviders.opensubtitles) {
         if (decrypted.subtitleProviders.opensubtitles.username &&
-            (isConfigEncrypted || isEncrypted(decrypted.subtitleProviders.opensubtitles.username))) {
+          (isConfigEncrypted || isEncrypted(decrypted.subtitleProviders.opensubtitles.username))) {
           log.debug(() => '[Encryption] Decrypting OpenSubtitles username');
           decrypted.subtitleProviders.opensubtitles.username =
             decrypt(decrypted.subtitleProviders.opensubtitles.username, true);
         }
         if (decrypted.subtitleProviders.opensubtitles.password &&
-            (isConfigEncrypted || isEncrypted(decrypted.subtitleProviders.opensubtitles.password))) {
+          (isConfigEncrypted || isEncrypted(decrypted.subtitleProviders.opensubtitles.password))) {
           log.debug(() => '[Encryption] Decrypting OpenSubtitles password');
           decrypted.subtitleProviders.opensubtitles.password =
             decrypt(decrypted.subtitleProviders.opensubtitles.password, true);

@@ -949,6 +949,7 @@
           "options": {
             "flashLite": "Gemini 2.5 Flash-Lite",
             "flash": "Gemini 2.5 Flash",
+            "flash3": "Gemini 3.0 Flash (Preview)",
             "pro": "Gemini 2.5 Pro (Lento)"
           },
           "hintTitle": "Tradução má/partida ou dessincronizada?",
@@ -1296,9 +1297,9 @@
       },
       "toast": {
         "title": "Novo stream detetado",
-		"meta": "Está a ser reproduzido um episódio diferente no Stremio.",
-		"dismiss": "Ignorar notificação",
-		"update": "Atualizar"
+        "meta": "Está a ser reproduzido um episódio diferente no Stremio.",
+        "dismiss": "Ignorar notificação",
+        "update": "Atualizar"
       },
       "source": {
         "label": "Idioma de Origem",

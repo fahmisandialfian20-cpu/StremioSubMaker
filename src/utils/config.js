@@ -14,6 +14,9 @@ const GEMINI_LOG_INTERVAL_MS = parseInt(process.env.GEMINI_CONFIG_LOG_INTERVAL_M
 let lastGeminiConfigLog = 0;
 let suppressedGeminiConfigLogs = 0;
 
+// Maximum number of Gemini API keys allowed in rotation (configurable via env, default 5)
+const MAX_GEMINI_API_KEYS = parseInt(process.env.MAX_GEMINI_API_KEYS, 10) || 5;
+
 function parseLanguageLimit(envVar, fallback, min = 1, max = 50) {
   const parsed = parseInt(process.env[envVar], 10);
   if (Number.isFinite(parsed) && parsed >= min) {
@@ -448,6 +451,41 @@ function normalizeConfig(config) {
     mergedConfig.noTranslationLanguages = mergedConfig.noTranslationLanguages.slice(0, maxNoTranslationLanguages);
   }
 
+  // Normalize Gemini API key rotation fields
+  mergedConfig.geminiKeyRotationEnabled = mergedConfig.geminiKeyRotationEnabled === true;
+
+  // Sanitize geminiApiKeys array: trim whitespace, remove empty strings, dedupe, enforce max limit
+  const rawKeys = Array.isArray(mergedConfig.geminiApiKeys) ? mergedConfig.geminiApiKeys : [];
+  const seenKeys = new Set();
+  const sanitizedKeys = [];
+  for (const key of rawKeys) {
+    const trimmed = typeof key === 'string' ? key.trim() : '';
+    if (trimmed && !seenKeys.has(trimmed)) {
+      seenKeys.add(trimmed);
+      sanitizedKeys.push(trimmed);
+      if (sanitizedKeys.length >= MAX_GEMINI_API_KEYS) break;
+    }
+  }
+
+  // Migration: if geminiApiKeys is empty but geminiApiKey exists, seed the array
+  const singleKey = typeof mergedConfig.geminiApiKey === 'string' ? mergedConfig.geminiApiKey.trim() : '';
+  if (sanitizedKeys.length === 0 && singleKey) {
+    sanitizedKeys.push(singleKey);
+  }
+
+  mergedConfig.geminiApiKeys = sanitizedKeys;
+
+  // Backward compat: keep geminiApiKey synced to first non-empty key from array
+  // This ensures legacy code paths still work
+  if (mergedConfig.geminiKeyRotationEnabled && sanitizedKeys.length > 0) {
+    mergedConfig.geminiApiKey = sanitizedKeys[0];
+  } else if (!singleKey && sanitizedKeys.length > 0) {
+    // If user cleared single key but has array, use first from array
+    mergedConfig.geminiApiKey = sanitizedKeys[0];
+  } else {
+    mergedConfig.geminiApiKey = singleKey;
+  }
+
   // If geminiModel is empty/null, use defaults (respects .env)
   if (!mergedConfig.geminiModel || mergedConfig.geminiModel.trim() === '') {
     mergedConfig.geminiModel = defaults.geminiModel;
@@ -695,15 +733,15 @@ const MODEL_SPECIFIC_DEFAULTS = {
     thinkingBudget: 0,      // No thinking for lite model
     temperature: 0.8        // Higher temperature for creativity
   },
-  'gemini-flash-latest': {
-    thinkingBudget: -1,     // Dynamic thinking for flash model
-    temperature: 0.5        // Lower temperature for consistency
-  },
   'gemini-2.5-flash-lite-preview-09-2025': {
     thinkingBudget: 0,      // No thinking for lite model
     temperature: 0.8        // Higher temperature for creativity
   },
   'gemini-2.5-flash-preview-09-2025': {
+    thinkingBudget: -1,     // Dynamic thinking for flash model
+    temperature: 0.5        // Lower temperature for consistency
+  },
+  'gemini-3-flash-preview': {
     thinkingBudget: -1,     // Dynamic thinking for flash model
     temperature: 0.5        // Lower temperature for consistency
   },
@@ -732,7 +770,7 @@ function getModelSpecificDefaults(modelName) {
  */
 function getDefaultConfig(modelName = null) {
   // Determine the model to use for defaults
-  const effectiveModel = modelName || process.env.GEMINI_MODEL || 'gemini-flash-latest';
+  const effectiveModel = modelName || process.env.GEMINI_MODEL || 'gemini-2.5-flash-preview-09-2025';
   const modelDefaults = getModelSpecificDefaults(effectiveModel);
 
   // Read advanced settings from environment variables with fallback to model-specific defaults
@@ -780,6 +818,9 @@ function getDefaultConfig(modelName = null) {
     learnOrder: 'source-top',
     learnPlacement: 'top', // default: pin top language at top of screen
     geminiApiKey: '',
+    // Gemini API key rotation: allows multiple keys to be cycled for load distribution
+    geminiKeyRotationEnabled: false,
+    geminiApiKeys: [], // Array of API keys to rotate through
     assemblyAiApiKey: DEFAULT_API_KEYS.ASSEMBLYAI || '',
     cloudflareWorkersApiKey: DEFAULT_API_KEYS.CF_WORKERS_AUTOSUBS || '',
     otherApiKeysEnabled: true,
@@ -876,7 +917,22 @@ function validateConfig(config) {
     return match ? providers[match] : null;
   };
 
-  const geminiConfigured = !!(config.geminiApiKey && config.geminiApiKey.trim() !== '' && config.geminiModel && config.geminiModel.trim() !== '');
+  // Check if Gemini is properly configured (handles both single key and rotation modes)
+  const geminiConfigured = (() => {
+    const hasModel = !!(config.geminiModel && config.geminiModel.trim() !== '');
+    if (!hasModel) return false;
+
+    // When rotation is enabled, check the keys array
+    if (config.geminiKeyRotationEnabled === true) {
+      const keys = Array.isArray(config.geminiApiKeys)
+        ? config.geminiApiKeys.filter(k => typeof k === 'string' && k.trim() !== '')
+        : [];
+      return keys.length > 0;
+    }
+
+    // Single key mode
+    return !!(config.geminiApiKey && config.geminiApiKey.trim() !== '');
+  })();
   const providerIsConfigured = (key) => {
     const cfg = resolveProviderConfig(key);
     if (!cfg || cfg.enabled !== true) return false;
@@ -1092,6 +1148,42 @@ function buildManifest(config, baseUrl = '') {
   };
 }
 
+/**
+ * Select a Gemini API key from config.
+ * When rotation is enabled and there are multiple keys, picks randomly.
+ * Otherwise returns the single geminiApiKey.
+ * @param {Object} config - Normalized configuration
+ * @returns {string} - Selected API key (may be empty if none configured)
+ */
+function selectGeminiApiKey(config) {
+  if (!config) return '';
+
+  // If rotation is enabled and we have keys in the array
+  if (config.geminiKeyRotationEnabled === true) {
+    const keys = Array.isArray(config.geminiApiKeys)
+      ? config.geminiApiKeys.filter(k => typeof k === 'string' && k.trim() !== '')
+      : [];
+
+    if (keys.length > 0) {
+      // Random selection for stateless, multi-instance safe rotation
+      const selectedKey = keys[Math.floor(Math.random() * keys.length)];
+      log.debug(() => `[Config] Gemini key rotation: selected key ${keys.indexOf(selectedKey) + 1} of ${keys.length}`);
+      return selectedKey;
+    }
+  }
+
+  // Fallback to single key
+  return config.geminiApiKey || '';
+}
+
+/**
+ * Get the maximum number of Gemini API keys allowed
+ * @returns {number}
+ */
+function getMaxGeminiApiKeys() {
+  return MAX_GEMINI_API_KEYS;
+}
+
 module.exports = {
   parseConfig,
   encodeConfig,
@@ -1103,5 +1195,9 @@ module.exports = {
   normalizeConfig,
   getLanguageSelectionLimits,
   getDefaultProviderParameters,
-  mergeProviderParameters
+  mergeProviderParameters,
+  // Gemini key rotation
+  selectGeminiApiKey,
+  getMaxGeminiApiKeys,
+  MAX_GEMINI_API_KEYS
 };

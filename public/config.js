@@ -1,5 +1,5 @@
 // Configuration page JavaScript - Modern Edition
-(function() {
+(function () {
     'use strict';
 
     const DEFAULT_LOCALE = { lang: 'en', messages: {} };
@@ -11,7 +11,7 @@
         try {
             locale = payload || DEFAULT_LOCALE;
             window.__LOCALE__ = locale;
-            window.t = function(key, vars, fallback) {
+            window.t = function (key, vars, fallback) {
                 vars = vars || {};
                 if (!key) return fallback || key;
                 const parts = String(key).split('.');
@@ -48,7 +48,7 @@
                 try {
                     const stored = localStorage.getItem(UI_LANGUAGE_STORAGE_KEY);
                     if (stored) langParam = stored;
-                } catch (_) {}
+                } catch (_) { }
             }
             const query = [];
             if (configParam) query.push('config=' + encodeURIComponent(configParam));
@@ -70,7 +70,7 @@
     function tConfig(key, vars = {}, fallback = '') {
         try {
             if (typeof window.t === 'function') return window.t(key, vars, fallback || key);
-        } catch (_) {}
+        } catch (_) { }
         return fallback || key;
     }
 
@@ -180,7 +180,7 @@
     function applyStaticCopy() {
         try {
             document.title = tConfig('config.documentTitle', {}, document.title || 'SubMaker - Configure');
-        } catch (_) {}
+        } catch (_) { }
         setAttr('uiLanguageDock', 'aria-label', 'config.uiLanguageAria', 'UI language');
         setAttr('uiLanguageDock', 'title', 'config.uiLanguageAria', 'UI language');
         setText('heroTitle', 'config.heroTitle', 'SubMaker');
@@ -243,7 +243,7 @@
         applyDataI18n();
         refreshComboboxTranslations();
         // Reapply any dynamic copy that depends on runtime values (e.g., language limits)
-        try { updateLanguageLimitCopy(); } catch (_) {}
+        try { updateLanguageLimitCopy(); } catch (_) { }
     }
 
     // If partials finished loading after config.js executed (e.g., slow fetch/timeout path),
@@ -262,7 +262,7 @@
                 } catch (err) {
                     console.warn('[i18n] Failed to reapply copy after partials', err);
                 }
-            }).catch(() => {});
+            }).catch(() => { });
         }
     }
     applyCopyAfterPartials();
@@ -349,7 +349,7 @@
         try {
             const stored = localStorage.getItem(UI_LANGUAGE_STORAGE_KEY);
             if (stored) return stored.toLowerCase();
-        } catch (_) {}
+        } catch (_) { }
         return (navigator.language || 'en').toLowerCase();
     }
 
@@ -539,15 +539,15 @@ Translate to {target_language}.`;
             thinkingBudget: 0,
             temperature: 0.7
         },
-        'gemini-flash-latest': {
-            thinkingBudget: -1,
-            temperature: 0.5
-        },
         'gemini-2.5-flash-lite-preview-09-2025': {
             thinkingBudget: 0,
             temperature: 0.7
         },
         'gemini-2.5-flash-preview-09-2025': {
+            thinkingBudget: -1,
+            temperature: 0.5
+        },
+        'gemini-3-flash-preview': {
             thinkingBudget: -1,
             temperature: 0.5
         },
@@ -644,6 +644,8 @@ Translate to {target_language}.`;
             learnOrder: 'source-top', // 'source-top' | 'target-top'
             learnPlacement: 'top',
             geminiApiKey: DEFAULT_API_KEYS.GEMINI,
+            geminiKeyRotationEnabled: false,
+            geminiApiKeys: [],
             assemblyAiApiKey: DEFAULT_API_KEYS.ASSEMBLYAI,
             cloudflareWorkersApiKey: DEFAULT_API_KEYS.CF_WORKERS_AUTOSUBS,
             otherApiKeysEnabled: true,
@@ -937,7 +939,7 @@ Translate to {target_language}.`;
         currentConfig.uiLanguage = normalized;
         updateUiLanguageBadge(normalized);
         setUiLanguageExpanded(false);
-        try { localStorage.setItem(UI_LANGUAGE_STORAGE_KEY, normalized); } catch (_) {}
+        try { localStorage.setItem(UI_LANGUAGE_STORAGE_KEY, normalized); } catch (_) { }
         initLocale(normalized);
     }
 
@@ -945,7 +947,7 @@ Translate to {target_language}.`;
         const translate = (key, fallback) => {
             try {
                 if (typeof window.t === 'function') return window.t(key, {}, fallback);
-            } catch (_) {}
+            } catch (_) { }
             return fallback;
         };
         // Preserve whether the flag dock is currently expanded so we don't auto-close it
@@ -1063,13 +1065,13 @@ Translate to {target_language}.`;
                                 // The save operation will store the appropriate token when user clicks Save.
 
                                 // Clear the old invalid token from localStorage to force new session on save
-                                try { localStorage.removeItem(TOKEN_KEY); } catch (_) {}
+                                try { localStorage.removeItem(TOKEN_KEY); } catch (_) { }
 
                                 // Show a warning to the user
                                 showAlert(tConfig('config.alerts.sessionLost', {}, 'Config session was lost. Please reconfigure and save to create a new session.'), 'warning', 'config.alerts.sessionLost', {});
                             } else {
                                 // Normal path - store the original token
-                                try { localStorage.setItem(TOKEN_KEY, rawConfigParam); } catch (_) {}
+                                try { localStorage.setItem(TOKEN_KEY, rawConfigParam); } catch (_) { }
                             }
                         }
                     }
@@ -1124,11 +1126,11 @@ Translate to {target_language}.`;
         // Populate UI language selector before wiring events
         const activeUiLang = currentConfig.uiLanguage || locale.lang || 'en';
         renderUiLanguageFlags(activeUiLang);
-        try { localStorage.setItem(UI_LANGUAGE_STORAGE_KEY, activeUiLang); } catch (_) {}
+        try { localStorage.setItem(UI_LANGUAGE_STORAGE_KEY, activeUiLang); } catch (_) { }
 
         // Kick off language loading without blocking UI/modals
         loadLanguages().catch(err => {
-            try { showAlert(tConfig('config.alerts.loadLanguagesFailed', { reason: err.message }, 'Failed to load languages: ' + err.message), 'error', 'config.alerts.loadLanguagesFailed', { reason: err.message }); } catch (_) {}
+            try { showAlert(tConfig('config.alerts.loadLanguagesFailed', { reason: err.message }, 'Failed to load languages: ' + err.message), 'error', 'config.alerts.loadLanguagesFailed', { reason: err.message }); } catch (_) { }
         });
 
         setupEventListeners();
@@ -1154,7 +1156,7 @@ Translate to {target_language}.`;
         // Auto-fetch models if API key exists (do not block UI/modals)
         const apiKey = document.getElementById('geminiApiKey').value.trim();
         if (apiKey) {
-            Promise.resolve().then(() => autoFetchModels(apiKey)).catch(() => {});
+            Promise.resolve().then(() => autoFetchModels(apiKey)).catch(() => { });
         }
 
         // Position reset bar after layout is ready
@@ -1233,13 +1235,13 @@ Translate to {target_language}.`;
     function updateLanguageLimitCopy() {
         const sourceDesc = document.getElementById('sourceLanguagesDescription');
         if (sourceDesc) {
-            try { sourceDesc.setAttribute('data-i18n-vars', JSON.stringify({ max: MAX_SOURCE_LANGUAGES })); } catch (_) {}
+            try { sourceDesc.setAttribute('data-i18n-vars', JSON.stringify({ max: MAX_SOURCE_LANGUAGES })); } catch (_) { }
             sourceDesc.innerHTML = tConfig('config.limits.sourceDescription', { max: MAX_SOURCE_LANGUAGES }, `You can select up to ${MAX_SOURCE_LANGUAGES} source language${MAX_SOURCE_LANGUAGES === 1 ? '' : 's'}, but only 1 is recommended (so you have the same list order when translating). All subtitles from this language will be available for translation in the translation selector AND will be fetched (original subtitles will show up).`);
         }
 
         const targetDesc = document.getElementById('targetLanguagesDescription');
         if (targetDesc) {
-            try { targetDesc.setAttribute('data-i18n-vars', JSON.stringify({ max: MAX_TARGET_LANGUAGES })); } catch (_) {}
+            try { targetDesc.setAttribute('data-i18n-vars', JSON.stringify({ max: MAX_TARGET_LANGUAGES })); } catch (_) { }
             targetDesc.innerHTML = tConfig('config.limits.targetDescription', { max: MAX_TARGET_LANGUAGES }, `Subtitles in target languages will be fetched AND translation buttons will appear for translating FROM the source language TO these languages. You can select up to ${MAX_TARGET_LANGUAGES} total target languages (including Learn Mode).`);
         }
 
@@ -1250,7 +1252,7 @@ Translate to {target_language}.`;
 
         const noTranslationDesc = document.getElementById('noTranslationLanguagesDescription');
         if (noTranslationDesc) {
-            try { noTranslationDesc.setAttribute('data-i18n-vars', JSON.stringify({ max: MAX_NO_TRANSLATION_LANGUAGES })); } catch (_) {}
+            try { noTranslationDesc.setAttribute('data-i18n-vars', JSON.stringify({ max: MAX_NO_TRANSLATION_LANGUAGES })); } catch (_) { }
             noTranslationDesc.textContent = tConfig('config.limits.noTranslationDescription', { max: MAX_NO_TRANSLATION_LANGUAGES }, `Select which languages you want to fetch subtitles in (up to ${MAX_NO_TRANSLATION_LANGUAGES}).`);
         }
     }
@@ -1325,7 +1327,7 @@ Translate to {target_language}.`;
                     document.body.style.paddingRight = '';
                 }
             }
-        } catch (_) {}
+        } catch (_) { }
     }
 
     function openModalById(id, opts) {
@@ -1396,7 +1398,7 @@ Translate to {target_language}.`;
         gate.then(() => requestAnimationFrame(openFull)).catch(openFull);
     }
 
-    window.closeInstructionsModal = function() {
+    window.closeInstructionsModal = function () {
         const dontShowEl = document.getElementById('dontShowInstructions');
         const dontShow = dontShowEl ? dontShowEl.checked : false;
         if (dontShow) {
@@ -1489,7 +1491,7 @@ Translate to {target_language}.`;
             }
         };
 
-        ['click','wheel','touchstart','keydown'].forEach(type => {
+        ['click', 'wheel', 'touchstart', 'keydown'].forEach(type => {
             overlay.addEventListener(type, mark, { passive: true, capture: true });
             if (modal) modal.addEventListener(type, mark, { passive: true, capture: true });
             if (content) content.addEventListener(type, mark, { passive: true, capture: true });
@@ -1515,13 +1517,13 @@ Translate to {target_language}.`;
         try {
             const stored = localStorage.getItem(TOKEN_KEY);
             if (stored && isValidConfigToken(stored)) return stored;
-        } catch (_) {}
+        } catch (_) { }
 
         try {
             const params = new URLSearchParams(window.location.search);
             const raw = params.get('config');
             if (raw && isValidConfigToken(raw)) return raw;
-        } catch (_) {}
+        } catch (_) { }
         return '';
     }
 
@@ -1611,7 +1613,7 @@ Translate to {target_language}.`;
         updateQuickStats();
     }
 
-    window.closeSubToolboxModal = function() {
+    window.closeSubToolboxModal = function () {
         const modal = document.getElementById('subToolboxModal');
         if (modal) {
             modal.classList.remove('show');
@@ -1624,7 +1626,7 @@ Translate to {target_language}.`;
         try {
             localStorage.removeItem('submaker_dont_show_sub_toolbox');
             localStorage.removeItem('submaker_dont_show_file_translation');
-        } catch (_) {}
+        } catch (_) { }
         openModalById('subToolboxModal');
     }
 
@@ -1664,7 +1666,7 @@ Translate to {target_language}.`;
     // (Removed extra window load fallback to reduce complexity)
 
     // Unified delegated click handler (capture) for modals/FAB
-    document.addEventListener('click', function(e) {
+    document.addEventListener('click', function (e) {
         const target = e.target;
         const overlay = target && target.closest ? target.closest('.modal-overlay') : null;
         const clickedInsideModal = target && target.closest ? target.closest('.modal') : null;
@@ -1710,7 +1712,7 @@ Translate to {target_language}.`;
     }, true);
 
     // Close modals with Escape key (priority handler)
-    document.addEventListener('keydown', function(e) {
+    document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') {
             const instructionsModal = document.getElementById('instructionsModal');
             const subToolboxModal = document.getElementById('subToolboxModal');
@@ -1999,7 +2001,7 @@ Translate to {target_language}.`;
 
         const container = document.getElementById(containerId);
         const badge = badgeId ? document.getElementById(badgeId) : null;
-        
+
         container.innerHTML = '';
         container.classList.toggle('empty', languageCodes.length === 0);
 
@@ -2080,11 +2082,11 @@ Translate to {target_language}.`;
 
         // Delegate language grid item clicks to containers (reduces per-item listeners)
         const gridMap = [
-        ['sourceLanguages', 'source'],
-        ['targetLanguages', 'target'],
-        ['learnLanguages', 'learn'],
-        ['noTranslationLanguages', 'notranslation']
-    ];
+            ['sourceLanguages', 'source'],
+            ['targetLanguages', 'target'],
+            ['learnLanguages', 'learn'],
+            ['noTranslationLanguages', 'notranslation']
+        ];
         gridMap.forEach(([id, type]) => {
             const grid = document.getElementById(id);
             if (grid && !grid.__delegated) {
@@ -2451,6 +2453,24 @@ Translate to {target_language}.`;
         document.getElementById('geminiApiKey').addEventListener('input', validateGeminiApiKey);
         document.getElementById('geminiModel').addEventListener('change', validateGeminiModel);
 
+        // Gemini API Key Rotation toggle
+        const keyRotationToggle = document.getElementById('geminiKeyRotationEnabled');
+        if (keyRotationToggle) {
+            keyRotationToggle.addEventListener('change', (e) => {
+                const enabled = !!e.target.checked;
+                currentConfig.geminiKeyRotationEnabled = enabled;
+                toggleGeminiKeyRotationUI(enabled);
+            });
+        }
+
+        // Add Gemini Key button
+        const addKeyBtn = document.getElementById('addGeminiKeyBtn');
+        if (addKeyBtn) {
+            addKeyBtn.addEventListener('click', () => {
+                addGeminiKeyInput();
+            });
+        }
+
         const betaToggle = document.getElementById('betaMode');
         if (betaToggle) {
             betaToggle.addEventListener('change', (e) => {
@@ -2551,7 +2571,7 @@ Translate to {target_language}.`;
         // When user selects a new model, always reset advanced settings to that model's defaults
         // This overrides any cached values from previous model selections
         // Manual changes made AFTER model selection will persist until next model change
-        document.getElementById('geminiModel').addEventListener('change', function(e) {
+        document.getElementById('geminiModel').addEventListener('change', function (e) {
             const selectedModel = e.target.value;
             const modelDefaults = getModelSpecificDefaults(selectedModel);
             const fullDefaults = getDefaultConfig(selectedModel).advancedSettings;
@@ -2841,7 +2861,7 @@ Translate to {target_language}.`;
         if (!options.silent && prev !== betaEnabled) {
             try {
                 showAlert(betaEnabled ? tConfig('config.alerts.betaOn', {}, '🔬 Experimental Mode ON') : tConfig('config.alerts.betaOff', {}, '🔬 Experimental Mode OFF'), betaEnabled ? 'success' : 'info', betaEnabled ? 'config.alerts.betaOn' : 'config.alerts.betaOff', {});
-            } catch (_) {}
+            } catch (_) { }
         }
 
         updateBypassCacheForAdvancedSettings();
@@ -3171,11 +3191,11 @@ Translate to {target_language}.`;
             const cachedModels = providerModelCache[key] || [];
             populateProviderModels(key, cachedModels, cfg?.model || '');
             toggleProviderFields(key, enabled);
-                currentConfig.providers[key] = {
-                    ...currentConfig.providers[key],
-                    ...(cfg || {})
-                };
-            });
+            currentConfig.providers[key] = {
+                ...currentConfig.providers[key],
+                ...(cfg || {})
+            };
+        });
         updateMainProviderOptions(currentConfig.mainProvider || 'gemini');
         if (currentConfig.multiProviderEnabled) {
             const secondaryEnabled = currentConfig.secondaryProviderEnabled === true;
@@ -3269,7 +3289,7 @@ Translate to {target_language}.`;
                     try {
                         const text = await response.text();
                         if (text) errorMessage = text;
-                    } catch (_) {}
+                    } catch (_) { }
                 }
                 throw new Error(errorMessage);
             }
@@ -3311,6 +3331,148 @@ Translate to {target_language}.`;
             error.classList.remove('show');
             return true;
         }
+    }
+
+    // Maximum number of Gemini API keys allowed
+    const MAX_GEMINI_API_KEYS = 5;
+
+    /**
+     * Toggle the Gemini API key rotation UI visibility
+     * When enabled, shows the keys list and migrates the single key if present
+     */
+    function toggleGeminiKeyRotationUI(enabled) {
+        const container = document.getElementById('geminiApiKeysContainer');
+        const singleKeyInput = document.getElementById('geminiApiKey');
+        const singleKeyGroup = singleKeyInput?.closest('.form-group');
+
+        if (!container) return;
+
+        if (enabled) {
+            container.style.display = 'block';
+            // Hide the single key input (but keep it in DOM for backward compat)
+            if (singleKeyGroup) {
+                singleKeyGroup.style.display = 'none';
+            }
+            // Migrate existing single key to array if present
+            const existingKey = singleKeyInput?.value?.trim();
+            const keysList = document.getElementById('geminiApiKeysList');
+            if (keysList && keysList.children.length === 0) {
+                if (existingKey) {
+                    addGeminiKeyInput(existingKey);
+                } else {
+                    addGeminiKeyInput(); // Add one empty input
+                }
+            }
+        } else {
+            container.style.display = 'none';
+            // Show the single key input again
+            if (singleKeyGroup) {
+                singleKeyGroup.style.display = '';
+            }
+            // Sync first key from array back to single key input
+            const keys = getGeminiApiKeys();
+            if (keys.length > 0 && singleKeyInput) {
+                singleKeyInput.value = keys[0];
+            }
+        }
+        updateGeminiKeysCount();
+    }
+
+    /**
+     * Add a new Gemini API key input row
+     * @param {string} value - Optional initial value for the input
+     */
+    function addGeminiKeyInput(value = '') {
+        const keysList = document.getElementById('geminiApiKeysList');
+        if (!keysList) return;
+
+        const currentCount = keysList.children.length;
+        if (currentCount >= MAX_GEMINI_API_KEYS) {
+            showAlert(tConfig('config.alerts.maxKeysReached', { max: MAX_GEMINI_API_KEYS }, `Maximum of ${MAX_GEMINI_API_KEYS} API keys allowed`), 'warning');
+            return;
+        }
+
+        const row = document.createElement('div');
+        row.className = 'gemini-key-row';
+        row.style.cssText = 'display: flex; gap: 0.5rem; align-items: center;';
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'sensitive-input masked gemini-api-key-input';
+        input.placeholder = tConfig('config.gemini.keyRotation.keyPlaceholder', {}, 'Enter API key');
+        input.value = value;
+        input.style.flex = '1';
+        input.autocomplete = 'off';
+        input.spellcheck = false;
+
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'btn btn-danger btn-sm';
+        removeBtn.innerHTML = '−';
+        removeBtn.title = tConfig('config.gemini.keyRotation.removeKey', {}, 'Remove this key');
+        removeBtn.addEventListener('click', () => removeGeminiKeyInput(row));
+
+        row.appendChild(input);
+        row.appendChild(removeBtn);
+        keysList.appendChild(row);
+
+        updateGeminiKeysCount();
+        input.focus();
+    }
+
+    /**
+     * Remove a Gemini API key input row
+     */
+    function removeGeminiKeyInput(row) {
+        const keysList = document.getElementById('geminiApiKeysList');
+        if (!keysList) return;
+
+        row.remove();
+
+        // Ensure at least one input remains
+        if (keysList.children.length === 0) {
+            addGeminiKeyInput();
+        }
+
+        updateGeminiKeysCount();
+    }
+
+    /**
+     * Update the Gemini keys count label
+     */
+    function updateGeminiKeysCount() {
+        const label = document.getElementById('geminiKeysCountLabel');
+        const keysList = document.getElementById('geminiApiKeysList');
+        const addBtn = document.getElementById('addGeminiKeyBtn');
+
+        if (!label || !keysList) return;
+
+        const count = keysList.children.length;
+        label.textContent = `(${count}/${MAX_GEMINI_API_KEYS} ${tConfig('config.gemini.keyRotation.keysCount', {}, 'keys')})`;
+
+        // Disable add button if at max
+        if (addBtn) {
+            addBtn.disabled = count >= MAX_GEMINI_API_KEYS;
+        }
+    }
+
+    /**
+     * Get all Gemini API keys from the UI
+     * @returns {string[]} Array of non-empty API keys
+     */
+    function getGeminiApiKeys() {
+        const keysList = document.getElementById('geminiApiKeysList');
+        if (!keysList) return [];
+
+        const inputs = keysList.querySelectorAll('.gemini-api-key-input');
+        const keys = [];
+        inputs.forEach(input => {
+            const value = input.value?.trim();
+            if (value) {
+                keys.push(value);
+            }
+        });
+        return keys;
     }
 
     async function validateAssemblyAiKey(showNotification = true) {
@@ -3761,7 +3923,7 @@ Translate to {target_language}.`;
         ];
 
         const message = shortcuts.map(s => `<span class="kbd">${s.key}</span> ${s.action}`).join('<br>');
-        
+
         const alert = document.createElement('div');
         alert.className = 'alert alert-info';
         alert.innerHTML = `
@@ -3771,7 +3933,7 @@ Translate to {target_language}.`;
                 ${message}
             </div>
         `;
-        
+
         const container = document.getElementById('alertContainer');
         container.innerHTML = '';
         container.appendChild(alert);
@@ -4108,7 +4270,7 @@ Translate to {target_language}.`;
         validateNoTranslationSelection();
     }
 
-    
+
 
     function filterLanguages(gridId, searchTerm) {
         const grid = document.getElementById(gridId);
@@ -4201,7 +4363,8 @@ Translate to {target_language}.`;
         // Define hardcoded multi-model options
         const hardcodedModels = [
             { name: 'gemini-flash-lite-latest', displayName: 'Gemini 2.5 Flash-Lite' },
-            { name: 'gemini-flash-latest', displayName: 'Gemini 2.5 Flash' },
+            { name: 'gemini-2.5-flash-preview-09-2025', displayName: 'Gemini 2.5 Flash' },
+            { name: 'gemini-3-flash-preview', displayName: 'Gemini 3.0 Flash (Preview)' },
             { name: 'gemini-2.5-pro', displayName: 'Gemini 2.5 Pro (Slow)' }
         ];
 
@@ -4239,7 +4402,7 @@ Translate to {target_language}.`;
             }
         });
 
-        
+
     }
 
     function handleQuickAction(e) {
@@ -4430,8 +4593,8 @@ Translate to {target_language}.`;
 
             // Get and save current app version
             getCurrentAppVersion().then(version => {
-                try { localStorage.setItem(CACHE_VERSION_KEY, version); } catch (error) {}
-            }).catch(function(){});
+                try { localStorage.setItem(CACHE_VERSION_KEY, version); } catch (error) { }
+            }).catch(function () { });
         } catch (error) {
             // Continue anyway - caching is optional
         }
@@ -4618,10 +4781,10 @@ Translate to {target_language}.`;
                 try {
                     localStorage.setItem(CACHE_KEY, JSON.stringify(migrated));
                     localStorage.setItem(CACHE_VERSION_KEY, currentVersion);
-                } catch (_) {}
+                } catch (_) { }
 
                 // Notify user briefly that a new version was detected
-                try { showAlert(tConfig('config.alerts.newVersionDetected', {}, 'New Version Detected'), 'info', 'config.alerts.newVersionDetected', {}); } catch (_) {}
+                try { showAlert(tConfig('config.alerts.newVersionDetected', {}, 'New Version Detected'), 'info', 'config.alerts.newVersionDetected', {}); } catch (_) { }
 
                 return migrated;
             }
@@ -4660,6 +4823,26 @@ Translate to {target_language}.`;
 
         // Load Gemini API key
         document.getElementById('geminiApiKey').value = currentConfig.geminiApiKey || '';
+
+        // Load Gemini API key rotation settings
+        const keyRotationEnabled = currentConfig.geminiKeyRotationEnabled === true;
+        const keyRotationToggle = document.getElementById('geminiKeyRotationEnabled');
+        if (keyRotationToggle) {
+            keyRotationToggle.checked = keyRotationEnabled;
+        }
+        // Clear existing key inputs first
+        const keysList = document.getElementById('geminiApiKeysList');
+        if (keysList) {
+            keysList.innerHTML = '';
+        }
+        // Populate keys from config
+        const geminiApiKeys = Array.isArray(currentConfig.geminiApiKeys) ? currentConfig.geminiApiKeys : [];
+        if (geminiApiKeys.length > 0) {
+            geminiApiKeys.forEach(key => addGeminiKeyInput(key));
+        }
+        // Toggle UI visibility based on state
+        toggleGeminiKeyRotationUI(keyRotationEnabled);
+
         const assemblyKeyInput = document.getElementById('assemblyAiApiKey');
         if (assemblyKeyInput) {
             assemblyKeyInput.value = currentConfig.assemblyAiApiKey || '';
@@ -4754,7 +4937,7 @@ Translate to {target_language}.`;
         // SubDL
         const subdlEnabled = (isFirstRun ? false : (currentConfig.subtitleProviders?.subdl?.enabled !== false));
         document.getElementById('enableSubDL').checked = subdlEnabled;
-        document.getElementById('subdlApiKey').value = 
+        document.getElementById('subdlApiKey').value =
             currentConfig.subtitleProviders?.subdl?.apiKey || DEFAULT_API_KEYS.SUBDL;
         toggleProviderConfig('subdlConfig', subdlEnabled);
 
@@ -4809,10 +4992,10 @@ Translate to {target_language}.`;
         }
 
         const advModelEl = document.getElementById('advancedModel');
-         const advThinkingEl = document.getElementById('advancedThinkingBudget');
+        const advThinkingEl = document.getElementById('advancedThinkingBudget');
         const advTempEl = document.getElementById('advancedTemperature');
         const advTopPEl = document.getElementById('advancedTopP');
- 
+
         if (advModelEl) {
             // Will be populated by fetchAvailableModels
             advModelEl.value = currentConfig.advancedSettings?.geminiModel || '';
@@ -4857,7 +5040,7 @@ Translate to {target_language}.`;
             const placement = currentConfig.learnPlacement || 'stacked';
             const placementInput = document.querySelector(`input[name=\"learnPlacement\"][value=\"${placement}\"]`);
             if (placementInput) placementInput.checked = true;
-        } catch (_) {}
+        } catch (_) { }
 
         // Track mobile mode toggle in state
         const mobileToggle = document.getElementById('mobileMode');
@@ -4912,11 +5095,11 @@ Translate to {target_language}.`;
             if (mobileToggle) {
                 currentConfig.mobileMode = mobileToggle.checked;
             }
-        } catch (_) {}
+        } catch (_) { }
 
         const promptStyle = document.getElementById('promptStyle').value;
         let translationPrompt = '';
-        const singleBatchEnabled = (function(){
+        const singleBatchEnabled = (function () {
             const el = document.getElementById('singleBatchMode');
             if (el) return el.checked === true;
             return currentConfig?.singleBatchMode === true;
@@ -4944,8 +5127,10 @@ Translate to {target_language}.`;
             noTranslationLanguages: currentConfig.noTranslationLanguages,
             uiLanguage: (currentConfig.uiLanguage || (navigator.language || 'en')).toString().toLowerCase(),
             geminiApiKey: document.getElementById('geminiApiKey').value.trim(),
-            assemblyAiApiKey: (function(){ const el = document.getElementById('assemblyAiApiKey'); return el ? el.value.trim() : ''; })(),
-            cloudflareWorkersApiKey: (function(){ const el = document.getElementById('cloudflareWorkersApiKey'); return el ? el.value.trim() : ''; })(),
+            geminiKeyRotationEnabled: document.getElementById('geminiKeyRotationEnabled')?.checked === true,
+            geminiApiKeys: getGeminiApiKeys(),
+            assemblyAiApiKey: (function () { const el = document.getElementById('assemblyAiApiKey'); return el ? el.value.trim() : ''; })(),
+            cloudflareWorkersApiKey: (function () { const el = document.getElementById('cloudflareWorkersApiKey'); return el ? el.value.trim() : ''; })(),
             otherApiKeysEnabled: isDevModeEnabled(),
             autoSubs: {
                 ...currentConfig.autoSubs,
@@ -4958,7 +5143,7 @@ Translate to {target_language}.`;
             promptStyle: promptStyle,
             translationPrompt: translationPrompt,
             betaModeEnabled: isBetaModeEnabled(),
-            devMode: (function(){ const el = document.getElementById('devMode'); return el ? el.checked : false; })(),
+            devMode: (function () { const el = document.getElementById('devMode'); return el ? el.checked : false; })(),
             sourceLanguages: currentConfig.sourceLanguages,
             targetLanguages: currentConfig.targetLanguages,
             learnMode: currentConfig.learnMode === true,
@@ -5001,23 +5186,23 @@ Translate to {target_language}.`;
                 enabled: isBypassRequested(),
                 duration: 12
             },
-            excludeHearingImpairedSubtitles: (function(){
+            excludeHearingImpairedSubtitles: (function () {
                 const el = document.getElementById('excludeHearingImpairedSubtitlesNoTranslation') || document.getElementById('excludeHearingImpairedSubtitles');
                 return el ? el.checked === true : (currentConfig?.excludeHearingImpairedSubtitles === true);
             })(),
-            subToolboxEnabled: (function(){
+            subToolboxEnabled: (function () {
                 const el = document.getElementById('subToolboxEnabledNoTranslation') || document.getElementById('subToolboxEnabled');
                 return el ? el.checked : (currentConfig?.subToolboxEnabled === true);
             })(),
-            fileTranslationEnabled: (function(){
+            fileTranslationEnabled: (function () {
                 const el = document.getElementById('subToolboxEnabledNoTranslation') || document.getElementById('subToolboxEnabled');
                 return el ? el.checked : (currentConfig?.fileTranslationEnabled === true);
             })(),
-            syncSubtitlesEnabled: (function(){
+            syncSubtitlesEnabled: (function () {
                 const el = document.getElementById('subToolboxEnabledNoTranslation') || document.getElementById('subToolboxEnabled');
                 return el ? el.checked : (currentConfig?.syncSubtitlesEnabled === true);
             })(),
-            mobileMode: (function(){
+            mobileMode: (function () {
                 const el = document.getElementById('mobileMode');
                 if (el) return el.checked;
                 return currentConfig?.mobileMode === true;
@@ -5025,14 +5210,14 @@ Translate to {target_language}.`;
             singleBatchMode: singleBatchEnabled,
             advancedSettings: {
                 enabled: areAdvancedSettingsModified(), // Auto-detect if any setting differs from defaults
-                geminiModel: (function(){ const el = document.getElementById('advancedModel'); return el ? el.value : ''; })(),
-                thinkingBudget: (function(){ const el = document.getElementById('advancedThinkingBudget'); return el ? parseInt(el.value) : 0; })(),
-                temperature: (function(){ const el = document.getElementById('advancedTemperature'); return el ? parseFloat(el.value) : 0.8; })(),
-                topP: (function(){ const el = document.getElementById('advancedTopP'); return el ? parseFloat(el.value) : 0.95; })(),
+                geminiModel: (function () { const el = document.getElementById('advancedModel'); return el ? el.value : ''; })(),
+                thinkingBudget: (function () { const el = document.getElementById('advancedThinkingBudget'); return el ? parseInt(el.value) : 0; })(),
+                temperature: (function () { const el = document.getElementById('advancedTemperature'); return el ? parseFloat(el.value) : 0.8; })(),
+                topP: (function () { const el = document.getElementById('advancedTopP'); return el ? parseFloat(el.value) : 0.95; })(),
                 topK: 40, // Keep default topK
-                enableBatchContext: (function(){ const el = document.getElementById('enableBatchContext'); return el ? el.checked : false; })(),
-                contextSize: (function(){ const el = document.getElementById('contextSize'); return el ? parseInt(el.value) : 3; })(),
-                sendTimestampsToAI: (function(){ const el = document.getElementById('sendTimestampsToAI'); return el ? el.value === 'ai' : false; })()
+                enableBatchContext: (function () { const el = document.getElementById('enableBatchContext'); return el ? el.checked : false; })(),
+                contextSize: (function () { const el = document.getElementById('contextSize'); return el ? parseInt(el.value) : 3; })(),
+                sendTimestampsToAI: (function () { const el = document.getElementById('sendTimestampsToAI'); return el ? el.value === 'ai' : false; })()
             }
         };
         config.multiProviderEnabled = multiProviderToggleChecked;
@@ -5048,13 +5233,13 @@ Translate to {target_language}.`;
 
         // Validation with visual feedback - collect all errors
         const errors = [];
-        
+
 
         const anyProviderEnabled = Object.values(config.subtitleProviders).some(p => p.enabled);
         if (!anyProviderEnabled) {
             errors.push(tConfig('config.validation.subtitleProviderRequired', {}, '⚠️ Please enable at least one subtitle provider'));
         }
-        
+
 
         // Database mode dropdown validation (always valid - dropdown must have a value)
         // No need to validate since dropdown always has a selected value
@@ -5096,7 +5281,19 @@ Translate to {target_language}.`;
                 }
                 return !!(cfg.apiKey && cfg.apiKey.trim() !== '' && cfg.model);
             };
-            const geminiConfigured = !!(config.geminiApiKey && config.geminiApiKey.trim() !== '' && config.geminiModel && config.geminiModel.trim() !== '');
+            const geminiConfigured = (() => {
+                const hasModel = !!(config.geminiModel && config.geminiModel.trim() !== '');
+                if (!hasModel) return false;
+                // When rotation is enabled, check the keys array
+                if (config.geminiKeyRotationEnabled === true) {
+                    const keys = Array.isArray(config.geminiApiKeys)
+                        ? config.geminiApiKeys.filter(k => typeof k === 'string' && k.trim() !== '')
+                        : [];
+                    return keys.length > 0;
+                }
+                // Single key mode
+                return !!(config.geminiApiKey && config.geminiApiKey.trim() !== '');
+            })();
             const configuredProviders = new Set();
             if (geminiConfigured) configuredProviders.add('gemini');
             Object.keys(config.providers || {}).forEach(key => {
@@ -5201,11 +5398,11 @@ Translate to {target_language}.`;
             }
         }
 
-        
+
         if (errors.length > 0) {
             // Show all errors as a single alert
             const errorMessage = errors.join('<br>');
-            
+
             showAlert(errorMessage, 'error');
 
             // Focus on first invalid field
@@ -5234,7 +5431,7 @@ Translate to {target_language}.`;
         let existingToken = localStorage.getItem(TOKEN_KEY);
         let configToken;
         let isUpdate = false;
-        
+
 
         try {
             if (existingToken) {
@@ -5305,7 +5502,7 @@ Translate to {target_language}.`;
                         timeout: 10000 // 10 second timeout
                     });
 
-                    
+
                     if (!createResponse.ok) {
                         const errorText = await createResponse.text();
                         throw new Error(`Failed to create session (${createResponse.status}): ${errorText}`);
@@ -5483,7 +5680,7 @@ Translate to {target_language}.`;
 
     function debounce(fn, wait) {
         let t = null;
-        return function(...args) {
+        return function (...args) {
             if (t) clearTimeout(t);
             t = setTimeout(() => fn.apply(this, args), wait);
         };
@@ -5517,23 +5714,23 @@ Translate to {target_language}.`;
                 if (navigator.serviceWorker && navigator.serviceWorker.controller) {
                     navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_CACHE' });
                 }
-            } catch (_) {}
+            } catch (_) { }
 
             // 2) Clear Cache Storage directly (in case SW isn't active)
             try {
                 if (window.caches && caches.keys) {
                     const names = await caches.keys();
-                    await Promise.all(names.map(n => caches.delete(n).catch(() => {})));
+                    await Promise.all(names.map(n => caches.delete(n).catch(() => { })));
                 }
-            } catch (_) {}
+            } catch (_) { }
 
             // 3) Unregister service workers
             try {
                 if ('serviceWorker' in navigator) {
                     const regs = await navigator.serviceWorker.getRegistrations();
-                    await Promise.all(regs.map(r => r.unregister().catch(() => {})));
+                    await Promise.all(regs.map(r => r.unregister().catch(() => { })));
                 }
-            } catch (_) {}
+            } catch (_) { }
 
             // 4) Clear IndexedDB (best-effort; may not be supported everywhere)
             try {
@@ -5542,11 +5739,11 @@ Translate to {target_language}.`;
                     const dbs = await indexedDB.databases();
                     await Promise.all((dbs || []).map(db => db && db.name ? new Promise(res => { const req = indexedDB.deleteDatabase(db.name); req.onsuccess = req.onerror = req.onblocked = () => res(); }) : Promise.resolve()));
                 }
-            } catch (_) {}
+            } catch (_) { }
 
             // 5) Clear storage
-            try { localStorage.clear(); } catch (_) {}
-            try { sessionStorage.clear(); } catch (_) {}
+            try { localStorage.clear(); } catch (_) { }
+            try { sessionStorage.clear(); } catch (_) { }
 
             // 6) Clear cookies for this origin (best-effort)
             try {
@@ -5556,7 +5753,7 @@ Translate to {target_language}.`;
                     if (!name) continue;
                     document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
                 }
-            } catch (_) {}
+            } catch (_) { }
         } finally {
             // 7) Reload with fresh token in path (if available) and cache-busting param
             const basePath = '/configure';

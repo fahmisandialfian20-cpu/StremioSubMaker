@@ -106,6 +106,7 @@ function sanitizeConfig(config) {
   // List of sensitive field names to redact
   const sensitiveFields = [
     'geminiApiKey',
+    'geminiApiKeys', // Array of Gemini API keys (rotation feature)
     'assemblyAiApiKey',
     'apiKey',
     'password',
@@ -121,7 +122,13 @@ function sanitizeConfig(config) {
   // Redact sensitive fields
   for (const field of sensitiveFields) {
     if (field in sanitized) {
-      sanitized[field] = redactApiKey(sanitized[field]);
+      const value = sanitized[field];
+      // Handle array-type sensitive fields (e.g., geminiApiKeys)
+      if (Array.isArray(value)) {
+        sanitized[field] = value.map(item => redactApiKey(item));
+      } else {
+        sanitized[field] = redactApiKey(value);
+      }
     }
   }
 

@@ -870,15 +870,175 @@ async function uploadToAssembly(apiKey, uploadSource = {}, logger = null) {
     return data.upload_url;
 }
 
+/**
+ * Normalize language codes to AssemblyAI's supported format.
+ * AssemblyAI uses mostly ISO 639-1 codes with some regional variants.
+ * @param {string} lang - Input language code (e.g., 'jpn', 'ja', 'japanese', 'chi', 'zh')
+ * @returns {string|null} - AssemblyAI-compatible code or null if not supported
+ */
+function normalizeToAssemblyAILanguage(lang) {
+    if (!lang) return null;
+    const input = String(lang).toLowerCase().trim();
+    if (!input) return null;
+
+    // AssemblyAI supported language codes (direct matches)
+    const ASSEMBLYAI_SUPPORTED = new Set([
+        'en', 'en_au', 'en_uk', 'en_us', 'es', 'fr', 'de', 'it', 'pt', 'nl', 'hi', 'ja', 'zh',
+        'fi', 'ko', 'pl', 'ru', 'tr', 'uk', 'vi', 'af', 'sq', 'am', 'ar', 'hy', 'as', 'az',
+        'ba', 'eu', 'be', 'bn', 'bs', 'br', 'bg', 'my', 'ca', 'hr', 'cs', 'da', 'et', 'fo',
+        'gl', 'ka', 'el', 'gu', 'ht', 'ha', 'haw', 'he', 'hu', 'is', 'id', 'jw', 'kn', 'kk',
+        'km', 'lo', 'la', 'lv', 'ln', 'lt', 'lb', 'mk', 'mg', 'ms', 'ml', 'mt', 'mi', 'mr',
+        'mn', 'ne', 'no', 'nn', 'oc', 'pa', 'ps', 'fa', 'ro', 'sa', 'sr', 'sn', 'sd', 'si',
+        'sk', 'sl', 'so', 'su', 'sw', 'sv', 'tl', 'tg', 'ta', 'tt', 'te', 'th', 'bo', 'tk',
+        'ur', 'uz', 'cy', 'yi', 'yo'
+    ]);
+
+    // ISO 639-2/B and ISO 639-2/T to AssemblyAI code mappings
+    const ISO_639_2_TO_ASSEMBLY = {
+        'jpn': 'ja', 'jap': 'ja', 'japanese': 'ja',
+        'zho': 'zh', 'chi': 'zh', 'chinese': 'zh', 'cmn': 'zh', 'mandarin': 'zh',
+        'kor': 'ko', 'korean': 'ko',
+        'deu': 'de', 'ger': 'de', 'german': 'de',
+        'fra': 'fr', 'fre': 'fr', 'french': 'fr',
+        'spa': 'es', 'spanish': 'es',
+        'por': 'pt', 'portuguese': 'pt',
+        'rus': 'ru', 'russian': 'ru',
+        'ara': 'ar', 'arabic': 'ar',
+        'hin': 'hi', 'hindi': 'hi',
+        'ita': 'it', 'italian': 'it',
+        'nld': 'nl', 'dut': 'nl', 'dutch': 'nl',
+        'pol': 'pl', 'polish': 'pl',
+        'tur': 'tr', 'turkish': 'tr',
+        'ukr': 'uk', 'ukrainian': 'uk',
+        'vie': 'vi', 'vietnamese': 'vi',
+        'fin': 'fi', 'finnish': 'fi',
+        'afr': 'af', 'afrikaans': 'af',
+        'sqi': 'sq', 'alb': 'sq', 'albanian': 'sq',
+        'amh': 'am', 'amharic': 'am',
+        'hye': 'hy', 'arm': 'hy', 'armenian': 'hy',
+        'asm': 'as', 'assamese': 'as',
+        'aze': 'az', 'azerbaijani': 'az',
+        'bak': 'ba', 'bashkir': 'ba',
+        'eus': 'eu', 'baq': 'eu', 'basque': 'eu',
+        'bel': 'be', 'belarusian': 'be',
+        'ben': 'bn', 'bengali': 'bn',
+        'bos': 'bs', 'bosnian': 'bs',
+        'bre': 'br', 'breton': 'br',
+        'bul': 'bg', 'bulgarian': 'bg',
+        'mya': 'my', 'bur': 'my', 'burmese': 'my',
+        'cat': 'ca', 'catalan': 'ca',
+        'hrv': 'hr', 'croatian': 'hr',
+        'ces': 'cs', 'cze': 'cs', 'czech': 'cs',
+        'dan': 'da', 'danish': 'da',
+        'est': 'et', 'estonian': 'et',
+        'fao': 'fo', 'faroese': 'fo',
+        'glg': 'gl', 'galician': 'gl',
+        'kat': 'ka', 'geo': 'ka', 'georgian': 'ka',
+        'ell': 'el', 'gre': 'el', 'greek': 'el',
+        'guj': 'gu', 'gujarati': 'gu',
+        'hat': 'ht', 'haitian': 'ht',
+        'hau': 'ha', 'hausa': 'ha',
+        'heb': 'he', 'hebrew': 'he',
+        'hun': 'hu', 'hungarian': 'hu',
+        'isl': 'is', 'ice': 'is', 'icelandic': 'is',
+        'ind': 'id', 'indonesian': 'id',
+        'jav': 'jw', 'javanese': 'jw',
+        'kan': 'kn', 'kannada': 'kn',
+        'kaz': 'kk', 'kazakh': 'kk',
+        'khm': 'km', 'khmer': 'km', 'cambodian': 'km',
+        'lao': 'lo',
+        'lat': 'la', 'latin': 'la',
+        'lav': 'lv', 'latvian': 'lv',
+        'lin': 'ln', 'lingala': 'ln',
+        'lit': 'lt', 'lithuanian': 'lt',
+        'ltz': 'lb', 'luxembourgish': 'lb',
+        'mkd': 'mk', 'mac': 'mk', 'macedonian': 'mk',
+        'mlg': 'mg', 'malagasy': 'mg',
+        'msa': 'ms', 'may': 'ms', 'malay': 'ms',
+        'mal': 'ml', 'malayalam': 'ml',
+        'mlt': 'mt', 'maltese': 'mt',
+        'mri': 'mi', 'mao': 'mi', 'maori': 'mi',
+        'mar': 'mr', 'marathi': 'mr',
+        'mon': 'mn', 'mongolian': 'mn',
+        'nep': 'ne', 'nepali': 'ne',
+        'nor': 'no', 'norwegian': 'no',
+        'nno': 'nn',
+        'oci': 'oc', 'occitan': 'oc',
+        'pan': 'pa', 'panjabi': 'pa', 'punjabi': 'pa',
+        'pus': 'ps', 'pashto': 'ps',
+        'fas': 'fa', 'per': 'fa', 'persian': 'fa', 'farsi': 'fa',
+        'ron': 'ro', 'rum': 'ro', 'romanian': 'ro',
+        'san': 'sa', 'sanskrit': 'sa',
+        'srp': 'sr', 'serbian': 'sr',
+        'sna': 'sn', 'shona': 'sn',
+        'snd': 'sd', 'sindhi': 'sd',
+        'sin': 'si', 'sinhala': 'si', 'sinhalese': 'si',
+        'slk': 'sk', 'slo': 'sk', 'slovak': 'sk',
+        'slv': 'sl', 'slovenian': 'sl',
+        'som': 'so', 'somali': 'so',
+        'sun': 'su', 'sundanese': 'su',
+        'swa': 'sw', 'swahili': 'sw',
+        'swe': 'sv', 'swedish': 'sv',
+        'tgl': 'tl', 'tagalog': 'tl', 'fil': 'tl', 'filipino': 'tl',
+        'tgk': 'tg', 'tajik': 'tg',
+        'tam': 'ta', 'tamil': 'ta',
+        'tat': 'tt', 'tatar': 'tt',
+        'tel': 'te', 'telugu': 'te',
+        'tha': 'th', 'thai': 'th',
+        'bod': 'bo', 'tib': 'bo', 'tibetan': 'bo',
+        'tuk': 'tk', 'turkmen': 'tk',
+        'urd': 'ur', 'urdu': 'ur',
+        'uzb': 'uz', 'uzbek': 'uz',
+        'cym': 'cy', 'wel': 'cy', 'welsh': 'cy',
+        'yid': 'yi', 'yiddish': 'yi',
+        'yor': 'yo', 'yoruba': 'yo',
+        'eng': 'en', 'english': 'en',
+        'und': null, 'unknown': null, 'undetermined': null
+    };
+
+    // Check if already a supported code
+    if (ASSEMBLYAI_SUPPORTED.has(input)) {
+        return input;
+    }
+
+    // Check if it's an ISO 639-2 code or language name that needs mapping
+    if (Object.prototype.hasOwnProperty.call(ISO_639_2_TO_ASSEMBLY, input)) {
+        return ISO_639_2_TO_ASSEMBLY[input];
+    }
+
+    // Handle regional variants (e.g., 'en-US' -> 'en_us', 'pt-BR' -> 'pt')
+    const dashMatch = input.match(/^([a-z]{2,3})[-_]([a-z]{2})$/i);
+    if (dashMatch) {
+        const base = dashMatch[1].toLowerCase();
+        const region = dashMatch[2].toLowerCase();
+        // Check for specific English variants
+        if (base === 'en') {
+            if (region === 'au') return 'en_au';
+            if (region === 'gb' || region === 'uk') return 'en_uk';
+            if (region === 'us') return 'en_us';
+            return 'en';
+        }
+        // For other languages, just use the base code
+        const normalizedBase = ISO_639_2_TO_ASSEMBLY[base] || (ASSEMBLYAI_SUPPORTED.has(base) ? base : null);
+        if (normalizedBase) return normalizedBase;
+    }
+
+    // Not found - return null to trigger auto-detection
+    return null;
+}
+
 async function createAssemblyTranscript(apiKey, payload = {}, logger = null) {
     const logStep = (message, level = 'info') => {
         try {
             if (typeof logger === 'function') logger(message, level);
         } catch (_) { /* ignore logger errors */ }
     };
+
+    // Normalize language code to AssemblyAI format
+    const rawLangCode = (payload.language_code || payload.languageCode || '').toString().trim();
+    const normalizedLang = normalizeToAssemblyAILanguage(rawLangCode);
+
     // Keep payload compliant with AssemblyAI's transcript schema (unknown keys trigger schema errors)
-    // Always use automatic language detection - AssemblyAI will detect the spoken language
-    // and fall back to "auto" (highest confidence) by default when no expected_languages are set
     const requestBody = {
         punctuate: true,
         format_text: true,
@@ -887,12 +1047,19 @@ async function createAssemblyTranscript(apiKey, payload = {}, logger = null) {
         filter_profanity: false,
         auto_chapters: false,
         disfluencies: true,
-        audio_url: payload.audio_url,
-        // Enable automatic language detection (always on for auto-subs)
-        // Per AssemblyAI docs: detects the dominant language and uses it during transcription
-        // When fallback_language is not specified (or "auto"), highest confidence language is used
-        language_detection: true
+        audio_url: payload.audio_url
     };
+
+    // Use normalized language if available, otherwise enable auto-detection
+    if (normalizedLang) {
+        requestBody.language_code = normalizedLang;
+        logStep(`Using language code: ${normalizedLang}${rawLangCode !== normalizedLang ? ` (normalized from: ${rawLangCode})` : ''}`, 'info');
+    } else {
+        requestBody.language_detection = true;
+        if (rawLangCode) {
+            logStep(`Language '${rawLangCode}' not supported by AssemblyAI, using auto-detection`, 'warn');
+        }
+    }
     if (payload.word_boost && Array.isArray(payload.word_boost) && payload.word_boost.length > 0) {
         requestBody.word_boost = payload.word_boost;
     }
@@ -1117,6 +1284,7 @@ async function transcribeWithAssemblyAi(streamUrl, opts = {}, logger = null) {
         const uploadUrl = await uploadToAssembly(apiKey, upload, logger);
         const transcriptId = await createAssemblyTranscript(apiKey, {
             audio_url: uploadUrl,
+            language_code: opts.sourceLanguage || opts.languageCode || '', // Will be normalized to AssemblyAI format
             // Always request speaker labels to preserve turn splits (labels are removed from the final text)
             speaker_labels: true
         }, logger);
@@ -1139,8 +1307,8 @@ async function transcribeWithAssemblyAi(streamUrl, opts = {}, logger = null) {
         return {
             transcription: {
                 srt: srt || '',
-                // Use the auto-detected language from AssemblyAI; fallback to 'und' if not available
-                languageCode: language || 'und',
+                // Use detected/specified language; fallback to 'und' if not available
+                languageCode: language || opts.sourceLanguage || 'und',
                 model: 'assemblyai',
                 assemblyId: transcriptId
             },

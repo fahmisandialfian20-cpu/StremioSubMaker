@@ -949,6 +949,7 @@
           "options": {
             "flashLite": "Gemini 2.5 Flash-Lite",
             "flash": "Gemini 2.5 Flash",
+            "flash3": "Gemini 3.0 Flash (Preview)",
             "pro": "Gemini 2.5 Pro (Lento)"
           },
           "hintTitle": "Tradução ruim/quebrada ou fora de sincronia?",

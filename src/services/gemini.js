@@ -36,7 +36,7 @@ class GeminiService {
   constructor(apiKey, model = '', advancedSettings = {}) {
     this.apiKey = apiKey;
     // Fallback to default if model not provided (config.js handles env var override)
-    this.model = model || 'gemini-flash-latest';
+    this.model = model || 'gemini-2.5-flash-preview-09-2025';
     this.baseUrl = GEMINI_API_URL;
 
     // Advanced settings with environment variable fallbacks
@@ -161,8 +161,8 @@ class GeminiService {
 
       // Log Gemini API configuration for debugging
       const thinkingDisplay = this.thinkingBudget === -1 ? 'dynamic' :
-                             this.thinkingBudget === 0 ? 'disabled' :
-                             this.thinkingBudget;
+        this.thinkingBudget === 0 ? 'disabled' :
+          this.thinkingBudget;
       log.debug(() => `[Gemini] API config: temperature=${this.temperature}, topK=${this.topK}, topP=${this.topP}, thinkingBudget=${thinkingDisplay}, maxOutputTokens=${this.maxOutputTokens}, timeout=${this.timeout / 1000}s, maxRetries=${this.maxRetries}`);
 
       this._modelLimits = limits;
@@ -212,9 +212,9 @@ class GeminiService {
 
         const delay = baseDelay * Math.pow(2, attempt);
         const errorType = isRateLimit ? '429 rate limit' :
-                          isServiceUnavailable ? '503 service unavailable' :
-                          isSocketHangup ? 'socket hang up' :
-                          isTimeout ? 'timeout' : 'network error';
+          isServiceUnavailable ? '503 service unavailable' :
+            isSocketHangup ? 'socket hang up' :
+              isTimeout ? 'timeout' : 'network error';
         log.debug(() => `[Gemini] Attempt ${attempt + 1} failed (${errorType}), retrying in ${delay}ms...`);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
@@ -572,7 +572,7 @@ class GeminiService {
               aggregated += chunkText;
               const cleanedAgg = this.cleanTranslatedSubtitle(aggregated);
               if (typeof onChunk === 'function') {
-                try { onChunk(cleanedAgg); } catch (_) {}
+                try { onChunk(cleanedAgg); } catch (_) { }
               }
             }
           };

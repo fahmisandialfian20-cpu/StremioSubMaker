@@ -4,7 +4,7 @@ const AnthropicProvider = require('./providers/anthropic');
 const DeepLProvider = require('./providers/deepl');
 const GoogleTranslateProvider = require('./providers/googleTranslate');
 const log = require('../utils/logger');
-const { getDefaultProviderParameters, mergeProviderParameters } = require('../utils/config');
+const { getDefaultProviderParameters, mergeProviderParameters, selectGeminiApiKey } = require('../utils/config');
 
 const KEY_OPTIONAL_PROVIDERS = new Set(['googletranslate']);
 
@@ -66,7 +66,7 @@ class FallbackTranslationProvider {
         try {
           const full = await this.fallback.translateSubtitle(subtitleContent, sourceLanguage, targetLanguage, customPrompt);
           if (typeof onPartial === 'function') {
-            try { await onPartial(full); } catch (_) {}
+            try { await onPartial(full); } catch (_) { }
           }
           log.info(() => `[Providers] Secondary ${this.fallbackName} succeeded after streaming failure on ${this.primaryName}`);
           return full;
@@ -334,7 +334,7 @@ function createTranslationProvider(config) {
     if (normalized === 'gemini') {
       return {
         enabled: true,
-        apiKey: config?.geminiApiKey,
+        apiKey: selectGeminiApiKey(config),
         model: config?.geminiModel
       };
     }
@@ -353,7 +353,7 @@ function createTranslationProvider(config) {
   const buildGeminiProvider = () => ({
     providerName: 'gemini',
     provider: new GeminiService(
-      config?.geminiApiKey,
+      selectGeminiApiKey(config),
       config?.geminiModel,
       config?.advancedSettings || {}
     ),
@@ -384,10 +384,10 @@ function createTranslationProvider(config) {
 
     const wrappedProvider = fallbackProvider
       ? new FallbackTranslationProvider(primary.provider, fallbackProvider, {
-          primaryName: 'gemini',
-          fallbackName,
-          fallbackModel
-        })
+        primaryName: 'gemini',
+        fallbackName,
+        fallbackModel
+      })
       : primary.provider;
 
     return {
@@ -406,7 +406,7 @@ function createTranslationProvider(config) {
     return {
       providerName: 'gemini',
       provider: new GeminiService(
-        config?.geminiApiKey,
+        selectGeminiApiKey(config),
         config?.geminiModel,
         config?.advancedSettings || {}
       ),
@@ -421,7 +421,7 @@ function createTranslationProvider(config) {
     return {
       providerName: 'gemini',
       provider: new GeminiService(
-        config?.geminiApiKey,
+        selectGeminiApiKey(config),
         config?.geminiModel,
         config?.advancedSettings || {}
       ),
@@ -457,10 +457,10 @@ function createTranslationProvider(config) {
 
   const wrappedProvider = fallbackProvider
     ? new FallbackTranslationProvider(provider, fallbackProvider, {
-        primaryName: mainProvider,
-        fallbackName,
-        fallbackModel
-      })
+      primaryName: mainProvider,
+      fallbackName,
+      fallbackModel
+    })
     : provider;
 
   return {
