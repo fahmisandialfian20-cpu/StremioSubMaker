@@ -146,7 +146,24 @@ class TranslationEngine {
 
     // Key rotation configuration for per-batch rotation
     // keyRotationConfig: { enabled: boolean, mode: 'per-request' | 'per-batch', keys: string[], advancedSettings: {} }
-    this.keyRotationConfig = options.keyRotationConfig || null;
+    // SECURITY: Store keys in a non-enumerable property to prevent accidental serialization
+    if (options.keyRotationConfig && Array.isArray(options.keyRotationConfig.keys)) {
+      const sanitizedConfig = {
+        enabled: options.keyRotationConfig.enabled === true,
+        mode: options.keyRotationConfig.mode || 'per-request',
+        advancedSettings: options.keyRotationConfig.advancedSettings || {}
+      };
+      // Make keys non-enumerable so they won't appear in JSON.stringify or Object.keys
+      Object.defineProperty(sanitizedConfig, 'keys', {
+        value: options.keyRotationConfig.keys,
+        enumerable: false,
+        writable: false,
+        configurable: false
+      });
+      this.keyRotationConfig = sanitizedConfig;
+    } else {
+      this.keyRotationConfig = null;
+    }
     this.perBatchRotationEnabled = this.keyRotationConfig?.enabled === true &&
       this.keyRotationConfig?.mode === 'per-batch' &&
       Array.isArray(this.keyRotationConfig?.keys) &&
@@ -162,14 +179,15 @@ class TranslationEngine {
 
   /**
    * Rotate to a new API key before translating a batch (when per-batch rotation is enabled)
-   * Creates a fresh GeminiService instance with a randomly selected key
+   * Creates a fresh GeminiService instance with a sequentially selected key (round-robin)
    */
   maybeRotateKeyForBatch(batchIndex) {
     if (!this.perBatchRotationEnabled) return;
 
     const keys = this.keyRotationConfig.keys;
-    const randomIndex = Math.floor(Math.random() * keys.length);
-    const selectedKey = keys[randomIndex];
+    // Sequential (round-robin) selection based on batch index
+    const keyIndex = batchIndex % keys.length;
+    const selectedKey = keys[keyIndex];
 
     // Create a new GeminiService with the rotated key
     this.gemini = new GeminiService(
@@ -178,7 +196,7 @@ class TranslationEngine {
       this.keyRotationConfig.advancedSettings || this.advancedSettings
     );
 
-    log.debug(() => `[TranslationEngine] Rotated to key index ${randomIndex + 1}/${keys.length} for batch ${batchIndex + 1}`);
+    log.debug(() => `[TranslationEngine] Rotated to key index ${keyIndex + 1}/${keys.length} for batch ${batchIndex + 1} (sequential)`);
   }
 
   /**

@@ -1155,9 +1155,12 @@ function buildManifest(config, baseUrl = '') {
   };
 }
 
+// Counter for sequential key rotation (module-level for persistence across calls)
+let geminiKeyRotationIndex = 0;
+
 /**
  * Select a Gemini API key from config.
- * When rotation is enabled and there are multiple keys, picks randomly.
+ * When rotation is enabled and there are multiple keys, selects sequentially (round-robin).
  * Otherwise returns the single geminiApiKey.
  * @param {Object} config - Normalized configuration
  * @returns {string} - Selected API key (may be empty if none configured)
@@ -1172,9 +1175,11 @@ function selectGeminiApiKey(config) {
       : [];
 
     if (keys.length > 0) {
-      // Random selection for stateless, multi-instance safe rotation
-      const selectedKey = keys[Math.floor(Math.random() * keys.length)];
-      log.debug(() => `[Config] Gemini key rotation: selected key ${keys.indexOf(selectedKey) + 1} of ${keys.length}`);
+      // Sequential (round-robin) selection for deterministic rotation
+      const currentIndex = geminiKeyRotationIndex % keys.length;
+      geminiKeyRotationIndex = (geminiKeyRotationIndex + 1) % Number.MAX_SAFE_INTEGER;
+      const selectedKey = keys[currentIndex];
+      log.debug(() => `[Config] Gemini key rotation: selected key ${currentIndex + 1} of ${keys.length} (sequential)`);
       return selectedKey;
     }
   }

@@ -3312,14 +3312,46 @@ Translate to {target_language}.`;
     function validateGeminiApiKey(showNotification = false) {
         const input = document.getElementById('geminiApiKey');
         const error = document.getElementById('geminiApiKeyError');
-        const value = input.value.trim();
+        const rotationEnabled = document.getElementById('geminiKeyRotationEnabled')?.checked === true;
+
+        // If rotation is enabled, check the keys list instead
+        if (rotationEnabled) {
+            const keys = getGeminiApiKeys();
+            const keysError = document.getElementById('geminiApiKeysError');
+
+            if (keys.length === 0) {
+                const message = tConfig('config.validation.geminiKeysRequired', {}, '⚠️ At least one API key is required for rotation');
+                if (keysError) {
+                    keysError.textContent = message;
+                    keysError.style.display = 'block';
+                }
+                if (showNotification) {
+                    showAlert(message, 'error');
+                }
+                return false;
+            } else {
+                if (keysError) {
+                    keysError.style.display = 'none';
+                }
+                // Sync first key to single input for backend compatibility
+                if (input && keys.length > 0) {
+                    input.value = keys[0];
+                }
+                return true;
+            }
+        }
+
+        // Single key mode validation
+        const value = input?.value?.trim() || '';
 
         if (!value) {
             const message = tConfig('config.validation.geminiKeyRequired', {}, '⚠️ Gemini API key is required');
-            input.classList.add('invalid');
-            input.classList.remove('valid');
-            error.classList.add('show');
+            if (input) {
+                input.classList.add('invalid');
+                input.classList.remove('valid');
+            }
             if (error) {
+                error.classList.add('show');
                 error.textContent = message;
             }
             if (showNotification) {
@@ -3327,15 +3359,19 @@ Translate to {target_language}.`;
             }
             return false;
         } else {
-            input.classList.remove('invalid');
+            if (input) {
+                input.classList.remove('invalid');
+            }
             // Don't add 'valid' class here - only backend validation should do that
-            error.classList.remove('show');
+            if (error) {
+                error.classList.remove('show');
+            }
             return true;
         }
     }
 
-    // Maximum number of Gemini API keys allowed
-    const MAX_GEMINI_API_KEYS = 5;
+    // Maximum number of Gemini API keys allowed (fetched from server via /api/session-stats)
+    let MAX_GEMINI_API_KEYS = 10; // default, will be updated from server
 
     /**
      * Toggle the Gemini API key rotation UI visibility
@@ -3344,15 +3380,24 @@ Translate to {target_language}.`;
     function toggleGeminiKeyRotationUI(enabled) {
         const container = document.getElementById('geminiApiKeysContainer');
         const singleKeyInput = document.getElementById('geminiApiKey');
-        const singleKeyGroup = singleKeyInput?.closest('.form-group');
+        const singleKeyValidateBtn = document.getElementById('validateGemini');
+        const singleKeyWrapper = singleKeyInput?.closest('div[style*="display: flex"]');
+        const singleKeyError = document.getElementById('geminiApiKeyError');
+        const singleKeyFeedback = document.getElementById('geminiValidationFeedback');
 
         if (!container) return;
 
         if (enabled) {
             container.style.display = 'block';
-            // Hide the single key input (but keep it in DOM for backward compat)
-            if (singleKeyGroup) {
-                singleKeyGroup.style.display = 'none';
+            // Hide only the single key input wrapper and its related elements (NOT the entire form-group)
+            if (singleKeyWrapper) {
+                singleKeyWrapper.style.display = 'none';
+            }
+            if (singleKeyError) {
+                singleKeyError.style.display = 'none';
+            }
+            if (singleKeyFeedback) {
+                singleKeyFeedback.style.display = 'none';
             }
             // Migrate existing single key to array if present
             const existingKey = singleKeyInput?.value?.trim();
@@ -3364,11 +3409,22 @@ Translate to {target_language}.`;
                     addGeminiKeyInput(); // Add one empty input
                 }
             }
+            // Sync first key from array to single key for backend compatibility
+            const keys = getGeminiApiKeys();
+            if (keys.length > 0 && singleKeyInput) {
+                singleKeyInput.value = keys[0];
+            }
         } else {
             container.style.display = 'none';
-            // Show the single key input again
-            if (singleKeyGroup) {
-                singleKeyGroup.style.display = '';
+            // Show the single key input wrapper again
+            if (singleKeyWrapper) {
+                singleKeyWrapper.style.display = '';
+            }
+            if (singleKeyError) {
+                singleKeyError.style.display = '';
+            }
+            if (singleKeyFeedback) {
+                singleKeyFeedback.style.display = '';
             }
             // Sync first key from array back to single key input
             const keys = getGeminiApiKeys();
@@ -3377,6 +3433,82 @@ Translate to {target_language}.`;
             }
         }
         updateGeminiKeysCount();
+    }
+
+    /**
+     * Validate a single Gemini API key from the rotation list
+     * @param {HTMLInputElement} input - The key input element
+     * @param {HTMLButtonElement} btn - The validate button
+     */
+    async function validateGeminiKeyRow(input, btn) {
+        const apiKey = input.value.trim();
+        if (!apiKey) {
+            input.classList.add('invalid');
+            input.classList.remove('valid');
+            showAlert(tConfig('config.validation.apiKeyRequired', {}, 'Please enter an API key'), 'error');
+            return;
+        }
+
+        // Update button state - validating
+        btn.classList.add('validating');
+        btn.classList.remove('success', 'error');
+        btn.disabled = true;
+        const iconEl = btn.querySelector('.validate-icon');
+        const originalIcon = iconEl?.textContent || '✓';
+        if (iconEl) iconEl.textContent = '⟳';
+
+        try {
+            const response = await fetch('/api/validate-gemini', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ apiKey })
+            });
+            const result = await response.json();
+
+            btn.classList.remove('validating');
+            btn.disabled = false;
+
+            if (result.valid) {
+                btn.classList.add('success');
+                if (iconEl) iconEl.textContent = '✓';
+                input.classList.add('valid');
+                input.classList.remove('invalid');
+                showAlert(tConfig('config.validation.apiKeyValid', {}, 'API key is valid'), 'success');
+
+                // Sync first key to single input for model fetching
+                syncFirstKeyToSingleInput();
+            } else {
+                btn.classList.add('error');
+                if (iconEl) iconEl.textContent = '✗';
+                input.classList.add('invalid');
+                input.classList.remove('valid');
+                showAlert(result.error || tConfig('config.validation.apiKeyInvalid', {}, 'Invalid API key'), 'error');
+            }
+
+            // Reset button after 3 seconds
+            setTimeout(() => {
+                btn.classList.remove('success', 'error');
+                if (iconEl) iconEl.textContent = originalIcon;
+            }, 3000);
+        } catch (err) {
+            btn.classList.remove('validating');
+            btn.disabled = false;
+            btn.classList.add('error');
+            if (iconEl) iconEl.textContent = '✗';
+            input.classList.add('invalid');
+            showAlert(tConfig('config.validation.apiError', { reason: err.message }, `API error: ${err.message}`), 'error');
+        }
+    }
+
+    /**
+     * Sync first key from rotation list to single key input for model fetching
+     */
+    function syncFirstKeyToSingleInput() {
+        const keys = getGeminiApiKeys();
+        const singleKeyInput = document.getElementById('geminiApiKey');
+        if (keys.length > 0 && singleKeyInput) {
+            singleKeyInput.value = keys[0];
+        }
     }
 
     /**
@@ -3406,6 +3538,20 @@ Translate to {target_language}.`;
         input.autocomplete = 'off';
         input.spellcheck = false;
 
+        // Sync first key to single input when keys change
+        input.addEventListener('input', () => {
+            syncFirstKeyToSingleInput();
+            updateGeminiKeysCount();
+        });
+
+        // Test button for per-key validation
+        const testBtn = document.createElement('button');
+        testBtn.type = 'button';
+        testBtn.className = 'validate-api-btn btn-sm';
+        testBtn.innerHTML = '<span class="validate-icon">✓</span>';
+        testBtn.title = tConfig('config.gemini.keyRotation.testKey', {}, 'Test this key');
+        testBtn.addEventListener('click', () => validateGeminiKeyRow(input, testBtn));
+
         const removeBtn = document.createElement('button');
         removeBtn.type = 'button';
         removeBtn.className = 'btn btn-danger btn-sm';
@@ -3414,6 +3560,7 @@ Translate to {target_language}.`;
         removeBtn.addEventListener('click', () => removeGeminiKeyInput(row));
 
         row.appendChild(input);
+        row.appendChild(testBtn);
         row.appendChild(removeBtn);
         keysList.appendChild(row);
 
@@ -4649,8 +4796,13 @@ Translate to {target_language}.`;
             const oldMainProvider = String(oldConfig.mainProvider || 'gemini').toLowerCase();
             const oldSecondaryProvider = oldSecondaryEnabled ? String(oldConfig.secondaryProvider || '').toLowerCase() : '';
 
-            // Preserve Gemini API key
+            // Preserve Gemini API key and key rotation settings
             newConfig.geminiApiKey = (oldConfig.geminiApiKey || '').trim();
+            newConfig.geminiKeyRotationEnabled = oldConfig.geminiKeyRotationEnabled === true;
+            newConfig.geminiApiKeys = Array.isArray(oldConfig.geminiApiKeys)
+                ? oldConfig.geminiApiKeys.filter(k => typeof k === 'string' && k.trim())
+                : [];
+            newConfig.geminiKeyRotationMode = oldConfig.geminiKeyRotationMode || 'per-request';
 
             // Preserve subtitle sources enabled/disabled + API keys if provider still exists
             newConfig.subtitleProviders = { ...defaults.subtitleProviders };

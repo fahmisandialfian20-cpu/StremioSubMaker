@@ -851,7 +851,10 @@
         "secondaryProvidersCount": "Secondary Provider requires two configured AI providers (main and fallback)",
         "subdlKeyRequired": "SubDL is enabled but API key is missing",
         "subsourceKeyRequired": "SubSource is enabled but API key is missing",
-        "subtitleProviderRequired": "Please enable at least one subtitle provider"
+        "subtitleProviderRequired": "Please enable at least one subtitle provider",
+        "geminiKeysRequired": "At least one API key is required for rotation",
+        "apiKeyInvalid": "Invalid API key",
+        "apiError": "API error: {reason}"
       },
       "alerts": {
         "sessionLost": "Config session was lost. Please reconfigure and save to create a new session.",
@@ -878,7 +881,8 @@
         "sessionExpiredCreating": "Session expired. Creating new session...",
         "sessionNetworkError": "Network error updating session. Creating new session...",
         "sessionUpdateFailed": "Session update failed. Creating new session...",
-        "targetsTrimmed": "Only the first {limit} target languages were kept (combined with Learn Mode)."
+        "targetsTrimmed": "Only the first {limit} target languages were kept (combined with Learn Mode).",
+        "maxKeysReached": "Maximum of {max} API keys allowed"
       },
       "providers": {
         "subsource": {
