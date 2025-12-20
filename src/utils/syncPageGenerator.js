@@ -16,6 +16,7 @@ const { parseStremioId } = require('./subtitle');
 const { version: appVersion } = require('../../package.json');
 const { quickNavStyles, quickNavScript, renderQuickNav, renderRefreshBadge } = require('./quickNav');
 const { buildClientBootstrap, loadLocale, getTranslator } = require('./i18n');
+const KitsuService = require('../services/kitsu');
 
 function escapeHtml(text) {
     if (!text) return '';
@@ -183,6 +184,22 @@ function resolveSubtitleLanguage(sub, languageMaps) {
 async function fetchLinkedTitleServer(videoId) {
     const parsed = parseStremioId(videoId);
     if (!parsed) return null;
+
+    // Handle anime IDs (Kitsu, etc.) - fetch from Kitsu API
+    if (parsed.isAnime && parsed.animeIdType === 'kitsu' && parsed.animeId) {
+        try {
+            const kitsuService = new KitsuService();
+            const animeData = await kitsuService.getAnimeInfo(parsed.animeId);
+            if (animeData && animeData.data && animeData.data.attributes) {
+                const attrs = animeData.data.attributes;
+                return attrs.canonicalTitle || attrs.titles?.en || attrs.titles?.en_us || null;
+            }
+        } catch (_) {
+            // Fall through to return null
+        }
+        return null;
+    }
+
     const metaType = parsed.type === 'episode' ? 'series' : 'movie';
     const metaId = (() => {
         const imdbId = parsed.imdbId;

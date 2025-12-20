@@ -6,6 +6,7 @@ const { parseStremioId } = require('./subtitle');
 const { version: appVersion } = require('../../package.json');
 const { quickNavStyles, quickNavScript, renderQuickNav, renderRefreshBadge } = require('./quickNav');
 const { buildClientBootstrap, loadLocale, getTranslator } = require('./i18n');
+const KitsuService = require('../services/kitsu');
 
 function escapeHtml(value) {
   if (value === undefined || value === null) return '';
@@ -198,6 +199,22 @@ function buildLinkedVideoLabel(videoId, streamFilename, resolvedTitle, t) {
 async function fetchLinkedTitleServer(videoId) {
   const parsed = parseStremioId(videoId);
   if (!parsed) return null;
+
+  // Handle anime IDs (Kitsu, etc.) - fetch from Kitsu API
+  if (parsed.isAnime && parsed.animeIdType === 'kitsu' && parsed.animeId) {
+    try {
+      const kitsuService = new KitsuService();
+      const animeData = await kitsuService.getAnimeInfo(parsed.animeId);
+      if (animeData && animeData.data && animeData.data.attributes) {
+        const attrs = animeData.data.attributes;
+        return attrs.canonicalTitle || attrs.titles?.en || attrs.titles?.en_us || null;
+      }
+    } catch (_) {
+      // Fall through to return null
+    }
+    return null;
+  }
+
   const metaType = parsed.type === 'episode' ? 'series' : 'movie';
   const metaId = (() => {
     const imdbId = parsed.imdbId;
@@ -6092,6 +6109,30 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
         const trimmed = (videoId || '').trim();
         if (!trimmed) return '';
         const parts = trimmed.split(':');
+
+        // Handle anime IDs (kitsu, anidb, mal, anilist)
+        if (/^(anidb|kitsu|mal|anilist)/.test(parts[0])) {
+          if (parts[0] === 'kitsu' && parts[1]) {
+            const numericId = parts[1];
+            try {
+              const resp = await fetch('https://kitsu.io/api/edge/anime/' + numericId, {
+                headers: { 'Accept': 'application/vnd.api+json' }
+              });
+              if (resp.ok) {
+                const data = await resp.json();
+                return data?.data?.attributes?.canonicalTitle ||
+                  data?.data?.attributes?.titles?.en ||
+                  data?.data?.attributes?.titles?.en_us || '';
+              }
+            } catch (_) {
+              // Fall through
+            }
+          }
+          // For other anime platforms, no client-side API access
+          return '';
+        }
+
+        // Handle TMDB/IMDB IDs
         let metaId = '';
         if (parts[0] === 'tmdb' && parts[1]) {
           metaId = 'tmdb:' + parts[1];
