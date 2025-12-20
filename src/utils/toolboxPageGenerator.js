@@ -3776,13 +3776,38 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
     function parseVideoId(id) {
       if (!id) return null;
       const parts = String(id).split(':');
+      // Handle anime IDs (anidb, kitsu, mal, anilist)
+      // Format: platform:animeId:episode OR platform:animeId:season:episode
       if (/^(anidb|kitsu|mal|anilist)/.test(parts[0])) {
-        return {
-          type: 'anime',
-          animeId: parts[0],
-          season: parts.length === 4 ? parseInt(parts[2], 10) : undefined,
-          episode: parts.length >= 3 ? parseInt(parts[parts.length - 1], 10) : undefined
-        };
+        const animeIdType = parts[0];
+        if (parts.length === 1) {
+          // Just platform name - anime movie/series
+          return { type: 'anime', animeId: parts[0], animeIdType, isAnime: true };
+        }
+        if (parts.length === 3) {
+          // platform:id:episode (seasonless, most common for anime)
+          // Example: kitsu:10941:1 -> animeId=kitsu:10941, episode=1
+          return {
+            type: 'anime-episode',
+            animeId: parts[0] + ':' + parts[1],
+            animeIdType,
+            isAnime: true,
+            episode: parseInt(parts[2], 10)
+          };
+        }
+        if (parts.length === 4) {
+          // platform:id:season:episode
+          // Example: kitsu:10941:1:5 -> animeId=kitsu:10941, season=1, episode=5
+          return {
+            type: 'anime-episode',
+            animeId: parts[0] + ':' + parts[1],
+            animeIdType,
+            isAnime: true,
+            season: parseInt(parts[2], 10),
+            episode: parseInt(parts[3], 10)
+          };
+        }
+        return { type: 'anime', animeId: id, animeIdType, isAnime: true };
       }
       if (parts[0] === 'tmdb') {
         return {
@@ -3835,16 +3860,13 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
     }
 
     function formatEpisodeTag(videoId) {
-      const parts = (videoId || '').split(':');
-      if (parts.length >= 3) {
-        const season = parseInt(parts[1], 10);
-        const episode = parseInt(parts[2], 10);
-        const s = Number.isFinite(season) ? 'S' + String(season).padStart(2, '0') : '';
-        const e = Number.isFinite(episode) ? 'E' + String(episode).padStart(2, '0') : '';
-        if (s || e) return (s + e).trim();
-      }
-      return '';
+      const parsed = parseVideoId(videoId);
+      if (!parsed) return '';
+      const s = Number.isFinite(parsed.season) ? 'S' + String(parsed.season).padStart(2, '0') : '';
+      const e = Number.isFinite(parsed.episode) ? 'E' + String(parsed.episode).padStart(2, '0') : '';
+      return (s || e) ? (s + e) : '';
     }
+
 
     function buildLinkedVideoLabel(videoId, filename, resolvedTitle) {
       const parsed = parseVideoId(videoId);
@@ -5996,15 +6018,37 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
 
       function formatEpisodeTagDisplay(videoId) {
         const parts = (videoId || '').split(':');
+        // Handle anime IDs (anidb, kitsu, mal, anilist)
+        // Format: platform:id:episode or platform:id:season:episode
+        if (/^(anidb|kitsu|mal|anilist)/.test(parts[0])) {
+          if (parts.length === 3) {
+            // platform:id:episode (seasonless)
+            const episode = parseInt(parts[2], 10);
+            return Number.isFinite(episode) ? 'E' + String(episode).padStart(2, '0') : '';
+          }
+          if (parts.length === 4) {
+            // platform:id:season:episode
+            const season = parseInt(parts[2], 10);
+            const episode = parseInt(parts[3], 10);
+            const s = Number.isFinite(season) ? 'S' + String(season).padStart(2, '0') : '';
+            const e = Number.isFinite(episode) ? 'E' + String(episode).padStart(2, '0') : '';
+            return (s || e) ? (s + e).trim() : '';
+          }
+          return '';
+        }
+        // Handle TMDB and IMDB IDs
         if (parts.length >= 3) {
-          const season = parseInt(parts[1], 10);
-          const episode = parseInt(parts[2], 10);
+          const seasonIdx = parts[0] === 'tmdb' ? 2 : 1;
+          const episodeIdx = parts[0] === 'tmdb' ? 3 : 2;
+          const season = parseInt(parts[seasonIdx], 10);
+          const episode = parseInt(parts[episodeIdx], 10);
           const s = Number.isFinite(season) ? 'S' + String(season).padStart(2, '0') : '';
           const e = Number.isFinite(episode) ? 'E' + String(episode).padStart(2, '0') : '';
           if (s || e) return (s + e).trim();
         }
         return '';
       }
+
 
       async function fetchLinkedTitle(videoId) {
         const trimmed = (videoId || '').trim();

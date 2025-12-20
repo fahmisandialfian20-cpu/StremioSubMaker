@@ -214,7 +214,7 @@ class OpenSubtitlesService {
       httpAgent,
       httpsAgent,
       lookup: dnsLookup,
-      timeout: 15000,
+      timeout: 10000,
       maxRedirects: 5,
       decompress: true
     };
@@ -322,10 +322,10 @@ class OpenSubtitlesService {
     }
   }
 
-    /**
-   * Login to OpenSubtitles REST API (optional, for higher download limits)
-   * @returns {Promise<string|null>} - JWT token if credentials provided, null otherwise
-   */
+  /**
+ * Login to OpenSubtitles REST API (optional, for higher download limits)
+ * @returns {Promise<string|null>} - JWT token if credentials provided, null otherwise
+ */
   async login() {
     if (this.config.username && this.config.password) {
       if (hasCachedAuthFailure(this.credentialsCacheKey)) {
@@ -382,17 +382,17 @@ class OpenSubtitlesService {
       // Convert ISO-639-2 (3-letter) codes to ISO-639-1 (2-letter) codes for OpenSubtitles API
       const convertedLanguages = languages.map(lang => {
         const lower = lang.toLowerCase().trim();
-        
+
         // Handle special case for Portuguese Brazilian
         if (lower === 'pob' || lower === 'ptbr' || lower === 'pt-br') {
           return 'pt-br';
         }
-        
+
         // If already 2 letters, return as-is
         if (lower.length === 2 && /^[a-z]{2}$/.test(lower)) {
           return lower;
         }
-        
+
         // If 3 letters (ISO-639-2), convert to ISO-639-1
         if (lower.length === 3 && /^[a-z]{3}$/.test(lower)) {
           const iso1Code = toISO6391(lower);
@@ -400,7 +400,7 @@ class OpenSubtitlesService {
             return iso1Code;
           }
         }
-        
+
         // Return original if can't convert
         return lower;
       }).filter(lang => lang); // Remove any nulls/undefined
@@ -543,8 +543,8 @@ class OpenSubtitlesService {
         }
       }
 
-      // Limit to 20 results per language to control response size
-      const MAX_RESULTS_PER_LANGUAGE = 20;
+      // Limit to 14 results per language to control response size
+      const MAX_RESULTS_PER_LANGUAGE = 14;
       const groupedByLanguage = {};
 
       for (const sub of subtitles) {
@@ -699,11 +699,11 @@ class OpenSubtitlesService {
           // Prefer SRT files
           const srtFiles = entries.filter(n => n.toLowerCase().endsWith('.srt') && !zip.files[n].dir);
           let targetEntry = findEpisodeFileAnime(srtFiles, seasonPackEpisode) ||
-                            findEpisodeFile(srtFiles, seasonPackSeason, seasonPackEpisode);
+            findEpisodeFile(srtFiles, seasonPackSeason, seasonPackEpisode);
 
           if (!targetEntry) {
             targetEntry = findEpisodeFileAnime(entries, seasonPackEpisode) ||
-                          findEpisodeFile(entries, seasonPackSeason, seasonPackEpisode);
+              findEpisodeFile(entries, seasonPackSeason, seasonPackEpisode);
           }
 
           if (!targetEntry) {
@@ -784,22 +784,24 @@ class OpenSubtitlesService {
             const out = ['WEBVTT', ''];
             const parseTime = (t) => {
               const m = t.trim().match(/(\d+):(\d{2}):(\d{2})[\.\:](\d{2})/);
-              if (!m) return null; const h=+m[1]||0, mi=+m[2]||0, s=+m[3]||0, cs=+m[4]||0;
-              const ms=(h*3600+mi*60+s)*1000+cs*10; const hh=String(Math.floor(ms/3600000)).padStart(2,'0');
-              const mm=String(Math.floor((ms%3600000)/60000)).padStart(2,'0'); const ss=String(Math.floor((ms%60000)/1000)).padStart(2,'0');
-              const mmm=String(ms%1000).padStart(3,'0'); return `${hh}:${mm}:${ss}.${mmm}`;
+              if (!m) return null; const h = +m[1] || 0, mi = +m[2] || 0, s = +m[3] || 0, cs = +m[4] || 0;
+              const ms = (h * 3600 + mi * 60 + s) * 1000 + cs * 10; const hh = String(Math.floor(ms / 3600000)).padStart(2, '0');
+              const mm = String(Math.floor((ms % 3600000) / 60000)).padStart(2, '0'); const ss = String(Math.floor((ms % 60000) / 1000)).padStart(2, '0');
+              const mmm = String(ms % 1000).padStart(3, '0'); return `${hh}:${mm}:${ss}.${mmm}`;
             };
-            const cleanText = (txt) => { let t = txt.replace(/\{[^}]*\}/g,''); t = t.replace(/\\N/g,'\n').replace(/\\n/g,'\n').replace(/\\h/g,' ');
-              t = t.replace(/[\u0000-\u001F]/g,''); return t.trim(); };
+            const cleanText = (txt) => {
+              let t = txt.replace(/\{[^}]*\}/g, ''); t = t.replace(/\\N/g, '\n').replace(/\\n/g, '\n').replace(/\\h/g, ' ');
+              t = t.replace(/[\u0000-\u001F]/g, ''); return t.trim();
+            };
             for (const line of lines) {
-              if (!/^dialogue\s*:/i.test(line)) continue; const payload=line.split(':').slice(1).join(':');
-              const parts=[]; let cur=''; let splits=0; for (let i=0;i<payload.length;i++){const ch=payload[i]; if(ch===',' && splits<Math.max(idxText,9)){parts.push(cur);cur='';splits++;} else {cur+=ch;}}
-              parts.push(cur); const st=parseTime(parts[idxStart]); const et=parseTime(parts[idxEnd]); if(!st||!et) continue;
-              const ct=cleanText(parts[idxText]??''); if(!ct) continue; out.push(`${st} --> ${et}`); out.push(ct); out.push('');
+              if (!/^dialogue\s*:/i.test(line)) continue; const payload = line.split(':').slice(1).join(':');
+              const parts = []; let cur = ''; let splits = 0; for (let i = 0; i < payload.length; i++) { const ch = payload[i]; if (ch === ',' && splits < Math.max(idxText, 9)) { parts.push(cur); cur = ''; splits++; } else { cur += ch; } }
+              parts.push(cur); const st = parseTime(parts[idxStart]); const et = parseTime(parts[idxEnd]); if (!st || !et) continue;
+              const ct = cleanText(parts[idxText] ?? ''); if (!ct) continue; out.push(`${st} --> ${et}`); out.push(ct); out.push('');
             }
-            return out.length>2?out.join('\n'):null;
+            return out.length > 2 ? out.join('\n') : null;
           })(raw);
-          if (manual && manual.trim().length>0) return manual;
+          if (manual && manual.trim().length > 0) return manual;
           throw new Error('Failed to extract or convert subtitle from season pack ZIP');
         }
         const srtEntry = entries.find(f => f.toLowerCase().endsWith('.srt'));
@@ -894,33 +896,33 @@ class OpenSubtitlesService {
               const parseTime = (t) => {
                 const m = t.trim().match(/(\d+):(\d{2}):(\d{2})[\.\:](\d{2})/);
                 if (!m) return null;
-                const h = +m[1]||0, mi=+m[2]||0, s=+m[3]||0, cs=+m[4]||0;
-                const ms=(h*3600+mi*60+s)*1000+cs*10;
-                const hh=String(Math.floor(ms/3600000)).padStart(2,'0');
-                const mm=String(Math.floor((ms%3600000)/60000)).padStart(2,'0');
-                const ss=String(Math.floor((ms%60000)/1000)).padStart(2,'0');
-                const mmm=String(ms%1000).padStart(3,'0');
+                const h = +m[1] || 0, mi = +m[2] || 0, s = +m[3] || 0, cs = +m[4] || 0;
+                const ms = (h * 3600 + mi * 60 + s) * 1000 + cs * 10;
+                const hh = String(Math.floor(ms / 3600000)).padStart(2, '0');
+                const mm = String(Math.floor((ms % 3600000) / 60000)).padStart(2, '0');
+                const ss = String(Math.floor((ms % 60000) / 1000)).padStart(2, '0');
+                const mmm = String(ms % 1000).padStart(3, '0');
                 return `${hh}:${mm}:${ss}.${mmm}`;
               };
               const cleanText = (txt) => {
-                let t = txt.replace(/\{[^}]*\}/g,'');
-                t = t.replace(/\\N/g,'\n').replace(/\\n/g,'\n').replace(/\\h/g,' ');
-                t = t.replace(/[\u0000-\u001F]/g,'');
+                let t = txt.replace(/\{[^}]*\}/g, '');
+                t = t.replace(/\\N/g, '\n').replace(/\\n/g, '\n').replace(/\\h/g, ' ');
+                t = t.replace(/[\u0000-\u001F]/g, '');
                 return t.trim();
               };
               for (const line of lines) {
                 if (!/^dialogue\s*:/i.test(line)) continue;
-                const payload=line.split(':').slice(1).join(':');
-                const parts=[]; let cur=''; let splits=0;
-                for (let i=0;i<payload.length;i++){const ch=payload[i]; if(ch===',' && splits<Math.max(idxText,9)){parts.push(cur);cur='';splits++;} else {cur+=ch;}}
+                const payload = line.split(':').slice(1).join(':');
+                const parts = []; let cur = ''; let splits = 0;
+                for (let i = 0; i < payload.length; i++) { const ch = payload[i]; if (ch === ',' && splits < Math.max(idxText, 9)) { parts.push(cur); cur = ''; splits++; } else { cur += ch; } }
                 parts.push(cur);
-                const st=parseTime(parts[idxStart]); const et=parseTime(parts[idxEnd]);
-                if (!st||!et) continue; const ct=cleanText(parts[idxText]??''); if(!ct) continue;
+                const st = parseTime(parts[idxStart]); const et = parseTime(parts[idxEnd]);
+                if (!st || !et) continue; const ct = cleanText(parts[idxText] ?? ''); if (!ct) continue;
                 out.push(`${st} --> ${et}`); out.push(ct); out.push('');
               }
-              return out.length>2?out.join('\n'):null;
+              return out.length > 2 ? out.join('\n') : null;
             })(raw);
-            if (manual && manual.trim().length>0) return manual;
+            if (manual && manual.trim().length > 0) return manual;
           }
         }
         throw new Error('Failed to extract or convert subtitle from ZIP (no .srt and conversion to VTT failed)');
@@ -976,20 +978,22 @@ class OpenSubtitlesService {
           const out = ['WEBVTT', ''];
           const parseTime = (t) => {
             const m = t.trim().match(/(\d+):(\d{2}):(\d{2})[\.\:](\d{2})/);
-            if (!m) return null; const h=+m[1]||0, mi=+m[2]||0, s=+m[3]||0, cs=+m[4]||0;
-            const ms=(h*3600+mi*60+s)*1000+cs*10; const hh=String(Math.floor(ms/3600000)).padStart(2,'0');
-            const mm=String(Math.floor((ms%3600000)/60000)).padStart(2,'0'); const ss=String(Math.floor((ms%60000)/1000)).padStart(2,'0');
-            const mmm=String(ms%1000).padStart(3,'0'); return `${hh}:${mm}:${ss}.${mmm}`;
+            if (!m) return null; const h = +m[1] || 0, mi = +m[2] || 0, s = +m[3] || 0, cs = +m[4] || 0;
+            const ms = (h * 3600 + mi * 60 + s) * 1000 + cs * 10; const hh = String(Math.floor(ms / 3600000)).padStart(2, '0');
+            const mm = String(Math.floor((ms % 3600000) / 60000)).padStart(2, '0'); const ss = String(Math.floor((ms % 60000) / 1000)).padStart(2, '0');
+            const mmm = String(ms % 1000).padStart(3, '0'); return `${hh}:${mm}:${ss}.${mmm}`;
           };
-          const cleanText = (txt) => { let t = txt.replace(/\{[^}]*\}/g,''); t = t.replace(/\\N/g,'\n').replace(/\\n/g,'\n').replace(/\\h/g,' ');
-            t = t.replace(/[\u0000-\u001F]/g,''); return t.trim(); };
+          const cleanText = (txt) => {
+            let t = txt.replace(/\{[^}]*\}/g, ''); t = t.replace(/\\N/g, '\n').replace(/\\n/g, '\n').replace(/\\h/g, ' ');
+            t = t.replace(/[\u0000-\u001F]/g, ''); return t.trim();
+          };
           for (const line of lines) {
-            if (!/^dialogue\s*:/i.test(line)) continue; const payload=line.split(':').slice(1).join(':');
-            const parts=[]; let cur=''; let splits=0; for (let i=0;i<payload.length;i++){const ch=payload[i]; if(ch===',' && splits<Math.max(idxText,9)){parts.push(cur);cur='';splits++;} else {cur+=ch;}}
-            parts.push(cur); const st=parseTime(parts[idxStart]); const et=parseTime(parts[idxEnd]); if(!st||!et) continue;
-            const ct=cleanText(parts[idxText]??''); if(!ct) continue; out.push(`${st} --> ${et}`); out.push(ct); out.push('');
+            if (!/^dialogue\s*:/i.test(line)) continue; const payload = line.split(':').slice(1).join(':');
+            const parts = []; let cur = ''; let splits = 0; for (let i = 0; i < payload.length; i++) { const ch = payload[i]; if (ch === ',' && splits < Math.max(idxText, 9)) { parts.push(cur); cur = ''; splits++; } else { cur += ch; } }
+            parts.push(cur); const st = parseTime(parts[idxStart]); const et = parseTime(parts[idxEnd]); if (!st || !et) continue;
+            const ct = cleanText(parts[idxText] ?? ''); if (!ct) continue; out.push(`${st} --> ${et}`); out.push(ct); out.push('');
           }
-          return out.length>2?out.join('\n'):null;
+          return out.length > 2 ? out.join('\n') : null;
         })(text);
         if (manual && manual.trim().length > 0) return manual;
       }

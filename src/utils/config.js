@@ -757,7 +757,7 @@ const MODEL_SPECIFIC_DEFAULTS = {
     temperature: 0.5        // Lower temperature for consistency
   },
   'gemini-3-pro-preview': {
-    thinkingBudget: -1,     // Dynamic thinking for pro model
+    thinkingBudget: 1000,   // Fixed thinking budget for pro model
     temperature: 0.5        // Lower temperature for consistency
   }
 };

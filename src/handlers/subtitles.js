@@ -103,6 +103,12 @@ const inFlightSearches = new LRUCache({
 const SUBTITLE_SEARCH_CACHE_MAX = parseInt(process.env.SUBTITLE_SEARCH_CACHE_MAX) || 5000;
 const SUBTITLE_SEARCH_CACHE_TTL_MS = parseInt(process.env.SUBTITLE_SEARCH_CACHE_TTL_MS) || (10 * 60 * 1000); // 10 minutes
 
+// Performance: Maximum time to wait for subtitle provider API responses
+// After this timeout, we return whatever results are available from faster providers
+// Set to 0 to disable timeout (wait for all providers indefinitely)
+// Default: 7000ms (7 seconds) - balances speed vs coverage
+const PROVIDER_SEARCH_TIMEOUT_MS = parseInt(process.env.PROVIDER_SEARCH_TIMEOUT_MS) || 7000;
+
 const subtitleSearchResultsCache = new LRUCache({
   max: SUBTITLE_SEARCH_CACHE_MAX,
   ttl: SUBTITLE_SEARCH_CACHE_TTL_MS,
@@ -287,7 +293,7 @@ function createLoadingSubtitle(uiLanguage = 'en') {
   const srt = `1
 00:00:00,000 --> 04:00:00,000
 ${t('subtitle.loadingTitle', {}, 'TRANSLATION IN PROGRESS')}
-${t('subtitle.loadingBody', {}, 'Click to reload. Partial results will appear as they are ready.')}`;
+${t('subtitle.loadingBody', {}, 'Click the same subtitle to reload. Partial results will appear as they are ready.')}`;
 
   // Log the loading subtitle for debugging
   log.debug(() => ['[Subtitles] Created loading subtitle with', srt.split('\n\n').length, 'entries']);
@@ -328,7 +334,7 @@ function buildPartialSrtWithTail(mergedSrt, uiLanguage = 'en') {
       // so users see progress instead of a loading screen
       // Append a loading indicator
       const lineCount = mergedSrt.split('\n').length + 10;
-      return `${mergedSrt}\n\n${lineCount}\n00:00:00,000 --> 04:00:00,000\n${t('subtitle.loadingTitle', {}, 'TRANSLATION IN PROGRESS')}\n${t('subtitle.loadingTail', {}, 'Reload this subtitle later to get more')}`;
+      return `${mergedSrt}\n\n${lineCount}\n00:00:00,000 --> 04:00:00,000\n${t('subtitle.loadingTitle', {}, 'TRANSLATION IN PROGRESS')}\n${t('subtitle.loadingTail', {}, 'Reload this subtitle to get more as translation gets ready.')}`;
     }
 
     const reindexed = entries.map((e, idx) => ({ id: idx + 1, timecode: e.timecode, text: (e.text || '').trim() }))
@@ -2120,8 +2126,55 @@ function createSubtitleHandler(config) {
           log.debug(() => '[Subtitles] SubSource provider is disabled');
         }
 
-        // Execute all searches in parallel
-        const providerResults = await Promise.all(searchPromises);
+        // Execute all searches in parallel with early timeout
+        // After PROVIDER_SEARCH_TIMEOUT_MS, return whatever results are available
+        // This prevents slow/unresponsive providers from blocking the entire response
+        let providerResults = [];
+
+        if (PROVIDER_SEARCH_TIMEOUT_MS > 0 && searchPromises.length > 0) {
+          // Create a collector for results as they arrive
+          const collectedResults = [];
+          let resolvedCount = 0;
+          let timeoutFired = false;
+
+          // Wrap each promise to collect results as they complete
+          const wrappedPromises = searchPromises.map(p =>
+            p.then(result => {
+              if (!timeoutFired) {
+                collectedResults.push(result);
+              }
+              resolvedCount++;
+              return result;
+            })
+          );
+
+          // Race between: all promises completing OR timeout
+          const timeoutPromise = new Promise(resolve => {
+            setTimeout(() => {
+              timeoutFired = true;
+              resolve('timeout');
+            }, PROVIDER_SEARCH_TIMEOUT_MS);
+          });
+
+          const allSettledPromise = Promise.all(wrappedPromises).then(() => 'completed');
+
+          const winner = await Promise.race([allSettledPromise, timeoutPromise]);
+
+          if (winner === 'timeout') {
+            // Timeout fired - use whatever results we have so far
+            providerResults = [...collectedResults];
+            const pending = searchPromises.length - resolvedCount;
+            if (pending > 0) {
+              log.warn(() => `[Subtitles] Provider search timeout after ${PROVIDER_SEARCH_TIMEOUT_MS}ms - returning ${resolvedCount}/${searchPromises.length} provider results (${pending} still pending)`);
+            }
+          } else {
+            // All completed before timeout
+            providerResults = collectedResults;
+          }
+        } else if (searchPromises.length > 0) {
+          // Timeout disabled - wait for all providers
+          providerResults = await Promise.all(searchPromises);
+        }
 
         // Collect and log results from all providers
         let subtitles = [];
@@ -2227,8 +2280,9 @@ function createSubtitleHandler(config) {
       // This prevents UI slowdown while ensuring best-quality subtitles are shown
       const MAX_SUBS_PER_LANGUAGE = Number.isFinite(config?.maxSubtitlesPerLanguage)
         ? config.maxSubtitlesPerLanguage
-        : 12;
+        : 8; // Default reduced from 12 to 8 for better performance
       const limitedByLanguage = new Map(); // language -> subtitle array
+
 
       for (const sub of filteredFoundSubtitles) {
         if (!limitedByLanguage.has(sub.languageCode)) {

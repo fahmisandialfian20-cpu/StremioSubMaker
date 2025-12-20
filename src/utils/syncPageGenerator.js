@@ -2757,13 +2757,38 @@ async function generateSubtitleSyncPage(subtitles, videoId, streamFilename, conf
         function parseVideoId(id) {
             if (!id) return null;
             const parts = String(id).split(':');
+            // Handle anime IDs (anidb, kitsu, mal, anilist)
+            // Format: platform:animeId:episode OR platform:animeId:season:episode
             if (/^(anidb|kitsu|mal|anilist)/.test(parts[0])) {
-                return {
-                    type: 'anime',
-                    animeId: parts[0],
-                    season: parts.length === 4 ? parseInt(parts[2], 10) : undefined,
-                    episode: parts.length >= 3 ? parseInt(parts[parts.length - 1], 10) : undefined
-                };
+                const animeIdType = parts[0];
+                if (parts.length === 1) {
+                    // Just platform name - anime movie/series
+                    return { type: 'anime', animeId: parts[0], animeIdType, isAnime: true };
+                }
+                if (parts.length === 3) {
+                    // platform:id:episode (seasonless, most common for anime)
+                    // Example: kitsu:10941:1 -> animeId=kitsu:10941, episode=1
+                    return {
+                        type: 'anime-episode',
+                        animeId: parts[0] + ':' + parts[1],
+                        animeIdType,
+                        isAnime: true,
+                        episode: parseInt(parts[2], 10)
+                    };
+                }
+                if (parts.length === 4) {
+                    // platform:id:season:episode
+                    // Example: kitsu:10941:1:5 -> animeId=kitsu:10941, season=1, episode=5
+                    return {
+                        type: 'anime-episode',
+                        animeId: parts[0] + ':' + parts[1],
+                        animeIdType,
+                        isAnime: true,
+                        season: parseInt(parts[2], 10),
+                        episode: parseInt(parts[3], 10)
+                    };
+                }
+                return { type: 'anime', animeId: id, animeIdType, isAnime: true };
             }
             if (parts[0] === 'tmdb') {
                 return {

@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## SubMaker v1.4.25
+
+**Performance Optimizations:**
+
+- **Early provider timeout:** New `PROVIDER_SEARCH_TIMEOUT_MS` environment variable (default 7 seconds) returns available subtitle results after the timeout, instead of waiting for all providers. Slow or unresponsive providers no longer block the entire response.
+- **Reduced provider timeouts:** OpenSubtitles and SubDL API timeouts reduced from 15 seconds to 10 seconds for faster failure detection on slow providers.
+- **Reduced results per language:** Each provider now returns a maximum of 14 subtitles per language (was 20), reducing processing overhead and response size.
+- **OpenSubtitles V3 filename extraction:** Subtitle fetching is now significantly faster (3-6 seconds saved) by skipping slow HEAD requests for filename extraction. The fast URL-based extraction is enabled by default; set `V3_EXTRACT_FILENAMES=true` to re-enable accurate Content-Disposition filename extraction if needed.
+- **Reduced default subtitles per language:** Changed `MAX_SUBTITLES_PER_LANGUAGE` default from 12 to 8 for faster subtitle loading and reduced UI overhead.
+
+**Other Changes:**
+
+- **Gemini 3.0 Pro default thinking budget:** Changed the default thinking budget for Gemini 3.0 Pro from dynamic (-1) to a fixed value of 1000.
+- **Mobile responsive fix for API key rotation:** Fixed layout issues on mobile devices where Gemini API key rotation fields had misaligned icons, oversized buttons, and broken input containers.
+- **Fixed Kitsu/anime ID parsing:** Corrected episode tag display for anime streams from Kitsu, AniDB, MAL, and AniList. Previously, video IDs like `kitsu:10941:1` were incorrectly parsed to show "S10941E01" (treating the anime ID as the season number). Now correctly shows "E01" for seasonless anime episodes, and "S01E05" for anime with explicit seasons (e.g., `kitsu:10941:1:5`). Fixed across all toolbox pages (Sub Toolbox, Sync, Auto-subs) and stream notification toasts.
+
+
 ## SubMaker v1.4.24
 
 - **Gemini API key rotation:** Config now supports multiple Gemini keys with per-request or per-batch rotation, encrypted storage, and a compact UI for managing extra keys.

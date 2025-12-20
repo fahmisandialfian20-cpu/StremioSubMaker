@@ -76,7 +76,7 @@ Please pick another subtitle or provider.`;
 class SubDLService {
   constructor(apiKey = null) {
     this.apiKey = apiKey;
-    
+
     // Create axios instance with default configuration
     this.client = axios.create({
       baseURL: SUBDL_API_URL,
@@ -89,7 +89,7 @@ class SubDLService {
       httpAgent,
       httpsAgent,
       lookup: dnsLookup,
-      timeout: 15000,
+      timeout: 10000,
       maxRedirects: 5,
       decompress: true
     });
@@ -290,11 +290,11 @@ class SubDLService {
             if (type === 'anime-episode') {
               // For anime, use anime-specific patterns
               isSeasonPack = animeSeasonPackPatterns.some(pattern => pattern.test(nameLower)) &&
-                            !/(?:^|[^0-9])0*${episode}(?:v\d+)?(?:[^0-9]|$)/.test(nameLower);
+                !/(?:^|[^0-9])0*${episode}(?:v\d+)?(?:[^0-9]|$)/.test(nameLower);
             } else {
               // For regular TV shows, use season-based patterns
               isSeasonPack = seasonPackPatterns.some(pattern => pattern.test(nameLower)) &&
-                            !/s0*\d+e0*\d+|\d+x\d+|episode\s*\d+|ep\s*\d+/i.test(nameLower);
+                !/s0*\d+e0*\d+|\d+x\d+|episode\s*\d+|ep\s*\d+/i.test(nameLower);
             }
 
             if (isSeasonPack) {
@@ -369,8 +369,8 @@ class SubDLService {
         }
       }
 
-      // Limit to 20 results per language to control response size
-      const MAX_RESULTS_PER_LANGUAGE = 20;
+      // Limit to 14 results per language to control response size
+      const MAX_RESULTS_PER_LANGUAGE = 14;
       const groupedByLanguage = {};
 
       for (const sub of subtitles) {
@@ -763,7 +763,7 @@ class SubDLService {
                 const m = t.trim().match(/(\d+):(\d{2}):(\d{2})[\.\:](\d{2})/);
                 if (!m) return null;
                 const h = parseInt(m[1], 10) || 0; const mi = parseInt(m[2], 10) || 0; const s = parseInt(m[3], 10) || 0; const cs = parseInt(m[4], 10) || 0;
-                const ms = (h*3600 + mi*60 + s) * 1000 + cs * 10;
+                const ms = (h * 3600 + mi * 60 + s) * 1000 + cs * 10;
                 const hh = String(Math.floor(ms / 3600000)).padStart(2, '0');
                 const mm = String(Math.floor((ms % 3600000) / 60000)).padStart(2, '0');
                 const ss = String(Math.floor((ms % 60000) / 1000)).padStart(2, '0');

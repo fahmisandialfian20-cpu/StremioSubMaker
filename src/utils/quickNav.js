@@ -548,20 +548,66 @@ function quickNavScript() {
         const id = (raw || '').toString().trim();
         if (!id) return null;
         const parts = id.split(':');
+        
+        // Handle anime IDs (anidb, kitsu, mal, anilist)
+        if (/^(anidb|kitsu|mal|anilist)/.test(parts[0])) {
+          const animeIdType = parts[0];
+          if (parts.length === 1) {
+            return { type: 'anime', animeId: parts[0], animeIdType, isAnime: true, id };
+          }
+          if (parts.length === 3) {
+            // platform:id:episode (seasonless)
+            return {
+              type: 'anime-episode',
+              animeId: parts[0] + ':' + parts[1],
+              animeIdType,
+              isAnime: true,
+              episode: Number(parts[2]),
+              id
+            };
+          }
+          if (parts.length === 4) {
+            // platform:id:season:episode
+            return {
+              type: 'anime-episode',
+              animeId: parts[0] + ':' + parts[1],
+              animeIdType,
+              isAnime: true,
+              season: Number(parts[2]),
+              episode: Number(parts[3]),
+              id
+            };
+          }
+          return { type: 'anime', animeId: id, animeIdType, isAnime: true, id };
+        }
+        
+        // Handle TMDB IDs
+        if (parts[0] === 'tmdb') {
+          if (parts.length >= 4) {
+            return { type: 'episode', tmdbId: parts[1], season: Number(parts[2]), episode: Number(parts[3]), id };
+          }
+          if (parts.length === 3) {
+            return { type: 'episode', tmdbId: parts[1], season: 1, episode: Number(parts[2]), id };
+          }
+          return { type: 'movie', tmdbId: parts[1], id };
+        }
+        
+        // Handle IMDB IDs
         if (parts.length >= 3) {
           const imdbId = parts[0].startsWith('tt') ? parts[0] : null;
           return { type: 'episode', imdbId, season: Number(parts[1]), episode: Number(parts[2]), id };
         }
-        if (/^tt\\d+$/.test(id)) return { type: 'movie', imdbId: id, id };
+        if (/^tt\\\\d+$/.test(id)) return { type: 'movie', imdbId: id, id };
         return { type: 'movie', id };
       }
 
       function formatEpisodeTag(parsed) {
-        if (!parsed || parsed.type !== 'episode') return '';
+        if (!parsed || (parsed.type !== 'episode' && parsed.type !== 'anime-episode')) return '';
         const s = Number.isFinite(parsed.season) ? 'S' + String(parsed.season).padStart(2, '0') : '';
         const e = Number.isFinite(parsed.episode) ? 'E' + String(parsed.episode).padStart(2, '0') : '';
         return (s || e) ? (s + e) : '';
       }
+
 
       function cleanName(raw) {
         if (!raw) return '';

@@ -556,7 +556,7 @@ Translate to {target_language}.`;
             temperature: 0.5
         },
         'gemini-3-pro-preview': {
-            thinkingBudget: -1,
+            thinkingBudget: 1000,
             temperature: 0.5
         }
     };
@@ -3560,19 +3560,18 @@ Translate to {target_language}.`;
 
         const row = document.createElement('div');
         row.className = 'gemini-key-row';
-        row.style.cssText = 'display: flex; gap: 0.5rem; align-items: center;';
+        // Styles are applied via CSS for responsive behavior
 
         // Create wrapper for input and toggle (similar to password-field-wrapper)
         const inputWrapper = document.createElement('div');
         inputWrapper.className = 'password-field-wrapper';
-        inputWrapper.style.cssText = 'flex: 1; min-width: 0; position: relative;';
+        // Styles are applied via CSS for responsive behavior
 
         const input = document.createElement('input');
         input.type = 'text';
         input.className = 'sensitive-input masked gemini-api-key-input';
         input.placeholder = tConfig('config.gemini.keyRotation.keyPlaceholder', {}, 'Enter API key');
         input.value = value;
-        input.style.width = '100%';
         input.autocomplete = 'off';
         input.spellcheck = false;
 

@@ -563,23 +563,23 @@ class SubSourceService {
         // Fallback to other possible field names if releaseInfo not found
         if (!extractedName) {
           extractedName = sub.name ||
-                         sub.release_name ||
-                         sub.releaseName ||
-                         sub.fullname ||
-                         sub.fullName ||
-                         sub.full_name ||
-                         sub.file_name ||
-                         sub.fileName ||
-                         sub.filename ||
-                         sub.title ||
-                         sub.subtitle_name ||
-                         sub.subtitleName ||
-                         sub.releasename ||
-                         sub.label ||
-                         sub.description ||
-                         sub.subtitle ||
-                         sub.release ||
-                         null;
+            sub.release_name ||
+            sub.releaseName ||
+            sub.fullname ||
+            sub.fullName ||
+            sub.full_name ||
+            sub.file_name ||
+            sub.fileName ||
+            sub.filename ||
+            sub.title ||
+            sub.subtitle_name ||
+            sub.subtitleName ||
+            sub.releasename ||
+            sub.label ||
+            sub.description ||
+            sub.subtitle ||
+            sub.release ||
+            null;
         }
 
         // If still no name found, construct one from available info
@@ -602,19 +602,19 @@ class SubSourceService {
 
         // Extract upload date from various possible field names (createdAt is the correct field for SubSource)
         const extractedDate = sub.createdAt ||
-                              sub.created_at ||
-                              sub.upload_date ||
-                              sub.uploadDate ||
-                              sub.date ||
-                              sub.uploaded ||
-                              sub.created ||
-                              sub.date_uploaded ||
-                              sub.dateUploaded ||
-                              sub.upload ||
-                              sub.timestamp ||
-                              sub.create_date ||
-                              sub.createDate ||
-                              undefined;
+          sub.created_at ||
+          sub.upload_date ||
+          sub.uploadDate ||
+          sub.date ||
+          sub.uploaded ||
+          sub.created ||
+          sub.date_uploaded ||
+          sub.dateUploaded ||
+          sub.upload ||
+          sub.timestamp ||
+          sub.create_date ||
+          sub.createDate ||
+          undefined;
 
         // Extract downloads from various possible field names
         const extractedDownloads = parseInt(
@@ -656,7 +656,7 @@ class SubSourceService {
         const directUrl = sub.download_url || sub.downloadUrl || sub.url;
         // Cache direct link for CDN-first download attempts
         if (subtitleId && directUrl) {
-          try { this.rememberDownloadLink(subtitleId, directUrl); } catch (_) {}
+          try { this.rememberDownloadLink(subtitleId, directUrl); } catch (_) { }
         }
 
         return {
@@ -723,11 +723,11 @@ class SubSourceService {
           if (type === 'anime-episode') {
             // For anime, use anime-specific patterns and don't require season numbers
             isSeasonPack = animeSeasonPackPatterns.some(pattern => pattern.test(name)) &&
-                          !/(?:^|[^0-9])0*${targetEpisode}(?:v\d+)?(?:[^0-9]|$)/.test(name); // Exclude if has specific episode number
+              !/(?:^|[^0-9])0*${targetEpisode}(?:v\d+)?(?:[^0-9]|$)/.test(name); // Exclude if has specific episode number
           } else {
             // For regular TV shows, use season-based patterns
             isSeasonPack = seasonPackPatterns.some(pattern => pattern.test(name)) &&
-                          !/s0*\d+e0*\d+|\d+x\d+|episode\s*\d+|ep\s*\d+/i.test(name); // Exclude if has episode number
+              !/s0*\d+e0*\d+|\d+x\d+|episode\s*\d+|ep\s*\d+/i.test(name); // Exclude if has episode number
           }
 
           if (isSeasonPack) {
@@ -796,8 +796,8 @@ class SubSourceService {
         log.debug(() => [`[SubSource] After episode filtering: ${filteredSubtitles.length} subtitles (including ${filteredSubtitles.filter(s => s.is_season_pack).length} season packs)`]);
       }
 
-      // Limit to 20 results per language to control response size
-      const MAX_RESULTS_PER_LANGUAGE = 20;
+      // Limit to 14 results per language to control response size
+      const MAX_RESULTS_PER_LANGUAGE = 14;
       const groupedByLanguage = {};
 
       for (const sub of filteredSubtitles) {
@@ -913,7 +913,7 @@ class SubSourceService {
         const triggerFallback = () => {
           if (!fallbackTriggered) {
             fallbackTriggered = true;
-            try { triggerFallbackResolve && triggerFallbackResolve(); } catch (_) {}
+            try { triggerFallbackResolve && triggerFallbackResolve(); } catch (_) { }
           }
         };
 
@@ -1001,7 +1001,7 @@ class SubSourceService {
         responseBuffer[2] === 0x03 && responseBuffer[3] === 0x04;   // \x03\x04
 
       if (isZipByMagicBytes || contentType.includes('application/zip') ||
-          contentType.includes('application/x-zip')) {
+        contentType.includes('application/x-zip')) {
         // Guard against huge ZIPs before attempting to parse
         const zipSize = responseBuffer.length;
         if (zipSize > MAX_ZIP_BYTES) {
@@ -1296,70 +1296,70 @@ class SubSourceService {
           // Manual fallback for common ASS/SSA formats
           try {
             const manual = (function assToVttFallback(input) {
-                if (!input || !/\[events\]/i.test(input)) return null;
-                const lines = input.split(/\r?\n/);
-                let format = [];
-                let inEvents = false;
-                for (const line of lines) {
-                  const l = line.trim();
-                  if (/^\[events\]/i.test(l)) { inEvents = true; continue; }
-                  if (!inEvents) continue;
-                  if (/^\[.*\]/.test(l)) break;
-                  if (/^format\s*:/i.test(l)) {
-                    format = l.split(':')[1].split(',').map(s => s.trim().toLowerCase());
-                  }
+              if (!input || !/\[events\]/i.test(input)) return null;
+              const lines = input.split(/\r?\n/);
+              let format = [];
+              let inEvents = false;
+              for (const line of lines) {
+                const l = line.trim();
+                if (/^\[events\]/i.test(l)) { inEvents = true; continue; }
+                if (!inEvents) continue;
+                if (/^\[.*\]/.test(l)) break;
+                if (/^format\s*:/i.test(l)) {
+                  format = l.split(':')[1].split(',').map(s => s.trim().toLowerCase());
                 }
-                const idxStart = Math.max(0, format.indexOf('start'));
-                const idxEnd = Math.max(1, format.indexOf('end'));
-                const idxText = format.length > 0 ? Math.max(format.indexOf('text'), format.length - 1) : 9;
-                const out = ['WEBVTT', ''];
-                const parseTime = (t) => {
-                  const m = t.trim().match(/(\d+):(\d{2}):(\d{2})[\.\:](\d{2})/);
-                  if (!m) return null;
-                  const h = parseInt(m[1], 10) || 0;
-                  const mi = parseInt(m[2], 10) || 0;
-                  const s = parseInt(m[3], 10) || 0;
-                  const cs = parseInt(m[4], 10) || 0;
-                  const ms = (h*3600 + mi*60 + s) * 1000 + cs * 10;
-                  const hh = String(Math.floor(ms / 3600000)).padStart(2, '0');
-                  const mm = String(Math.floor((ms % 3600000) / 60000)).padStart(2, '0');
-                  const ss = String(Math.floor((ms % 60000) / 1000)).padStart(2, '0');
-                  const mmm = String(ms % 1000).padStart(3, '0');
-                  return `${hh}:${mm}:${ss}.${mmm}`;
-                };
-                const cleanText = (txt) => {
-                  let t = txt.replace(/\{[^}]*\}/g, '');
-                  t = t.replace(/\\N/g, '\n').replace(/\\n/g, '\n').replace(/\\h/g, ' ');
-                  t = t.replace(/[\u0000-\u001F]/g, '');
-                  return t.trim();
-                };
-                for (const line of lines) {
-                  if (!/^dialogue\s*:/i.test(line)) continue;
-                  const payload = line.split(':').slice(1).join(':');
-                  const parts = [];
-                  let cur = '';
-                  let splits = 0;
-                  for (let i = 0; i < payload.length; i++) {
-                    const ch = payload[i];
-                    if (ch === ',' && splits < Math.max(idxText, 9)) { parts.push(cur); cur = ''; splits++; }
-                    else { cur += ch; }
-                  }
-                  parts.push(cur);
-                  const start = parts[idxStart];
-                  const end = parts[idxEnd];
-                  const text = parts[idxText] ?? '';
-                  const st = parseTime(start);
-                  const et = parseTime(end);
-                  if (!st || !et) continue;
-                  const ct = cleanText(text);
-                  if (!ct) continue;
-                  out.push(`${st} --> ${et}`);
-                  out.push(ct);
-                  out.push('');
+              }
+              const idxStart = Math.max(0, format.indexOf('start'));
+              const idxEnd = Math.max(1, format.indexOf('end'));
+              const idxText = format.length > 0 ? Math.max(format.indexOf('text'), format.length - 1) : 9;
+              const out = ['WEBVTT', ''];
+              const parseTime = (t) => {
+                const m = t.trim().match(/(\d+):(\d{2}):(\d{2})[\.\:](\d{2})/);
+                if (!m) return null;
+                const h = parseInt(m[1], 10) || 0;
+                const mi = parseInt(m[2], 10) || 0;
+                const s = parseInt(m[3], 10) || 0;
+                const cs = parseInt(m[4], 10) || 0;
+                const ms = (h * 3600 + mi * 60 + s) * 1000 + cs * 10;
+                const hh = String(Math.floor(ms / 3600000)).padStart(2, '0');
+                const mm = String(Math.floor((ms % 3600000) / 60000)).padStart(2, '0');
+                const ss = String(Math.floor((ms % 60000) / 1000)).padStart(2, '0');
+                const mmm = String(ms % 1000).padStart(3, '0');
+                return `${hh}:${mm}:${ss}.${mmm}`;
+              };
+              const cleanText = (txt) => {
+                let t = txt.replace(/\{[^}]*\}/g, '');
+                t = t.replace(/\\N/g, '\n').replace(/\\n/g, '\n').replace(/\\h/g, ' ');
+                t = t.replace(/[\u0000-\u001F]/g, '');
+                return t.trim();
+              };
+              for (const line of lines) {
+                if (!/^dialogue\s*:/i.test(line)) continue;
+                const payload = line.split(':').slice(1).join(':');
+                const parts = [];
+                let cur = '';
+                let splits = 0;
+                for (let i = 0; i < payload.length; i++) {
+                  const ch = payload[i];
+                  if (ch === ',' && splits < Math.max(idxText, 9)) { parts.push(cur); cur = ''; splits++; }
+                  else { cur += ch; }
                 }
-                if (out.length <= 2) return null;
-                return out.join('\n');
-              })(raw);
+                parts.push(cur);
+                const start = parts[idxStart];
+                const end = parts[idxEnd];
+                const text = parts[idxText] ?? '';
+                const st = parseTime(start);
+                const et = parseTime(end);
+                if (!st || !et) continue;
+                const ct = cleanText(text);
+                if (!ct) continue;
+                out.push(`${st} --> ${et}`);
+                out.push(ct);
+                out.push('');
+              }
+              if (out.length <= 2) return null;
+              return out.join('\n');
+            })(raw);
 
             if (manual && manual.trim().length > 0) {
               log.debug(() => `[SubSource] Fallback converted ${altEntry} to .vtt successfully (manual parser)`);

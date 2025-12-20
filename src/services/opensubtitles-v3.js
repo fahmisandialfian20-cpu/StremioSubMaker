@@ -13,6 +13,12 @@ const OPENSUBTITLES_V3_BASE_URL = 'https://opensubtitles-v3.strem.io/subtitles/'
 const USER_AGENT = `SubMaker v${version}`;
 const MAX_ZIP_BYTES = 25 * 1024 * 1024; // hard cap for ZIP downloads (~25MB) to avoid huge packs
 
+// Performance: Skip slow HEAD requests for filename extraction by default
+// When false (default): Uses fast URL-based filename extraction only (~instant)
+// When true: Makes HEAD requests to get accurate Content-Disposition filenames (~3-6s for 30 subs)
+// Set V3_EXTRACT_FILENAMES=true to enable accurate filename extraction (slower but better matching)
+const V3_EXTRACT_FILENAMES = process.env.V3_EXTRACT_FILENAMES === 'true';
+
 // Create a concise SRT when a ZIP is too large to process
 function createZipTooLargeSubtitle(limitBytes, actualBytes) {
   const toMb = (bytes) => Math.round((bytes / (1024 * 1024)) * 10) / 10;
@@ -174,7 +180,7 @@ class OpenSubtitlesV3Service {
 
           // If ANY pattern matches the correct episode, keep this subtitle
           if (seasonEpisodePatterns.some(pattern => pattern.test(nameLower)) ||
-              (type === 'anime-episode' && animeEpisodePatterns.some(p => p.test(nameLower)))) {
+            (type === 'anime-episode' && animeEpisodePatterns.some(p => p.test(nameLower)))) {
             return true;
           }
 
@@ -210,79 +216,77 @@ class OpenSubtitlesV3Service {
   }
 
   /**
-   * Extract filenames from subtitle URLs using batched parallel HEAD requests
+   * Extract filenames from subtitle URLs
+   * By default (V3_EXTRACT_FILENAMES=false): Uses fast URL-based extraction only
+   * When V3_EXTRACT_FILENAMES=true: Makes HEAD requests for accurate Content-Disposition filenames
    * @param {Array} subtitles - Array of subtitle objects with urls
    * @returns {Promise<Array>} - Subtitles with extracted names
    */
   async extractFilenames(subtitles) {
-    const BATCH_SIZE = 10;
-    const extractedNames = new Array(subtitles.length);
+    const extractedNames = new Array(subtitles.length).fill(null);
 
-    // Process subtitles in batches of 10 to avoid rate limiting
-    for (let i = 0; i < subtitles.length; i += BATCH_SIZE) {
-      const batch = subtitles.slice(i, i + BATCH_SIZE);
-      const batchPromises = batch.map(async (sub, batchIndex) => {
-        try {
-          // Make HEAD request to get Content-Disposition header
-          const response = await this.client.head(sub.url, {
-            headers: {
-              'User-Agent': USER_AGENT
-            },
-            timeout: 3000 // 3 second timeout for HEAD requests
-          });
+    // Fast path: Skip HEAD requests entirely (default for performance)
+    // This saves 3-6+ seconds on shared hosting with many subtitles
+    if (!V3_EXTRACT_FILENAMES) {
+      log.debug(() => `[OpenSubtitles V3] Using fast URL-based filename extraction (${subtitles.length} subs)`);
+      // extractedNames stays null, fallback logic below will use URL parsing
+    } else {
+      // Slow path: Make HEAD requests for accurate Content-Disposition filenames
+      log.debug(() => `[OpenSubtitles V3] Using HEAD requests for filename extraction (${subtitles.length} subs)`);
+      const BATCH_SIZE = 15; // Increased batch size for slightly better parallelism
+      const HEAD_TIMEOUT = 2000; // Reduced timeout (was 3000)
 
-          // Extract filename from Content-Disposition header
-          const contentDisposition = response.headers['content-disposition'];
-          if (contentDisposition) {
-            const match = contentDisposition.match(/filename="(.+?)"/);
-            if (match && match[1]) {
-              // Keep full filename (with extension) so we can infer format later
-              const filename = match[1];
-              return filename;
-            }
-          }
+      for (let i = 0; i < subtitles.length; i += BATCH_SIZE) {
+        const batch = subtitles.slice(i, i + BATCH_SIZE);
+        const batchPromises = batch.map(async (sub, batchIndex) => {
+          try {
+            const response = await this.client.head(sub.url, {
+              headers: { 'User-Agent': USER_AGENT },
+              timeout: HEAD_TIMEOUT
+            });
 
-          // Fallback: no filename found
-          return null;
-
-        } catch (error) {
-          // If rate-limited, retry once after 2 seconds (V3 filename extraction only)
-          const status = error?.response?.status;
-          if (status === 429) {
-            log.debug(() => `[OpenSubtitles V3] 429 while extracting filename for ${sub.id} - retrying once after 2s`);
-            await new Promise(r => setTimeout(r, 2000));
-            try {
-              const response = await this.client.head(sub.url, {
-                headers: { 'User-Agent': USER_AGENT },
-                timeout: 3000
-              });
-              const contentDisposition = response.headers['content-disposition'];
-              if (contentDisposition) {
-                const match = contentDisposition.match(/filename=\"(.+?)\"/);
-                if (match && match[1]) {
-                  const filename = match[1];
-                  return filename;
-                }
+            const contentDisposition = response.headers['content-disposition'];
+            if (contentDisposition) {
+              const match = contentDisposition.match(/filename="(.+?)"/);
+              if (match && match[1]) {
+                return match[1];
               }
-              return null;
-            } catch (retryErr) {
-              log.debug(() => `[OpenSubtitles V3] Failed to extract filename for ${sub.id} after retry: ${retryErr.message}`);
-              return null;
             }
+            return null;
+          } catch (error) {
+            // If rate-limited, retry once after 1.5 seconds
+            const status = error?.response?.status;
+            if (status === 429) {
+              log.debug(() => `[OpenSubtitles V3] 429 while extracting filename for ${sub.id} - retrying once`);
+              await new Promise(r => setTimeout(r, 1500));
+              try {
+                const response = await this.client.head(sub.url, {
+                  headers: { 'User-Agent': USER_AGENT },
+                  timeout: HEAD_TIMEOUT
+                });
+                const contentDisposition = response.headers['content-disposition'];
+                if (contentDisposition) {
+                  const match = contentDisposition.match(/filename=\"(.+?)\"/);
+                  if (match && match[1]) {
+                    return match[1];
+                  }
+                }
+                return null;
+              } catch (retryErr) {
+                log.debug(() => `[OpenSubtitles V3] Failed to extract filename for ${sub.id} after retry: ${retryErr.message}`);
+                return null;
+              }
+            }
+            log.debug(() => `[OpenSubtitles V3] Failed to extract filename for ${sub.id}: ${error.message}`);
+            return null;
           }
-          // Fallback on error (timeout, network issue, etc.)
-          log.debug(() => `[OpenSubtitles V3] Failed to extract filename for ${sub.id}: ${error.message}`);
-          return null;
-        }
-      });
+        });
 
-      // Wait for this batch to complete
-      const batchResults = await Promise.all(batchPromises);
-
-      // Store results in correct positions
-      batchResults.forEach((result, batchIndex) => {
-        extractedNames[i + batchIndex] = result;
-      });
+        const batchResults = await Promise.all(batchPromises);
+        batchResults.forEach((result, batchIndex) => {
+          extractedNames[i + batchIndex] = result;
+        });
+      }
     }
 
     // Map subtitles with extracted names
@@ -302,7 +306,7 @@ class OpenSubtitlesV3Service {
           if (['srt', 'vtt', 'ass', 'ssa', 'sub'].includes(ext)) detectedFormat = ext;
         }
         // Display name without extension for cleaner UI
-        finalName = extracted.replace(/\.[^.]+$/,'');
+        finalName = extracted.replace(/\.[^.]+$/, '');
       } else {
         // Try to detect from URL
         try {
@@ -312,7 +316,7 @@ class OpenSubtitlesV3Service {
             detectedFormat = um[2];
             finalName = um[1];
           }
-        } catch (_) {}
+        } catch (_) { }
 
         if (!finalName) {
           const langName = this.getLanguageDisplayName(sub.lang);
@@ -398,7 +402,7 @@ class OpenSubtitlesV3Service {
             log.debug(() => '[OpenSubtitles V3] Extracted .srt from ZIP');
             return srt;
           }
-          const altEntry = entries.find(f => { const l=f.toLowerCase(); return l.endsWith('.vtt') || l.endsWith('.ass') || l.endsWith('.ssa') || l.endsWith('.sub'); });
+          const altEntry = entries.find(f => { const l = f.toLowerCase(); return l.endsWith('.vtt') || l.endsWith('.ass') || l.endsWith('.ssa') || l.endsWith('.sub'); });
           if (altEntry) {
             const uint8 = await zip.files[altEntry].async('uint8array');
             const abuf = Buffer.from(uint8);
@@ -475,20 +479,22 @@ class OpenSubtitlesV3Service {
                 const out = ['WEBVTT', ''];
                 const parseTime = (t) => {
                   const m = t.trim().match(/(\d+):(\d{2}):(\d{2})[\.\:](\d{2})/);
-                  if (!m) return null; const h=+m[1]||0, mi=+m[2]||0, s=+m[3]||0, cs=+m[4]||0;
-                  const ms=(h*3600+mi*60+s)*1000+cs*10; const hh=String(Math.floor(ms/3600000)).padStart(2,'0');
-                  const mm=String(Math.floor((ms%3600000)/60000)).padStart(2,'0'); const ss=String(Math.floor((ms%60000)/1000)).padStart(2,'0');
-                  const mmm=String(ms%1000).padStart(3,'0'); return `${hh}:${mm}:${ss}.${mmm}`;
+                  if (!m) return null; const h = +m[1] || 0, mi = +m[2] || 0, s = +m[3] || 0, cs = +m[4] || 0;
+                  const ms = (h * 3600 + mi * 60 + s) * 1000 + cs * 10; const hh = String(Math.floor(ms / 3600000)).padStart(2, '0');
+                  const mm = String(Math.floor((ms % 3600000) / 60000)).padStart(2, '0'); const ss = String(Math.floor((ms % 60000) / 1000)).padStart(2, '0');
+                  const mmm = String(ms % 1000).padStart(3, '0'); return `${hh}:${mm}:${ss}.${mmm}`;
                 };
-                const cleanText = (txt) => { let t = txt.replace(/\{[^}]*\}/g,''); t = t.replace(/\\N/g,'\n').replace(/\\n/g,'\n').replace(/\\h/g,' ');
-                  t = t.replace(/[\u0000-\u001F]/g,''); return t.trim(); };
+                const cleanText = (txt) => {
+                  let t = txt.replace(/\{[^}]*\}/g, ''); t = t.replace(/\\N/g, '\n').replace(/\\n/g, '\n').replace(/\\h/g, ' ');
+                  t = t.replace(/[\u0000-\u001F]/g, ''); return t.trim();
+                };
                 for (const line of lines) {
-                  if (!/^dialogue\s*:/i.test(line)) continue; const payload=line.split(':').slice(1).join(':');
-                  const parts=[]; let cur=''; let splits=0; for (let i=0;i<payload.length;i++){const ch=payload[i]; if(ch===',' && splits<Math.max(idxText,9)){parts.push(cur);cur='';splits++;} else {cur+=ch;}}
-                  parts.push(cur); const st=parseTime(parts[idxStart]); const et=parseTime(parts[idxEnd]); if(!st||!et) continue;
-                  const ct=cleanText(parts[idxText]??''); if(!ct) continue; out.push(`${st} --> ${et}`); out.push(ct); out.push('');
+                  if (!/^dialogue\s*:/i.test(line)) continue; const payload = line.split(':').slice(1).join(':');
+                  const parts = []; let cur = ''; let splits = 0; for (let i = 0; i < payload.length; i++) { const ch = payload[i]; if (ch === ',' && splits < Math.max(idxText, 9)) { parts.push(cur); cur = ''; splits++; } else { cur += ch; } }
+                  parts.push(cur); const st = parseTime(parts[idxStart]); const et = parseTime(parts[idxEnd]); if (!st || !et) continue;
+                  const ct = cleanText(parts[idxText] ?? ''); if (!ct) continue; out.push(`${st} --> ${et}`); out.push(ct); out.push('');
                 }
-                return out.length>2?out.join('\n'):null;
+                return out.length > 2 ? out.join('\n') : null;
               })(raw);
               if (manual && manual.trim().length > 0) return manual;
             }
@@ -528,7 +534,7 @@ class OpenSubtitlesV3Service {
               converted = subsrt.convert(sanitized, { to: 'vtt', from: 'ass' });
             }
             if (converted && converted.trim().length > 0) return converted;
-          } catch (_) {}
+          } catch (_) { }
           const manual = (function assToVttFallback(input) {
             if (!input || !/\[events\]/i.test(input)) return null;
             const lines = input.split(/\r?\n/); let format = []; let inEvents = false;
@@ -543,20 +549,22 @@ class OpenSubtitlesV3Service {
             const out = ['WEBVTT', ''];
             const parseTime = (t) => {
               const m = t.trim().match(/(\d+):(\d{2}):(\d{2})[\.\:](\d{2})/);
-              if (!m) return null; const h=+m[1]||0, mi=+m[2]||0, s=+m[3]||0, cs=+m[4]||0;
-              const ms=(h*3600+mi*60+s)*1000+cs*10; const hh=String(Math.floor(ms/3600000)).padStart(2,'0');
-              const mm=String(Math.floor((ms%3600000)/60000)).padStart(2,'0'); const ss=String(Math.floor((ms%60000)/1000)).padStart(2,'0');
-              const mmm=String(ms%1000).padStart(3,'0'); return `${hh}:${mm}:${ss}.${mmm}`;
+              if (!m) return null; const h = +m[1] || 0, mi = +m[2] || 0, s = +m[3] || 0, cs = +m[4] || 0;
+              const ms = (h * 3600 + mi * 60 + s) * 1000 + cs * 10; const hh = String(Math.floor(ms / 3600000)).padStart(2, '0');
+              const mm = String(Math.floor((ms % 3600000) / 60000)).padStart(2, '0'); const ss = String(Math.floor((ms % 60000) / 1000)).padStart(2, '0');
+              const mmm = String(ms % 1000).padStart(3, '0'); return `${hh}:${mm}:${ss}.${mmm}`;
             };
-            const cleanText = (txt) => { let t = txt.replace(/\{[^}]*\}/g,''); t = t.replace(/\\N/g,'\n').replace(/\\n/g,'\n').replace(/\\h/g,' ');
-              t = t.replace(/[\u0000-\u001F]/g,''); return t.trim(); };
+            const cleanText = (txt) => {
+              let t = txt.replace(/\{[^}]*\}/g, ''); t = t.replace(/\\N/g, '\n').replace(/\\n/g, '\n').replace(/\\h/g, ' ');
+              t = t.replace(/[\u0000-\u001F]/g, ''); return t.trim();
+            };
             for (const line of lines) {
-              if (!/^dialogue\s*:/i.test(line)) continue; const payload=line.split(':').slice(1).join(':');
-              const parts=[]; let cur=''; let splits=0; for (let i=0;i<payload.length;i++){const ch=payload[i]; if(ch===',' && splits<Math.max(idxText,9)){parts.push(cur);cur='';splits++;} else {cur+=ch;}}
-              parts.push(cur); const st=parseTime(parts[idxStart]); const et=parseTime(parts[idxEnd]); if(!st||!et) continue;
-              const ct=cleanText(parts[idxText]??''); if(!ct) continue; out.push(`${st} --> ${et}`); out.push(ct); out.push('');
+              if (!/^dialogue\s*:/i.test(line)) continue; const payload = line.split(':').slice(1).join(':');
+              const parts = []; let cur = ''; let splits = 0; for (let i = 0; i < payload.length; i++) { const ch = payload[i]; if (ch === ',' && splits < Math.max(idxText, 9)) { parts.push(cur); cur = ''; splits++; } else { cur += ch; } }
+              parts.push(cur); const st = parseTime(parts[idxStart]); const et = parseTime(parts[idxEnd]); if (!st || !et) continue;
+              const ct = cleanText(parts[idxText] ?? ''); if (!ct) continue; out.push(`${st} --> ${et}`); out.push(ct); out.push('');
             }
-            return out.length>2?out.join('\n'):null;
+            return out.length > 2 ? out.join('\n') : null;
           })(text);
           if (manual && manual.trim().length > 0) return manual;
         }
