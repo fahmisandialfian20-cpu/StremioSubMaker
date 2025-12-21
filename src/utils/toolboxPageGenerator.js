@@ -8265,9 +8265,10 @@ async function generateAutoSubtitlePage(configStr, videoId, filename, config = {
     .step-body .log-area { width: 100%; align-self: center; }
     #autoStep2Card {
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
       text-align: center;
       align-self: flex-start;
+      height: fit-content;
     }
     #autoStep2Card .step-title { justify-content: flex-start; width: 100%; text-align: left; }
     #autoStep2Card .step-body {
