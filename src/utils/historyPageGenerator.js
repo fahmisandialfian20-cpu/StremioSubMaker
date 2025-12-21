@@ -294,14 +294,20 @@ function generateHistoryPage(configStr, historyEntries, config, videoId, filenam
 
   const historyRows = sortedHistory.map(entry => {
     const statusClass = entry.status === 'completed' ? 'success' : (entry.status === 'failed' ? 'error' : 'processing');
-    const statusLabel = entry.status === 'completed' ? 'Completed' : (entry.status === 'failed' ? 'Failed' : 'Processing');
+    const statusLabel = entry.status === 'completed'
+      ? t('history.status.completed', {}, 'Completed')
+      : (entry.status === 'failed'
+        ? t('history.status.failed', {}, 'Failed')
+        : t('history.status.processing', {}, 'Processing'));
     const dateStr = new Date(entry.createdAt).toLocaleString();
     const sourceName = getLanguageName(entry.sourceLanguage) || entry.sourceLanguage || 'Auto';
     const targetName = getLanguageName(entry.targetLanguage) || entry.targetLanguage;
 
     const providerLabel = entry.provider ? escapeHtml(entry.provider) : 'Unknown';
     const modelLabel = entry.model ? escapeHtml(entry.model) : 'Default';
-    const cacheLabel = entry.cached === true ? '<span class="history-chip cached">Cached</span>' : '';
+    const cacheLabel = entry.cached === true
+      ? `<span class="history-chip cached">${t('history.cachedLabel', {}, 'Cached')}</span>`
+      : '';
     const downloadQueryParts = [];
     if (entry.videoId) downloadQueryParts.push(`videoId=${encodeURIComponent(entry.videoId)}`);
     if (entry.filename) downloadQueryParts.push(`filename=${encodeURIComponent(entry.filename)}`);
@@ -380,7 +386,7 @@ function generateHistoryPage(configStr, historyEntries, config, videoId, filenam
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Translation History - SubMaker</title>
+    <title>${t('history.documentTitle', {}, 'Translation History - SubMaker')}</title>
   ${localeBootstrap}
   <link rel="icon" type="image/svg+xml" href="/favicon-toolbox.svg">
   <link rel="shortcut icon" href="/favicon-toolbox.svg">
@@ -872,7 +878,7 @@ function generateHistoryPage(configStr, historyEntries, config, videoId, filenam
                 btn.style.color = '';
               }, 3000);
             } else {
-              throw new Error(result.data.error || 'Retranslation failed');
+              throw new Error(result.data.error || tt('history.retranslate.failedReason', {}, 'Retranslation failed'));
             }
           })
           .catch(function(err) {

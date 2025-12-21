@@ -109,7 +109,16 @@
         "subtitleUnavailable": "خطأ: الترجمة غير متاحة",
         "translationUnavailable": "خطأ: الترجمة غير متاحة",
         "fileTranslationPageFailed": "فشل تحميل صفحة ترجمة الملفات",
-        "internalServerError": "خطأ داخلي في الخادم"
+        "internalServerError": "خطأ داخلي في الخادم",
+        "missingSourceFileId": "معلمة sourceFileId مفقودة",
+        "missingTargetLanguage": "معلمة targetLanguage مفقودة",
+        "retranslateConcurrencyLimit": "تعذر إعادة الترجمة: لديك العديد من الترجمات قيد التنفيذ. يرجى الانتظار حتى تكتمل.",
+        "retranslateInProgress": "تعذر إعادة الترجمة: الترجمة قيد التنفيذ بالفعل لهذه الترجمة. يرجى الانتظار حتى تكتمل.",
+        "retranslateRateLimit": "تم الوصول إلى حد المعدل: يمكنك إعادة الترجمة {limit} مرة كل {window} دقيقة.",
+        "retranslateFailed": "فشلت إعادة الترجمة: {reason}"
+      },
+      "retranslate": {
+        "success": "تم مسح الذاكرة المؤقتة. ستتم إعادة الترجمة عند التحميل التالي."
       },
       "session": {
         "configRequired": "الإعدادات مطلوبة",
@@ -247,6 +256,9 @@
         "selectTarget": "اختر لغة الهدف.",
         "filteredBinaryTracks": "تم تخطي {count} مسار/مسارات ثنائية؛ ستُعرض ترجمات النص فقط."
       },
+      "errors": {
+        "metaFetchFailed": "فشل جلب البيانات الوصفية"
+      },
       "downloads": {
         "selectPrompt": "اختر ترجمة في مخرجات الخطوة 1 لفتح هذه الخطوة.",
         "trackLabel": "المسار {id}",
@@ -307,12 +319,14 @@
           "label": "البث المرتبط",
           "none": "لا يوجد بث مرتبط",
           "unavailable": "معرّف الفيديو غير متاح",
-          "waiting": "في انتظار بث مرتبط..."
+          "waiting": "في انتظار بث مرتبط...",
+          "refreshTitle": "تحديث البث المرتبط"
         },
         "step1": {
           "chip": "الخطوة 1",
           "title": "قدّم معلومات البث",
           "helper": "",
+          "helperTip": "نصيحة: انقر بزر الفأرة الأيمن على البث في Stremio واختر \"نسخ رابط البث\".",
           "streamLabel": "رابط البث:",
           "streamPlaceholder": "الصق رابط الفيديو/البث من Stremio أو المتصفح",
           "mkvTitle": "نصيحة MKV",
@@ -565,6 +579,7 @@
       "loadingTitle": "الترجمة قيد التنفيذ",
       "loadingBody": "انقر لإعادة التحميل. ستظهر النتائج الجزئية بمجرد جاهزيتها.",
       "loadingTail": "أعد تحميل هذه الترجمة لاحقاً للحصول على المزيد",
+      "subToolboxLabel": "صندوق أدوات الترجمة",
       "infoNote": "هذه الترجمة الإعلامية تم توليدها بواسطة الإضافة.",
       "sessionErrorTitle": "خطأ في التكوين",
       "sessionErrorBody": "رمز الجلسة الخاص بك غير موجود أو انتهت صلاحيته.",
@@ -673,8 +688,31 @@
         "justNow": "الآن",
         "secondsAgo": "منذ {seconds} ثانية"
       }
-    },
-    "config": {
+      },
+      "history": {
+        "eyebrow": "صندوق أدوات الترجمة",
+        "documentTitle": "سجل الترجمات - SubMaker",
+        "title": "سجل الترجمات",
+        "subtitle": "راجع الترجمات التي تمت عبر أدواتك",
+        "cachedLabel": "من الذاكرة المؤقتة",
+        "status": {
+          "completed": "مكتمل",
+          "failed": "فشل",
+          "processing": "قيد المعالجة"
+        },
+        "retranslate": {
+          "button": "إعادة الترجمة",
+          "tooltip": "مسح الذاكرة المؤقتة وإعادة ترجمة هذه الترجمة",
+          "loading": "جاري المسح...",
+          "done": "تم!",
+          "failed": "فشل",
+          "failedReason": "فشلت إعادة الترجمة",
+          "successHint": "تم مسح الذاكرة المؤقتة! أعد تحميل الترجمة في Stremio أو انقر على تحميل للحصول على الترجمة المحدثة.",
+          "missingParams": "المعلمات المطلوبة مفقودة.",
+          "errorGeneric": "فشلت إعادة الترجمة. يرجى المحاولة مرة أخرى."
+        }
+      },
+      "config": {
       "uiLanguageLabel": "الواجهة",
       "uiLanguageAria": "لغة واجهة المستخدم",
       "uiLanguages": {
@@ -958,28 +996,31 @@
             "flashLite": "Gemini 2.5 Flash-Lite",
             "flash": "Gemini 2.5 Flash",
             "flash3": "Gemini 3.0 Flash (Preview)",
-            "pro": "Gemini 2.5 Pro (بطيء)"
+            "pro": "Gemini 2.5 Pro (بطيء)",
+            "pro3": "Gemini 3.0 Pro (بيتا)"
           },
           "hintTitle": "ترجمة سيئة/معطلة أو غير متزامنة؟",
           "hintBody": "انقر ثلاث مرات بسرعة على الترجمة لفرض إعادة الترجمة.",
+          "retranslationHintTitle": "ترجمة سيئة/معطلة أو غير متزامنة؟",
+          "retranslationHintBody": "انقر ثلاث مرات بسرعة على الترجمة لفرض إعادة الترجمة.",
           "betaTitle": "⚡ استخدام 2.5 Pro لا يزال في مرحلة بيتا.",
           "betaAdvice": "إذا واجهت مشاكل في الترجمة، استخدم Flash-Lite.",
           "rateWarningTitle": "⚠️ قيود الفئة المجانية:",
           "rateWarningBody": "إذا كنت تستخدم مفتاح API مجاني، قد يطلق Gemini 2.5 Pro حدود المعدل (HTTP 429). على الأرجح ستتمكن فقط من ترجمة ترجمة واحدة في كل مرة."
         },
         "keyRotation": {
-          "label": "????? ????? ?????? Gemini API",
-          "description": "??? ????? ????? API ??? ??? ?????? ????? ???? ???? ?????????.",
-          "additionalKeysLabel": "?????? API ??????",
-          "additionalKeys": "??????",
-          "addKey": "????? ?????",
-          "testKey": "?????? ??? ???????",
-          "removeKey": "????? ??? ???????",
-          "keyPlaceholder": "???? ????? API",
-          "modeLabel": "????? ???????",
-          "modeDescription": "??? ????? ??????? ??? ?????? API",
-          "modePerRequest": "??? ??? (??? ????? ??? ???)",
-          "modePerBatch": "??? ???? (?? ???? ?????)"
+          "label": "تمكين تدوير مفاتيح Gemini API",
+          "description": "وزّع طلبات API عبر عدة مفاتيح لتجنّب حدود المعدّل.",
+          "additionalKeysLabel": "مفاتيح API إضافية",
+          "additionalKeys": "إضافية",
+          "addKey": "إضافة مفتاح",
+          "testKey": "اختبار هذا المفتاح",
+          "removeKey": "إزالة هذا المفتاح",
+          "keyPlaceholder": "أدخل مفتاح API",
+          "modeLabel": "وتيرة التدوير",
+          "modeDescription": "متى يتم التبديل بين مفاتيح API",
+          "modePerRequest": "لكل طلب (مرة لكل ملف)",
+          "modePerBatch": "لكل دفعة (كل دفعة ترجمة)"
         }
       },
       "otherApiKeys": {
@@ -1700,7 +1741,8 @@
         "error": "فشلت الترجمة: {reason}"
       },
       "errors": {
-        "saveFailed": "فشل حفظ الترجمة المتزامنة"
+        "saveFailed": "فشل حفظ الترجمة المتزامنة",
+        "metaFetchFailed": "فشل جلب البيانات الوصفية"
       }
     }
   },

@@ -2940,10 +2940,10 @@ async function generateSubtitleSyncPage(subtitles, videoId, streamFilename, conf
             }
             if (linkedTitleCache.has(key)) return linkedTitleCache.get(key);
             const metaUrl = \`https://v3-cinemeta.strem.io/meta/\${metaType}/\${encodeURIComponent(metaId)}.json\`;
-            try {
-                const resp = await fetch(metaUrl);
-                if (!resp.ok) throw new Error('Failed to fetch metadata');
-                const data = await resp.json();
+              try {
+                  const resp = await fetch(metaUrl);
+                  if (!resp.ok) throw new Error(tt('sync.errors.metaFetchFailed', {}, 'Failed to fetch metadata'));
+                  const data = await resp.json();
                 const title = data?.meta?.name || data?.meta?.english_name || data?.meta?.nameTranslated?.en || null;
                 linkedTitleCache.set(key, title);
                 return title;

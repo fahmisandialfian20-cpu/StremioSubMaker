@@ -1787,12 +1787,15 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
         inline: copy.step1.hashMismatchInline,
         alertLines: hashAlertLines
       },
-      locks: {
-        needExtraction: copy.locks.needExtraction,
-        needTrack: copy.locks.needTrack
+        locks: {
+          needExtraction: copy.locks.needExtraction,
+          needTrack: copy.locks.needTrack
+        },
+        errors: {
+          metaFetchFailed: t('toolbox.errors.metaFetchFailed', {}, 'Failed to fetch metadata')
+        }
       }
-    }
-  };
+    };
 
   return `
 <!DOCTYPE html>
@@ -3973,10 +3976,11 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       }
       if (linkedTitleCache.has(key)) return linkedTitleCache.get(key);
       const metaUrl = 'https://v3-cinemeta.strem.io/meta/' + metaType + '/' + encodeURIComponent(metaId) + '.json';
-      try {
-        const resp = await fetch(metaUrl);
-        if (!resp.ok) throw new Error('Failed to fetch metadata');
-        const data = await resp.json();
+        const metaFetchFailed = BOOTSTRAP.strings?.errors?.metaFetchFailed || 'Failed to fetch metadata';
+        try {
+          const resp = await fetch(metaUrl);
+          if (!resp.ok) throw new Error(metaFetchFailed);
+          const data = await resp.json();
         const title = data?.meta?.name || data?.meta?.english_name || data?.meta?.nameTranslated?.en || null;
         linkedTitleCache.set(key, title);
         return title;
@@ -4950,11 +4954,11 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       const translateFallback = (isRetranslate ? 'Retranslating ' : 'Translating ') + track.label + ' -> ' + targetLang + '...';
       const translateLabel = window.t ? window.t(baseKey, { label: track.label, target: targetLang }, translateFallback) : translateFallback;
       logTranslate(translateLabel);
-      if (track.binary || track.codec === 'copy') {
-        state.targets[targetLang] = { status: 'failed', error: 'Binary subtitle cannot be translated' };
-        const binaryMsg = window.t ? window.t('toolbox.logs.binaryTrack', {}, 'Track is binary (image/bitmap); cannot translate.') : 'Track is binary (image/bitmap); cannot translate.';
-        logTranslate(binaryMsg);
-        state.activeTranslations--;
+        if (track.binary || track.codec === 'copy') {
+          const binaryMsg = window.t ? window.t('toolbox.logs.binaryTrack', {}, 'Track is binary (image/bitmap); cannot translate.') : 'Track is binary (image/bitmap); cannot translate.';
+          state.targets[targetLang] = { status: 'failed', error: binaryMsg };
+          logTranslate(binaryMsg);
+          state.activeTranslations--;
         renderTargets();
         renderDownloads();
         processQueue();

@@ -2663,14 +2663,15 @@ function createSubtitleHandler(config) {
         }
       }
 
-      // Add unified Sub Toolbox action button
-      let actionButtons = [];
-      if (toolboxEnabled) {
-        const toolboxEntry = {
-          id: 'sub_toolbox',
-          lang: 'Sub Toolbox',
-          url: `{{ADDON_URL}}/sub-toolbox/${id}?filename=${encodeURIComponent(streamFilename || '')}`
-        };
+        // Add unified Sub Toolbox action button
+        const t = getTranslator(config.uiLanguage || 'en');
+        let actionButtons = [];
+        if (toolboxEnabled) {
+          const toolboxEntry = {
+            id: 'sub_toolbox',
+            lang: t('subtitle.subToolboxLabel', {}, 'Sub Toolbox'),
+            url: `{{ADDON_URL}}/sub-toolbox/${id}?filename=${encodeURIComponent(streamFilename || '')}`
+          };
         actionButtons.push(toolboxEntry);
         log.debug(() => '[Subtitles] Sub Toolbox is enabled, added entry');
       }

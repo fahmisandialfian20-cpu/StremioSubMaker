@@ -256,6 +256,9 @@
         "selectTarget": "Selecione um idioma de destino.",
         "filteredBinaryTracks": "Foram omitidas {count} faixa(s) binárias; apenas legendas de texto serão exibidas."
       },
+      "errors": {
+        "metaFetchFailed": "Falha ao buscar metadados"
+      },
       "downloads": {
         "selectPrompt": "Selecione uma legenda nas saídas do Passo 1 para desbloquear este passo.",
         "trackLabel": "Faixa {id}",
@@ -316,12 +319,14 @@
           "label": "Stream vinculado",
           "none": "Nenhum stream vinculado",
           "unavailable": "ID do vídeo indisponível",
-          "waiting": "Aguardando um stream vinculado..."
+          "waiting": "Aguardando um stream vinculado...",
+          "refreshTitle": "Atualizar stream vinculado"
         },
         "step1": {
           "chip": "Passo 1",
           "title": "Forneça as informações do stream",
           "helper": "Cole uma URL de stream que corresponda ao seu stream vinculado.\nDica: clique com o botão direito no stream no Stremio e escolha \"Copiar link do stream\".",
+          "helperTip": "Dica: clique com o botão direito no stream no Stremio e escolha \"Copiar link do stream\".",
           "streamLabel": "URL do stream:",
           "streamPlaceholder": "Cole a URL do vídeo/stream do Stremio ou do navegador",
           "mkvTitle": "Dica MKV",
@@ -574,6 +579,7 @@
       "loadingTitle": "TRADUÇÃO EM ANDAMENTO",
       "loadingBody": "Clique para recarregar. Resultados parciais aparecerão conforme ficarem prontos.",
       "loadingTail": "Recarregue esta legenda mais tarde para obter mais",
+      "subToolboxLabel": "Sub Toolbox",
       "infoNote": "Esta legenda informativa foi gerada pelo addon.",
       "sessionErrorTitle": "Erro de Configuração",
       "sessionErrorBody": "Seu token de sessão não foi encontrado ou expirou.",
@@ -685,14 +691,22 @@
     },
     "history": {
       "eyebrow": "Sub toolbox",
+      "documentTitle": "Histórico de Traduções - SubMaker",
       "title": "Histórico de Traduções",
       "subtitle": "Revise as traduções realizadas em suas ferramentas",
+      "cachedLabel": "Em cache",
+      "status": {
+        "completed": "Concluído",
+        "failed": "Falhou",
+        "processing": "Processando"
+      },
       "retranslate": {
         "button": "Retraduzir",
         "tooltip": "Limpar cache e retraduzir esta legenda",
         "loading": "Limpando...",
         "done": "Pronto!",
         "failed": "Falhou",
+        "failedReason": "A retradução falhou",
         "successHint": "Cache limpo! Recarregue a legenda no Stremio ou clique em Download para obter a tradução atualizada.",
         "missingParams": "Parâmetros obrigatórios ausentes.",
         "errorGeneric": "Retradução falhou. Por favor, tente novamente."
@@ -982,10 +996,13 @@
             "flashLite": "Gemini 2.5 Flash-Lite",
             "flash": "Gemini 2.5 Flash",
             "flash3": "Gemini 3.0 Flash (Preview)",
-            "pro": "Gemini 2.5 Pro (Lento)"
+            "pro": "Gemini 2.5 Pro (Lento)",
+            "pro3": "Gemini 3.0 Pro (beta)"
           },
           "hintTitle": "Tradução ruim/quebrada ou fora de sincronia?",
           "hintBody": "Clique três vezes rapidamente na legenda para forçar uma retradução.",
+          "retranslationHintTitle": "Tradução ruim/quebrada ou fora de sincronia?",
+          "retranslationHintBody": "Clique três vezes rapidamente na legenda para forçar uma retradução.",
           "betaTitle": "⚡ O uso do 2.5 Pro ainda está em Beta.",
           "betaAdvice": "Se tiver problemas de tradução, use o Flash-Lite.",
           "rateWarningTitle": "⚠️ Limitação da Camada Gratuita:",
@@ -1724,7 +1741,8 @@
         "error": "Tradução falhou: {reason}"
       },
       "errors": {
-        "saveFailed": "Falha ao salvar legenda sincronizada"
+        "saveFailed": "Falha ao salvar legenda sincronizada",
+        "metaFetchFailed": "Falha ao buscar metadados"
       }
     }
   }

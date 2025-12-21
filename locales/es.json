@@ -109,7 +109,16 @@
         "subtitleUnavailable": "ERROR: subtítulo no disponible",
         "translationUnavailable": "ERROR: traducción no disponible",
         "fileTranslationPageFailed": "No se pudo cargar la página de traducción de archivos",
-        "internalServerError": "Error interno del servidor"
+        "internalServerError": "Error interno del servidor",
+        "missingSourceFileId": "Falta el parámetro sourceFileId",
+        "missingTargetLanguage": "Falta el parámetro targetLanguage",
+        "retranslateConcurrencyLimit": "No se puede retraducir: tienes demasiadas traducciones en curso. Espera a que terminen.",
+        "retranslateInProgress": "No se puede retraducir: la traducción ya está en curso para este subtítulo. Espera a que termine.",
+        "retranslateRateLimit": "Límite de frecuencia alcanzado: solo puedes retraducir {limit} veces cada {window} minutos.",
+        "retranslateFailed": "La retraducción falló: {reason}"
+      },
+      "retranslate": {
+        "success": "Caché borrada. La traducción se reiniciará en la próxima carga."
       },
       "session": {
         "configRequired": "Se requiere la configuración",
@@ -247,6 +256,9 @@
         "selectTarget": "Selecciona un idioma de destino.",
         "filteredBinaryTracks": "Se omitieron {count} pista(s) binarias; se mostrarán solo los subtítulos de texto."
       },
+      "errors": {
+        "metaFetchFailed": "No se pudo obtener metadatos"
+      },
       "downloads": {
         "selectPrompt": "Selecciona un subtítulo en las salidas del Paso 1 para habilitar este paso.",
         "trackLabel": "Pista {id}",
@@ -307,12 +319,14 @@
           "label": "Stream vinculado",
           "none": "Sin stream vinculado",
           "unavailable": "ID de video no disponible",
-          "waiting": "Esperando un stream vinculado..."
+          "waiting": "Esperando un stream vinculado...",
+          "refreshTitle": "Actualizar stream vinculado"
         },
         "step1": {
           "chip": "Paso 1",
           "title": "Proporciona la información del stream",
           "helper": "Pega una URL de stream que coincida con tu stream vinculado.\nConsejo: haz clic derecho en el stream en Stremio y elige \"Copiar enlace del stream\".",
+          "helperTip": "Consejo: haz clic derecho en el stream en Stremio y elige \"Copiar enlace del stream\".",
           "streamLabel": "URL del stream:",
           "streamPlaceholder": "Pega la URL del video/stream desde Stremio o tu navegador",
           "mkvTitle": "Consejo MKV",
@@ -565,6 +579,7 @@
       "loadingTitle": "TRADUCCIÓN EN PROGRESO",
       "loadingBody": "Haz clic para recargar. Los resultados parciales aparecerán a medida que estén listos.",
       "loadingTail": "Recarga este subtítulo más tarde para obtener más",
+      "subToolboxLabel": "Sub Toolbox",
       "infoNote": "Este subtítulo informativo fue generado por el addon.",
       "sessionErrorTitle": "Error de configuración",
       "sessionErrorBody": "Tu token de sesión no se encontró o expiró.",
@@ -673,8 +688,31 @@
         "justNow": "justo ahora",
         "secondsAgo": "hace {seconds}s"
       }
-    },
-    "config": {
+      },
+      "history": {
+        "eyebrow": "Caja de herramientas de subtítulos",
+        "documentTitle": "Historial de traducciones - SubMaker",
+        "title": "Historial de traducciones",
+        "subtitle": "Revisa las traducciones realizadas en tus herramientas",
+        "cachedLabel": "En caché",
+        "status": {
+          "completed": "Completado",
+          "failed": "Falló",
+          "processing": "En proceso"
+        },
+        "retranslate": {
+          "button": "Retraducir",
+          "tooltip": "Borrar caché y retraducir este subtítulo",
+          "loading": "Borrando...",
+          "done": "¡Listo!",
+          "failed": "Falló",
+          "failedReason": "La retraducción falló",
+          "successHint": "¡Caché borrada! Recarga el subtítulo en Stremio o haz clic en Descargar para obtener la traducción actualizada.",
+          "missingParams": "Faltan parámetros obligatorios.",
+          "errorGeneric": "La retraducción falló. Por favor, inténtalo de nuevo."
+        }
+      },
+      "config": {
       "uiLanguageLabel": "Interfaz",
       "uiLanguageAria": "Idioma de la interfaz",
       "uiLanguages": {
@@ -958,10 +996,13 @@
             "flashLite": "Gemini 2.5 Flash-Lite",
             "flash": "Gemini 2.5 Flash",
             "flash3": "Gemini 3.0 Flash (Preview)",
-            "pro": "Gemini 2.5 Pro (Lento)"
+            "pro": "Gemini 2.5 Pro (Lento)",
+            "pro3": "Gemini 3.0 Pro (beta)"
           },
           "hintTitle": "¿Traducción rota o fuera de sincronía?",
           "hintBody": "Haz triple clic rápido en el subtítulo para forzar una retraducción.",
+          "retranslationHintTitle": "¿Traducción rota o fuera de sincronía?",
+          "retranslationHintBody": "Haz triple clic rápido en el subtítulo para forzar una retraducción.",
           "betaTitle": "⚡ El uso de 2.5 Pro sigue en Beta.",
           "betaAdvice": "Si tienes problemas de traducción, usa Flash-Lite.",
           "rateWarningTitle": "⚠️ Límite del plan gratuito:",
@@ -1700,7 +1741,8 @@
         "error": "Falló la traducción: {reason}"
       },
       "errors": {
-        "saveFailed": "No se pudo guardar el subtítulo sincronizado"
+        "saveFailed": "No se pudo guardar el subtítulo sincronizado",
+        "metaFetchFailed": "No se pudo obtener metadatos"
       }
     }
   }

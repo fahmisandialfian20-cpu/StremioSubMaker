@@ -2,12 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## SubMaker v1.4.27
+
+- **Anime season pack episode matching fix:** Fixed episode matching for anime subtitle filenames that use opening brackets after the episode number (e.g., `Berserk - 01[1080 BD X265].ass`). The regex patterns now correctly recognize `[` and `(` as valid episode number terminators, matching common anime naming conventions across SubSource, SubDL, OpenSubtitles, and OpenSubtitles V3 providers.
+- **Locale refresh and fixes:** Repaired corrupted Arabic strings and synced missing locale keys (ar/es/pt-br/pt-pt) with the latest English entries.
+- **Sub Toolbox localization cleanup:** Removed remaining hardcoded English strings across Sub Toolbox, History, and Sync pages by wiring them to i18n keys in all locales.
+- **Rate limit error handling fix:** Fixed a bug where OpenSubtitles login rate limit errors (429) were being re-classified as `type: 'unknown'` with `isRetryable: false` instead of preserving the original `rate_limit` classification. The `parseApiError()` utility now preserves pre-existing `statusCode`, `type`, and `isRetryable` properties on manually-created errors, ensuring proper error handling and user-facing messages for rate-limited login attempts.
+
 ## SubMaker v1.4.26
 
 - **Linked stream refresh button:** Added a refresh action on Sync, Embedded Subtitles, and Auto-subs pages so users can pull the latest linked stream metadata without leaving the page.
 - **Clearer hash mismatch guidance:** Updated the embedded tools helper copy to instruct users to refresh the linked stream before pasting the Stream URL.
 - **Wikidata TMDB→IMDB fallback:** When Cinemeta doesn't have a TMDB-to-IMDB mapping (previously causing "Could not map TMDB to IMDB" errors), the addon now queries Wikidata as a free, no-API-key fallback. This improves subtitle availability for content that Cinemeta hasn't indexed yet.
-- **OpenSubtitles Auth rate limit fix:** Fixed 429 rate limit errors when using OpenSubtitles Auth mode by implementing a static token cache and login mutex. Previously, each request created a new `OpenSubtitlesService` instance with its own token, causing multiple concurrent requests (e.g., Stremio prefetching subtitles) to all call `/login` simultaneously—exceeding OpenSubtitles' 1 request/second login limit. Now, JWT tokens are cached per credential and reused across instances, and concurrent login attempts for the same credentials are serialized via a mutex. Also removed the unnecessary global download rate limiter (12/min cap).
+- **OpenSubtitles "Auth" rate limit fix:** Fixed 429 rate limit errors when using OpenSubtitles Auth mode by implementing a static token cache and login mutex. Previously, each request created a new `OpenSubtitlesService` instance with its own token, causing multiple concurrent requests (e.g., Stremio prefetching subtitles) to all call `/login` simultaneously—exceeding OpenSubtitles' 1 request/second login limit. Now, JWT tokens are cached per credential and reused across instances, and concurrent login attempts for the same credentials are serialized via a mutex. Also removed the unnecessary global download rate limiter (12/min cap).
 
 ## SubMaker v1.4.25
 

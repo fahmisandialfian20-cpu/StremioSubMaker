@@ -47,6 +47,29 @@ function parseApiError(error, serviceName = 'API', options = {}) {
   const translate = resolveTranslator(options, error);
   const serviceLabel = serviceName || 'API';
 
+  // IMPORTANT: First check if the error already has pre-classified properties
+  // This preserves error metadata from upstream handlers (e.g., loginWithCredentials rate limit errors)
+  // Without this, manually-created errors with statusCode/type would be re-classified as 'unknown'
+  if (typeof error.statusCode === 'number' && error.statusCode > 0) {
+    parsed.statusCode = error.statusCode;
+  }
+  if (typeof error.type === 'string' && error.type !== 'unknown') {
+    parsed.type = error.type;
+  }
+  if (typeof error.isRetryable === 'boolean') {
+    parsed.isRetryable = error.isRetryable;
+  }
+
+  // If already classified (e.g., rate_limit from upstream), generate appropriate user message
+  if (parsed.type === 'rate_limit') {
+    parsed.userMessage = translate('apiErrors.rateLimit', { service: serviceLabel }, `${serviceLabel} rate limit exceeded. Please wait a few minutes and try again.`);
+    return parsed;
+  }
+  if (parsed.type === 'service_unavailable') {
+    parsed.userMessage = translate('apiErrors.serviceUnavailable', { service: serviceLabel }, 'Service temporarily unavailable. Please try again in a few minutes.');
+    return parsed;
+  }
+
   // Check for response errors (HTTP errors)
   if (error.response) {
     parsed.statusCode = error.response.status;
