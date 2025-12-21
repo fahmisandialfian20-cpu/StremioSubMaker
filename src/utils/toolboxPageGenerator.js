@@ -1578,6 +1578,7 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
       chip: t('toolbox.embedded.step1.chip', {}, 'Step 1'),
       title: t('toolbox.embedded.step1.title', {}, 'Provide Stream Information'),
       helper: t('toolbox.embedded.step1.helper', {}, ''),
+      helperTip: t('toolbox.embedded.step1.helperTip', {}, ''),
       streamLabel: t('toolbox.embedded.step1.streamLabel', {}, 'Stream URL:'),
       streamPlaceholder: t('toolbox.embedded.step1.streamPlaceholder', {}, 'Paste the video/stream URL from Stremio or your browser'),
       modeLabel: t('toolbox.embedded.step1.modeLabel', {}, 'Mode'),
@@ -1662,6 +1663,9 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
   const modeHelperHtml = escapeHtml(copy.step1.modeHelper).replace(/\n/g, '<br>');
   const step1Helper = (copy.step1.helper && copy.step1.helper !== 'toolbox.embedded.step1.helper')
     ? copy.step1.helper
+    : '';
+  const step1HelperTip = (copy.step1.helperTip && copy.step1.helperTip !== 'toolbox.embedded.step1.helperTip')
+    ? copy.step1.helperTip
     : '';
   const hashAlertLines = [copy.step1.hashMismatchLine1].filter(Boolean);
   const providerOptions = (() => {
@@ -2277,6 +2281,24 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
     .step-header h3, .step-header p { align-self: flex-start; text-align: left; }
     .step-title-row { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; }
     .step-helper { margin: 4px 0 0; }
+    .step-helper-block {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 4px;
+      margin-top: 6px;
+    }
+    .step-helper-block .step-helper,
+    .step-helper-block .step-helper-tip {
+      text-align: center;
+      margin: 0;
+    }
+    .step-helper-tip {
+      font-size: 0.85em;
+      opacity: 0.8;
+    }
     #step1Card .section-head { flex-direction: column; align-items: flex-start; justify-content: flex-start; text-align: left; }
     #step1Card .section-head > div { text-align: left; }
     #step1Card .step-header { align-items: flex-start; }
@@ -2913,7 +2935,11 @@ async function generateEmbeddedSubtitlePage(configStr, videoId, filename) {
               <span class="step-chip">${escapeHtml(copy.step1.chip)}</span>
               <h3>${escapeHtml(copy.step1.title)}</h3>
             </div>
-            ${step1Helper ? `<p class="muted step-helper">${escapeHtml(step1Helper)}</p>` : ''}
+            ${(step1Helper || step1HelperTip) ? `
+            <div class="step-helper-block">
+              ${step1Helper ? `<p class="muted step-helper">${escapeHtml(step1Helper)}</p>` : ''}
+              ${step1HelperTip ? `<p class="muted step-helper-tip">${escapeHtml(step1HelperTip)}</p>` : ''}
+            </div>` : ''}
           </div>
         </div>
         <div class="step-stack">

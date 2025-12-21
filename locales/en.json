@@ -321,7 +321,8 @@
         "step1": {
           "chip": "Step 1",
           "title": "Provide Stream Information",
-          "helper": "Paste a stream URL that matches your linked stream.\nTip: Right-click the stream in Stremio and choose \"Copy stream link\".",
+          "helper": "Paste a stream URL that matches your linked stream.",
+          "helperTip": "Tip: Right-click the stream in Stremio and choose \"Copy stream link\".",
           "streamLabel": "Stream URL:",
           "streamPlaceholder": "Paste the video/stream URL from Stremio or your browser",
           "mkvTitle": "MKV tip",

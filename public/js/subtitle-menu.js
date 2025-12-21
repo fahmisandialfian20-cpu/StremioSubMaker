@@ -1053,8 +1053,14 @@
 
   function normalizeImdbId(id) {
     if (!id) return '';
-    const match = String(id).match(/(tt)?(\d{5,8})/i);
-    return match ? ('tt' + match[2]) : '';
+    const idStr = String(id).trim();
+    // If it already has 'tt' prefix, return as is (handles all digit lengths)
+    if (/^tt\d+$/i.test(idStr)) return idStr.toLowerCase();
+    // If it's just numbers, add 'tt' prefix
+    if (/^\d+$/.test(idStr)) return 'tt' + idStr;
+    // Try to extract tt followed by digits from a larger string
+    const match = idStr.match(/(tt\d+)/i);
+    return match ? match[1].toLowerCase() : '';
   }
 
   function cleanDisplayName(raw) {
@@ -1085,10 +1091,23 @@
     }
 
     const imdbId = normalizeImdbId(parts[0]);
+    // Return null only if we couldn't extract any IMDB ID
     if (!imdbId) return null;
     if (parts.length === 1) return { imdbId, type: 'movie' };
-    if (parts.length === 3) return { imdbId, type: 'episode', season: parseInt(parts[1], 10), episode: parseInt(parts[2], 10) };
-    return null;
+    if (parts.length === 2) {
+      // Format: tt1234567:1 (episode with implicit season 1)
+      const ep = parseInt(parts[1], 10);
+      if (Number.isFinite(ep)) return { imdbId, type: 'episode', season: 1, episode: ep };
+    }
+    if (parts.length === 3) {
+      const season = parseInt(parts[1], 10);
+      const episode = parseInt(parts[2], 10);
+      if (Number.isFinite(season) && Number.isFinite(episode)) {
+        return { imdbId, type: 'episode', season, episode };
+      }
+    }
+    // Fallback: return as movie if we have an IMDB ID but couldn't parse episode info
+    return { imdbId, type: 'movie' };
   }
 
   function formatEpisodeTag(parsed) {
@@ -1427,8 +1446,18 @@
 
       // Handle IMDB/TMDB IDs - fetch from Cinemeta
       const imdbId = streamMeta.parsed?.imdbId;
+      const tmdbId = streamMeta.parsed?.tmdbId;
       const metaType = streamMeta.parsed?.type === 'episode' ? 'series' : 'movie';
-      if (!imdbId) {
+
+      // Determine the meta ID to use for Cinemeta lookup
+      const metaId = (() => {
+        if (imdbId && /^tt\d+$/i.test(imdbId)) return imdbId.toLowerCase();
+        if (tmdbId) return 'tmdb:' + tmdbId;
+        return null;
+      })();
+
+      if (!metaId) {
+        // No valid ID for Cinemeta lookup - update display with fallback
         if (els) {
           updateSubtitleMenuMeta(els);
           if (els.footerTitle) {
@@ -1438,8 +1467,10 @@
         }
         return;
       }
+
       try {
-        const resp = await fetch('https://v3-cinemeta.strem.io/meta/' + metaType + '/' + encodeURIComponent(imdbId) + '.json', { cache: 'force-cache' });
+        const url = 'https://v3-cinemeta.strem.io/meta/' + metaType + '/' + encodeURIComponent(metaId) + '.json';
+        const resp = await fetch(url, { cache: 'force-cache' });
         if (!resp.ok) throw new Error('Failed to load metadata');
         const data = await resp.json();
         const meta = data && data.meta;
@@ -1457,6 +1488,15 @@
         }
       } catch (_) {
         // Ignore metadata errors; fall back to filename/videoId
+      }
+
+      // Always update display even if Cinemeta fetch didn't find a title
+      if (!streamMeta.title && els) {
+        updateSubtitleMenuMeta(els);
+        if (els.footerTitle) {
+          els.footerTitle.textContent = deriveStreamDisplayTitle();
+          els.footerTitle.title = deriveStreamDisplayTitle();
+        }
       }
     }
 

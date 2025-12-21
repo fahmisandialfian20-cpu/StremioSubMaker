@@ -35,6 +35,7 @@ All notable changes to this project will be documented in this file.
 - **Legacy session cleanup across Redis prefixes:** Invalid sessions loaded via cross-prefix migration are now deleted in all known prefix variants, preventing repeated migration loops and noisy logs.
 - **Subtitle menu redesign:** The floating subtitle menu now features a completely redesigned interior with premium styling—gradient backgrounds, animated accent borders, polished language cards with colored type badges, numbered subtitle entries, enhanced chips with glowing indicators, and smooth micro-animations throughout.
 - **Subtitle menu toggle visibility:** The floating toggle button is now much more visible with a vibrant gradient background (blue-to-purple), stronger glow effects, inner/outer highlight rings, and improved contrast against any background.
+- **Fixed IMDB/TMDB title display in subtitle menu:** The floating subtitle menu footer now correctly fetches and displays show/movie titles from Cinemeta for IMDB and TMDB streams. Previously, it was showing the cleaned filename instead of the actual title. Also fixed the episode tag to show "S01E01" format with proper season/episode parsing, and added support for TMDB ID lookups via Cinemeta.
 
 ## SubMaker v1.4.24
 
