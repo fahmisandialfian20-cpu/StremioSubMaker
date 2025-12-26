@@ -23,12 +23,7 @@ All notable changes to this project will be documented in this file.
 - **SubSource API key sanitization:** Fixed "Invalid character in header content" errors by sanitizing API keys containing control characters.
 - **Rate limit error handling:** Fixed OpenSubtitles login 429 errors being misclassified as `type: 'unknown'`. The `parseApiError()` utility now preserves original error properties.
 - **Locale fixes:** Repaired corrupted Arabic strings and synced missing keys (ar/es/pt-br/pt-pt) with English.
-
-**Security Fixes:**
-
-- **CSRF Protection:** Implemented Cross-Site Request Forgery protection for browser-facing POST endpoints using double-submit cookie pattern. CSRF tokens are now generated for page loads and validated on state-changing requests from browsers. Stremio native clients (no Origin header) are exempted as they're not vulnerable to CSRF attacks.
 - **XSS Defense-in-Depth:** Added additional HTML escaping at the source when building hash mismatch alert messages in `toolboxPageGenerator.js`. While the downstream `buildHashStatusContent()` function already escapes the entire string, this defense-in-depth approach prevents XSS if future refactoring accidentally removes the later escape.
-- **SSRF Protection:** Added Server-Side Request Forgery protection for the auto-subtitles feature. The `streamUrl` parameter is now validated against private/internal IP ranges (10.x.x.x, 172.16-31.x.x, 192.168.x.x, localhost, link-local, etc.), cloud metadata endpoints (AWS/GCP/Azure), and blocked hostnames. DNS resolution is performed to detect private IPs even when using hostname-based URLs. This prevents attackers from using the addon to probe internal networks or access cloud instance metadata.
 
 **Auto-subs Improvements:**
 
