@@ -2906,10 +2906,11 @@ app.post('/api/gemini-models', async (req, res) => {
         );
         const models = await gemini.getAvailableModels({ silent: true });
 
-        // Filter to only show models containing "pro" or "flash" (case-insensitive)
+        // Filter to only show translation-capable Gemini models (pro/flash/gemma variants).
+        // Include Gemma family (e.g., tgemma) for advanced override use cases.
         const filteredModels = models.filter(model => {
             const nameLower = model.name.toLowerCase();
-            return nameLower.includes('pro') || nameLower.includes('flash');
+            return nameLower.includes('pro') || nameLower.includes('flash') || nameLower.includes('gemma');
         });
 
         res.json(filteredModels);

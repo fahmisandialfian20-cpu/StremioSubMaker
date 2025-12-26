@@ -80,6 +80,25 @@ async function loadIndex(adapter, videoHash, languageCode) {
   return { indexKey, keys: index.keys };
 }
 
+/**
+ * Fast O(1) check if an index exists for a video hash + language.
+ * Use this to short-circuit getSyncedSubtitles for new videos that have
+ * never had synced subtitles, avoiding expensive SCAN operations.
+ * @param {string} videoHash - Video file hash
+ * @param {string} languageCode - Language code
+ * @returns {Promise<boolean>} True if index exists (has cached entries)
+ */
+async function indexExists(videoHash, languageCode) {
+  try {
+    const adapter = await getStorageAdapter();
+    const indexKey = getIndexKey(videoHash, languageCode);
+    return await adapter.exists(indexKey, StorageAdapter.CACHE_TYPES.SYNC);
+  } catch (error) {
+    log.warn(() => [`[Sync Cache] indexExists check failed:`, error.message]);
+    return false; // Assume no index on error (will fallback to normal lookup)
+  }
+}
+
 async function persistIndex(adapter, indexKey, keys, previousKeys = [], scanPattern = null, options = {}) {
   const { skipRescan = false } = options || {};
   const unique = Array.from(new Set(keys)).slice(-MAX_INDEX_ENTRIES);
@@ -217,6 +236,7 @@ async function saveSyncedSubtitle(videoHash, languageCode, sourceSubId, syncData
 /**
  * Get all synced subtitles for a video hash and language
  * Uses the configured storage adapter (Redis or filesystem)
+ * Performance: Uses O(1) EXISTS check before expensive SCAN fallback
  * @param {string} videoHash - Video file hash
  * @param {string} languageCode - Language code
  * @returns {Promise<Array>} Array of synced subtitle entries
@@ -226,9 +246,25 @@ async function getSyncedSubtitles(videoHash, languageCode) {
     const adapter = await getStorageAdapter();
     let { keys } = await loadIndex(adapter, videoHash, languageCode);
 
-    // If the index is empty, rebuild once from storage as a fallback
+    // If the index is empty, check if it ever existed before doing expensive SCAN
+    // For new videos (never synced), there's no point scanning - just return empty
     if (!keys.length) {
+      // Quick EXISTS check on the index key - O(1) instead of SCAN O(n)
+      const indexKey = getIndexKey(videoHash, languageCode);
+      const indexKeyExists = await adapter.exists(indexKey, StorageAdapter.CACHE_TYPES.SYNC);
+
+      if (!indexKeyExists) {
+        // Index was never created = no synced subs exist for this video/lang
+        // Skip the expensive SCAN-based rebuild entirely
+        return [];
+      }
+
+      // Index key exists but returned empty content - rebuild once from storage
       keys = await rebuildIndexFromStorage(adapter, videoHash, languageCode);
+    }
+
+    if (!keys.length) {
+      return [];
     }
 
     const results = [];
@@ -237,7 +273,7 @@ async function getSyncedSubtitles(videoHash, languageCode) {
       try {
         const entry = await adapter.get(cacheKey, StorageAdapter.CACHE_TYPES.SYNC);
         if (!entry) {
-          try { await removeFromIndex(adapter, videoHash, languageCode, cacheKey); } catch (_) {}
+          try { await removeFromIndex(adapter, videoHash, languageCode, cacheKey); } catch (_) { }
           continue;
         }
 
@@ -252,7 +288,7 @@ async function getSyncedSubtitles(videoHash, languageCode) {
       } catch (error) {
         log.warn(() => [`[Sync Cache] Failed to fetch entry for ${cacheKey}:`, error.message]);
         // On failure, drop the key from index to avoid repeat hits
-        try { await removeFromIndex(adapter, videoHash, languageCode, cacheKey); } catch (_) {}
+        try { await removeFromIndex(adapter, videoHash, languageCode, cacheKey); } catch (_) { }
       }
     }
 
@@ -423,6 +459,7 @@ module.exports = {
   generateSyncCacheKey,
   saveSyncedSubtitle,
   getSyncedSubtitles,
+  indexExists,
   listSyncedLanguages,
   getSyncedSubtitle,
   deleteSyncedSubtitle,

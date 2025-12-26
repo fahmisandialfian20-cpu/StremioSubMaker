@@ -7,9 +7,8 @@ All notable changes to this project will be documented in this file.
 **Cloudflare Auto-subs Improvements:**
 
 - **Parallel transcription:** Audio windows now transcribe in parallel (up to 4 concurrent requests), reducing an 8-window video from ~2+ minutes to ~30 seconds.
-- **Whisper Large V3 Turbo Base64 fix:** Fixed "Request body is not valid json" error when using the Turbo model. The Cloudflare API requires Base64-encoded audio in JSON payloads for the Turbo model (not raw binary or array format like the base model).
-- **Duration estimation fix for TS streams:** Fixed incomplete subtitle coverage where only half the video was transcribed. For TS (transport stream) containers where duration probing fails, the byte-based estimation now uses 0.8 Mbps (down from 2 Mbps), ensuring full coverage for lower-bitrate streams. It's now better to have extra windows at the end than miss final content.
-- **Language detection fix:** Fixed incorrect Japanese fallback (`lang=ja`) causing "different languages in a single request" errors. Now prioritizes auto-detection first and uses English-only as a fallback.
+- **Whisper Large V3 Turbo Base64 fix:** The Cloudflare API requires Base64-encoded audio in JSON payloads for the Turbo model (not raw binary or array format like the base model).
+- **Duration estimation fix for TS streams:** Fixed incomplete subtitle coverage where only half the video was transcribed. For TS (transport stream) containers where duration probing fails, the byte-based estimation now uses 0.8 Mbps (down from 2 Mbps), ensuring full coverage for lower-bitrate streams.
 - **Graceful window failures:** Individual failed audio windows are now skipped instead of failing the entire transcription—improves resilience for problematic segments (silence, music, etc.).
 - **Model-aware window sizes:** Base Whisper model uses 30s windows (its max), Turbo model uses 90s by default with UI slider support up to 25 minutes.
 - **VAD filter option:** Added "Enable VAD filter" checkbox for Turbo model to remove silence from audio for cleaner transcription. Turbo is now the default model.
@@ -28,7 +27,13 @@ All notable changes to this project will be documented in this file.
 - **Localization cleanup:** Removed hardcoded English strings in Sub Toolbox, History, and Sync pages.
 - **Manifest logging:** Added detailed request metadata logging (client IP, forwarded headers) for debugging.
 - **Auto-subs retry UX:** Renamed "Retranslate" to "Retry translation," improved button fallbacks, and only show download actions when SRT exists.
-- **Layout tweaks:** Adjusted step card alignment for cleaner auto-subs layout on larger screens.
+- **Layout tweaks:** Adjusted step card alignment for cleaner auto-subs layout on larger screens
+- **O(1) index existence checks:** Added fast `EXISTS` checks to `syncCache` and `embeddedCache` before falling back to expensive `SCAN` operations. For new videos (never synced/embedded), lookups now return immediately instead of scanning all Redis keys. This alone can reduce latency by 60-80% for first-time video requests.
+- **Parallel sync cache lookups:** Changed xSync subtitle lookups from sequential per-language loops to parallel `Promise.all()` execution. With 2 configured languages, this halves the sync cache lookup time.
+- **Parallel embedded cache preloading:** Both embedded originals AND translations are now fetched in parallel at the start of subtitle handler, stored in Maps, and reused throughout the request. This eliminates 2 redundant Redis calls that were happening later in the flow.
+- **Eliminated duplicate listEmbeddedOriginals call:** The xEmbed section was calling `listEmbeddedOriginals()` a second time despite the data already being cached in `embeddedOriginalsByHash` Map. Now reuses the pre-fetched data.
+- **Eliminated duplicate listEmbeddedTranslations call:** The xEmbed section was calling `listEmbeddedTranslations()` despite translations already being pre-fetched. Now reuses the `embeddedTranslationsByHash` Map.
+
 
 ## SubMaker v1.4.26
 

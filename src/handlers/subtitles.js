@@ -2414,15 +2414,39 @@ function createSubtitleHandler(config) {
       const primaryVideoHash = deriveVideoHash(streamFilename || '', id);
       const videoHashes = primaryVideoHash ? [primaryVideoHash] : [];
 
-      // Preload embedded originals (used for display + translation sources)
+      // Preload embedded originals AND translations in parallel (used for display + translation sources)
+      // Performance: Single parallel fetch avoids multiple sequential calls later
       const embeddedOriginalsByHash = new Map();
+      const embeddedTranslationsByHash = new Map();
       if (videoHashes.length) {
+        const preloadPromises = [];
         for (const hash of videoHashes) {
-          try {
-            const originals = await embeddedCache.listEmbeddedOriginals(hash);
-            embeddedOriginalsByHash.set(hash, originals || []);
-          } catch (error) {
-            log.error(() => [`[Subtitles] Failed to load xEmbed originals for ${hash}:`, error.message]);
+          // Preload originals
+          preloadPromises.push(
+            embeddedCache.listEmbeddedOriginals(hash)
+              .then(originals => ({ type: 'original', hash, data: originals || [] }))
+              .catch(error => {
+                log.error(() => [`[Subtitles] Failed to load xEmbed originals for ${hash}:`, error.message]);
+                return { type: 'original', hash, data: [] };
+              })
+          );
+          // Preload translations in parallel
+          preloadPromises.push(
+            embeddedCache.listEmbeddedTranslations(hash)
+              .then(translations => ({ type: 'translation', hash, data: translations || [] }))
+              .catch(error => {
+                log.error(() => [`[Subtitles] Failed to load xEmbed translations for ${hash}:`, error.message]);
+                return { type: 'translation', hash, data: [] };
+              })
+          );
+        }
+        // Execute all preloads in parallel
+        const preloadResults = await Promise.all(preloadPromises);
+        for (const result of preloadResults) {
+          if (result.type === 'original') {
+            embeddedOriginalsByHash.set(result.hash, result.data);
+          } else {
+            embeddedTranslationsByHash.set(result.hash, result.data);
           }
         }
       }
@@ -2541,6 +2565,7 @@ function createSubtitleHandler(config) {
       }
 
       // Add xSync entries (synced subtitles from cache) - only for user-configured languages
+      // Performance: Execute all sync cache lookups in parallel instead of sequential nested loops
       const xSyncEntries = [];
       const allowedLanguages = Array.from(expandedLangs).filter(Boolean);
       if (toolboxEnabled && videoHashes.length && allowedLanguages.length) {
@@ -2549,36 +2574,60 @@ function createSubtitleHandler(config) {
           const canonical = canonicalSyncLanguageCode(lang);
           return canonical ? [canonical] : [];
         };
+
+        // Build all lookup combinations upfront
+        const syncLookups = [];
         for (const hash of videoHashes) {
           for (const lang of allowedLanguages) {
-            try {
-              const langCandidates = buildLangCandidates(lang);
-              let syncedSubs = [];
-              for (const candidate of langCandidates) {
-                const subsForCandidate = await syncCache.getSyncedSubtitles(hash, candidate);
-                if (subsForCandidate?.length) {
-                  syncedSubs = [...syncedSubs, ...subsForCandidate];
-                }
-              }
+            const langCandidates = buildLangCandidates(lang);
+            for (const candidate of langCandidates) {
+              syncLookups.push({ hash, lang, candidate });
+            }
+          }
+        }
 
-              if (syncedSubs && syncedSubs.length > 0) {
-                const langName = getLanguageName(lang) || getLanguageName(langCandidates[0]) || lang;
-                log.debug(() => `[Subtitles] Found ${syncedSubs.length} synced subtitle(s) for ${langName} (hash=${hash})`);
+        // Execute all lookups in parallel
+        const syncResults = await Promise.all(
+          syncLookups.map(({ hash, lang, candidate }) =>
+            syncCache.getSyncedSubtitles(hash, candidate)
+              .then(subs => ({ hash, lang, candidate, subs: subs || [] }))
+              .catch(error => {
+                log.error(() => [`[Subtitles] Failed to get xSync entries for ${lang} (hash=${hash}):`, error.message]);
+                return { hash, lang, candidate, subs: [] };
+              })
+          )
+        );
 
-                for (let i = 0; i < syncedSubs.length; i++) {
-                  const syncedSub = syncedSubs[i];
-                  const seenKey = syncedSub.cacheKey || `${hash}_${lang}_${i}`;
-                  if (seenSync.has(seenKey)) continue;
-                  seenSync.add(seenKey);
-                  xSyncEntries.push({
-                    id: `xsync_${seenKey}`,
-                    lang: `xSync ${langName}${syncedSubs.length > 1 ? ` #${i + 1}` : ''}`,
-                    url: `{{ADDON_URL}}/xsync/${hash}/${lang}/${syncedSub.sourceSubId}`
-                  });
-                }
-              }
-            } catch (error) {
-              log.error(() => [`[Subtitles] Failed to get xSync entries for ${lang} (hash=${hash}):`, error.message]);
+        // Process results
+        // Group by hash+lang to aggregate candidates
+        const syncByHashLang = new Map();
+        for (const result of syncResults) {
+          const key = `${result.hash}_${result.lang}`;
+          if (!syncByHashLang.has(key)) {
+            syncByHashLang.set(key, { hash: result.hash, lang: result.lang, subs: [] });
+          }
+          if (result.subs?.length) {
+            syncByHashLang.get(key).subs.push(...result.subs);
+          }
+        }
+
+        // Build xSync entries from aggregated results
+        for (const [, { hash, lang, subs: syncedSubs }] of syncByHashLang) {
+          if (syncedSubs && syncedSubs.length > 0) {
+            const langCandidates = buildLangCandidates(lang);
+            const langName = getLanguageName(lang) || getLanguageName(langCandidates[0]) || lang;
+            log.debug(() => `[Subtitles] Found ${syncedSubs.length} synced subtitle(s) for ${langName} (hash=${hash})`);
+
+            for (let i = 0; i < syncedSubs.length; i++) {
+              const syncedSub = syncedSubs[i];
+              const seenKey = syncedSub.cacheKey || `${hash}_${lang}_${i}`;
+              if (seenSync.has(seenKey)) continue;
+              seenSync.add(seenKey);
+              xSyncEntries.push({
+                id: `xsync_${seenKey}`,
+                lang: `xSync ${langName}${syncedSubs.length > 1 ? ` #${i + 1}` : ''}`,
+                url: `{{ADDON_URL}}/xsync/${hash}/${lang}/${syncedSub.sourceSubId}`
+              });
             }
           }
         }
@@ -2589,6 +2638,7 @@ function createSubtitleHandler(config) {
       }
 
       // Add xEmbed entries (translated embedded tracks from cache)
+      // Performance: Reuse pre-fetched Maps instead of calling cache again
       const xEmbedEntries = [];
       const xEmbedOriginalEntries = [];
       if (videoHashes.length && expandedLangs.size > 0) {
@@ -2596,7 +2646,8 @@ function createSubtitleHandler(config) {
           const seenKeys = new Set();
           const seenOriginals = new Set();
           for (const hash of videoHashes) {
-            const translations = await embeddedCache.listEmbeddedTranslations(hash);
+            // Use pre-cached translations (fetched earlier in parallel)
+            const translations = embeddedTranslationsByHash.get(hash) || [];
             for (const entry of translations) {
               if (!entry || !entry.trackId) continue;
               const targetCode = (entry.targetLanguageCode || entry.languageCode || '').toString().toLowerCase();
@@ -2615,8 +2666,8 @@ function createSubtitleHandler(config) {
               });
             }
 
-            // Originals: surfaced as regular subtitles under their source language
-            const originals = await embeddedCache.listEmbeddedOriginals(hash);
+            // Use pre-cached originals (fetched earlier in parallel) - avoids duplicate call!
+            const originals = embeddedOriginalsByHash.get(hash) || [];
             for (const entry of originals) {
               if (!entry || !entry.trackId) continue;
               const sourceCode = (entry.languageCode || '').toString().toLowerCase();
@@ -2676,15 +2727,15 @@ function createSubtitleHandler(config) {
         }
       }
 
-        // Add unified Sub Toolbox action button
-        const t = getTranslator(config.uiLanguage || 'en');
-        let actionButtons = [];
-        if (toolboxEnabled) {
-          const toolboxEntry = {
-            id: 'sub_toolbox',
-            lang: t('subtitle.subToolboxLabel', {}, 'Sub Toolbox'),
-            url: `{{ADDON_URL}}/sub-toolbox/${id}?filename=${encodeURIComponent(streamFilename || '')}`
-          };
+      // Add unified Sub Toolbox action button
+      const t = getTranslator(config.uiLanguage || 'en');
+      let actionButtons = [];
+      if (toolboxEnabled) {
+        const toolboxEntry = {
+          id: 'sub_toolbox',
+          lang: t('subtitle.subToolboxLabel', {}, 'Sub Toolbox'),
+          url: `{{ADDON_URL}}/sub-toolbox/${id}?filename=${encodeURIComponent(streamFilename || '')}`
+        };
         actionButtons.push(toolboxEntry);
         log.debug(() => '[Subtitles] Sub Toolbox is enabled, added entry');
       }

@@ -51,6 +51,25 @@ async function loadIndex(adapter, videoHash, type) {
   return { indexKey, keys: index.keys };
 }
 
+/**
+ * Fast O(1) check if an index exists for a video hash + type.
+ * Use this to short-circuit list operations for new videos that have
+ * never had embedded subtitles, avoiding expensive SCAN operations.
+ * @param {string} videoHash - Video file hash
+ * @param {string} type - 'original' or 'translation'
+ * @returns {Promise<boolean>} True if index exists (has cached entries)
+ */
+async function indexExists(videoHash, type) {
+  try {
+    const adapter = await getStorageAdapter();
+    const indexKey = getIndexKey(videoHash, type);
+    return await adapter.exists(indexKey, StorageAdapter.CACHE_TYPES.EMBEDDED);
+  } catch (error) {
+    log.warn(() => [`[Embedded Cache] indexExists check failed:`, error.message]);
+    return false; // Assume no index on error (will fallback to normal lookup)
+  }
+}
+
 async function persistIndex(adapter, indexKey, keys, previousKeys = [], scanPattern = null, options = {}) {
   const { skipRescan = false } = options || {};
   const unique = Array.from(new Set(keys)).slice(-MAX_INDEX_ENTRIES);
@@ -233,13 +252,36 @@ async function getEmbeddedByCacheKey(cacheKey) {
   return { cacheKey, ...entry };
 }
 
+/**
+ * List all embedded translations for a video hash
+ * Performance: Uses O(1) EXISTS check before expensive SCAN fallback
+ * @param {string} videoHash - Video file hash
+ * @returns {Promise<Array>} Array of translation entries
+ */
 async function listEmbeddedTranslations(videoHash) {
   const adapter = await getStorageAdapter();
   const pattern = `${normalizeString(videoHash || 'unknown')}_translation_*`;
   let { keys } = await loadIndex(adapter, videoHash, 'translation');
+
+  // If index is empty, check if it ever existed before doing expensive SCAN
   if (!keys.length) {
+    // Quick EXISTS check - O(1) instead of SCAN O(n)
+    const indexKey = getIndexKey(videoHash, 'translation');
+    const indexKeyExists = await adapter.exists(indexKey, StorageAdapter.CACHE_TYPES.EMBEDDED);
+
+    if (!indexKeyExists) {
+      // Index was never created = no translations exist for this video
+      return [];
+    }
+
+    // Index key exists but returned empty - rebuild once from storage
     keys = await rebuildIndexFromStorage(adapter, videoHash, 'translation', pattern);
   }
+
+  if (!keys.length) {
+    return [];
+  }
+
   const results = [];
   for (const key of keys) {
     try {
@@ -248,20 +290,43 @@ async function listEmbeddedTranslations(videoHash) {
       results.push({ cacheKey: key, ...entry });
     } catch (error) {
       log.warn(() => [`[Embedded Cache] Failed to fetch translation ${key}:`, error.message]);
-      try { await removeFromIndex(adapter, videoHash, 'translation', key); } catch (_) {}
+      try { await removeFromIndex(adapter, videoHash, 'translation', key); } catch (_) { }
     }
   }
   results.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
   return results;
 }
 
+/**
+ * List all embedded originals for a video hash
+ * Performance: Uses O(1) EXISTS check before expensive SCAN fallback
+ * @param {string} videoHash - Video file hash
+ * @returns {Promise<Array>} Array of original embedded entries
+ */
 async function listEmbeddedOriginals(videoHash) {
   const adapter = await getStorageAdapter();
   const pattern = `${normalizeString(videoHash || 'unknown')}_original_*`;
   let { keys } = await loadIndex(adapter, videoHash, 'original');
+
+  // If index is empty, check if it ever existed before doing expensive SCAN
   if (!keys.length) {
+    // Quick EXISTS check - O(1) instead of SCAN O(n)
+    const indexKey = getIndexKey(videoHash, 'original');
+    const indexKeyExists = await adapter.exists(indexKey, StorageAdapter.CACHE_TYPES.EMBEDDED);
+
+    if (!indexKeyExists) {
+      // Index was never created = no originals exist for this video
+      return [];
+    }
+
+    // Index key exists but returned empty - rebuild once from storage
     keys = await rebuildIndexFromStorage(adapter, videoHash, 'original', pattern);
   }
+
+  if (!keys.length) {
+    return [];
+  }
+
   const results = [];
   for (const key of keys) {
     try {
@@ -270,7 +335,7 @@ async function listEmbeddedOriginals(videoHash) {
       results.push({ cacheKey: key, ...entry });
     } catch (error) {
       log.warn(() => [`[Embedded Cache] Failed to fetch original ${key}:`, error.message]);
-      try { await removeFromIndex(adapter, videoHash, 'original', key); } catch (_) {}
+      try { await removeFromIndex(adapter, videoHash, 'original', key); } catch (_) { }
     }
   }
   results.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
@@ -411,6 +476,7 @@ module.exports = {
   getOriginalEmbedded,
   getTranslatedEmbedded,
   getEmbeddedByCacheKey,
+  indexExists,
   listEmbeddedOriginals,
   listEmbeddedTranslations,
   pruneOriginalsForVideo,
