@@ -5941,9 +5941,9 @@ Translate to {target_language}.`;
 
     async function performFullReset() {
         showLoading(true);
+        let freshToken = null;
         try {
             // 0) Request a fresh default config token from the server before clearing everything
-            let freshToken = null;
             try {
                 const response = await fetch('/api/get-session/00000000000000000000000000000000?autoRegenerate=true');
                 if (response.ok) {
@@ -6011,3 +6011,9 @@ Translate to {target_language}.`;
         }
     }
 })();
+
+
+
+
+
+

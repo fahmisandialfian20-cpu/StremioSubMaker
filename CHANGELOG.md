@@ -18,8 +18,10 @@ All notable changes to this project will be documented in this file.
 
 **Bug Fixes:**
 
+- **Config reset scope fix:** Fixed config reset throwing ReferenceError by keeping the fresh token in scope for the reload step.
+- **Locale key flash fix:** Prevented raw i18n keys from appearing briefly before localized text loads on config pages.
 - **Stream hash mismatch resolution:** Fixed hash mismatch errors when pasting debrid/addon stream URLs (e.g., `/resolve/realdebrid/...`). These URLs redirect to CDN URLs containing the actual filename, but the hash was being computed from the redirect URL path instead. Now, the client follows redirects with a HEAD request to get the final URL before computing the hash, ensuring it matches the linked stream hash.
-- **Anime season pack matching:** Fixed episode matching for filenames like `Berserk - 01[1080 BD X265].ass`—regex now recognizes `[` and `(` as valid episode terminators.
+- **Anime season pack matching:** Fixed episode matching for filenames like `Berserk - 01[1080 BD X265].ass` regex now recognizes `[` and `(` as valid episode terminators.
 - **SubSource API key sanitization:** Fixed "Invalid character in header content" errors by sanitizing API keys containing control characters.
 - **Rate limit error handling:** Fixed OpenSubtitles login 429 errors being misclassified as `type: 'unknown'`. The `parseApiError()` utility now preserves original error properties.
 - **Locale fixes:** Repaired corrupted Arabic strings and synced missing keys (ar/es/pt-br/pt-pt) with English.
@@ -30,7 +32,7 @@ All notable changes to this project will be documented in this file.
 - **Parallel transcription:** Audio windows now transcribe in parallel (up to 4 concurrent requests), reducing an 8-window video from ~2+ minutes to ~30 seconds.
 - **Whisper Large V3 Turbo Base64 fix:** The Cloudflare API requires Base64-encoded audio in JSON payloads for the Turbo model (not raw binary or array format like the base model).
 - **Duration estimation fix for TS streams:** Fixed incomplete subtitle coverage where only half the video was transcribed. For TS (transport stream) containers where duration probing fails, the byte-based estimation now uses 0.8 Mbps (down from 2 Mbps), ensuring full coverage for lower-bitrate streams.
-- **Graceful window failures:** Individual failed audio windows are now skipped instead of failing the entire transcription—improves resilience for problematic segments (silence, music, etc.).
+- **Graceful window failures:** Individual failed audio windows are now skipped instead of failing the entire transcription improves resilience for problematic segments (silence, music, etc.).
 - **Model-aware window sizes:** Base Whisper model uses 30s windows (its max), Turbo model uses 90s by default with UI slider support up to 25 minutes.
 - **VAD filter option:** Added "Enable VAD filter" checkbox for Turbo model to remove silence from audio for cleaner transcription. Turbo is now the default model.
 
@@ -38,8 +40,8 @@ All notable changes to this project will be documented in this file.
 
 - **Linked stream refresh button:** Added a refresh action on Sync, Embedded Subtitles, and Auto-subs pages so users can pull the latest linked stream metadata without leaving the page.
 - **Clearer hash mismatch guidance:** Updated the embedded tools helper copy to instruct users to refresh the linked stream before pasting the Stream URL.
-- **Wikidata TMDB→IMDB fallback:** When Cinemeta doesn't have a TMDB-to-IMDB mapping (previously causing "Could not map TMDB to IMDB" errors), the addon now queries Wikidata as a free, no-API-key fallback. This improves subtitle availability for content that Cinemeta hasn't indexed yet.
-- **OpenSubtitles "Auth" rate limit fix:** Fixed 429 rate limit errors when using OpenSubtitles Auth mode by implementing a static token cache and login mutex. Previously, each request created a new `OpenSubtitlesService` instance with its own token, causing multiple concurrent requests (e.g., Stremio prefetching subtitles) to all call `/login` simultaneously—exceeding OpenSubtitles' 1 request/second login limit. Now, JWT tokens are cached per credential and reused across instances, and concurrent login attempts for the same credentials are serialized via a mutex. Also removed the unnecessary global download rate limiter (12/min cap).
+- **Wikidata TMDB?IMDB fallback:** When Cinemeta doesn't have a TMDB-to-IMDB mapping (previously causing "Could not map TMDB to IMDB" errors), the addon now queries Wikidata as a free, no-API-key fallback. This improves subtitle availability for content that Cinemeta hasn't indexed yet.
+- **OpenSubtitles "Auth" rate limit fix:** Fixed 429 rate limit errors when using OpenSubtitles Auth mode by implementing a static token cache and login mutex. Previously, each request created a new `OpenSubtitlesService` instance with its own token, causing multiple concurrent requests (e.g., Stremio prefetching subtitles) to all call `/login` simultaneously exceeding OpenSubtitles' 1 request/second login limit. Now, JWT tokens are cached per credential and reused across instances, and concurrent login attempts for the same credentials are serialized via a mutex. Also removed the unnecessary global download rate limiter (12/min cap).
 
 ## SubMaker v1.4.25
 
@@ -72,7 +74,7 @@ All notable changes to this project will be documented in this file.
 - **Fixed Kitsu/anime ID parsing:** Corrected episode tag display for anime streams from Kitsu, AniDB, MAL, and AniList. Previously, video IDs like `kitsu:10941:1` were incorrectly parsed to show "S10941E01" (treating the anime ID as the season number). Now correctly shows "E01" for seasonless anime episodes, and "S01E05" for anime with explicit seasons (e.g., `kitsu:10941:1:5`). Fixed across all toolbox pages (Sub Toolbox, Sync, Auto-subs) and stream notification toasts.
 - **Kitsu title lookups:** Toolbox, Sync, Auto-subs, and the floating subtitle menu now query the Kitsu API for Kitsu anime IDs to display proper anime titles (e.g., "Elfen Lied - E12" instead of filenames). IMDB/TMDB continues to use Cinemeta. Episode tags (E## or S##E##) are now consistently appended to the main title display across all tools pages.
 - **Legacy session cleanup across Redis prefixes:** Invalid sessions loaded via cross-prefix migration are now deleted in all known prefix variants, preventing repeated migration loops and noisy logs.
-- **Subtitle menu redesign:** The floating subtitle menu now features a completely redesigned interior with premium styling—gradient backgrounds, animated accent borders, polished language cards with colored type badges, numbered subtitle entries, enhanced chips with glowing indicators, and smooth micro-animations throughout.
+- **Subtitle menu redesign:** The floating subtitle menu now features a completely redesigned interior with premium styling gradient backgrounds, animated accent borders, polished language cards with colored type badges, numbered subtitle entries, enhanced chips with glowing indicators, and smooth micro-animations throughout.
 - **Subtitle menu toggle visibility:** The floating toggle button is now much more visible with a vibrant gradient background (blue-to-purple), stronger glow effects, inner/outer highlight rings, and improved contrast against any background.
 - **Fixed IMDB/TMDB title display in subtitle menu:** The floating subtitle menu footer now correctly fetches and displays show/movie titles from Cinemeta for IMDB and TMDB streams. Previously, it was showing the cleaned filename instead of the actual title. Also fixed the episode tag to show "S01E01" format with proper season/episode parsing, and added support for TMDB ID lookups via Cinemeta.
 
@@ -134,7 +136,7 @@ All notable changes to this project will be documented in this file.
 - **Embedded/linked streams:** Linked stream titles avoid placeholder collisions and episode tags now render correctly; extraction hash-mismatch messaging explicitly calls out Linked Stream vs Stream URL alignment; autosubs Step 2 layout/text is left-aligned for readability.
 
 - **RTL translations:** Translated subtitles now wrap RTL targets with embedding markers so punctuation renders correctly for Hebrew/Arabic outputs.
-- **Addon localhost access:** Addon API routes now allow localhost origins (any port) so local browser requests—including macOS Safari/Chrome—can fetch subtitles without being blocked.
+- **Addon localhost access:** Addon API routes now allow localhost origins (any port) so local browser requests including macOS Safari/Chrome can fetch subtitles without being blocked.
 
 ## SubMaker v1.4.17
 
@@ -156,13 +158,13 @@ All notable changes to this project will be documented in this file.
 
 - **Locale/i18n resilience:** `/api/locale` now favors explicit `lang` values, syncs translators to the resolved language, falls back safely to defaults, and reapplies translations after late partial/combobox loads; the UI-language dock self-builds if the partial is missing and flags force emoji-safe fonts.
 - **Safer i18n attributes:** `data-i18n-attr` accepts comma/space lists, filters invalid names, and guards setter errors so broken attributes no longer throw while preserving fallbacks.
-- **Auto-sub log redesign:** Auto-subtitles toolbox log is now a styled live feed with timestamps, severity coloring, capped history, and a pipeline preview to make each run’s status readable.
+- **Auto-sub log redesign:** Auto-subtitles toolbox log is now a styled live feed with timestamps, severity coloring, capped history, and a pipeline preview to make each run s status readable.
 - **Upstream error clarity:** Cloudflare transcription responses parse non-JSON bodies, return upstream status codes/body snippets, and surface 5xx hints in API/toolbox flows so failures are actionable.
 
 ## SubMaker v1.4.14
 
 - **xEmbed language grouping:** Embedded originals now surface with canonical language codes, so extracted tracks merge into the same Stremio language bucket instead of creating duplicate language entries.
-- **Make from embedded:** “Make (Language)” entries now include extracted embedded tracks as valid sources, even when no provider subtitles exist, with deduped source lists.
+- **Make from embedded:**  Make (Language)  entries now include extracted embedded tracks as valid sources, even when no provider subtitles exist, with deduped source lists.
 - **Embedded translation path:** Translations triggered from embedded originals pull directly from the xEmbed cache (skipping provider downloads) and save the resulting xEmbed translations back with metadata for reuse.
 - **Toolbox subtitle toggle:** Subtitles Toolbox now mounts the floating subtitle menu with a pulsing toggle button, prefetching stream data so source/target lists stay handy while working in the toolbox.
 - **Auto-subtitles stream guards:** Auto-subtitles and sync Step 1 now demand valid/matching stream URLs, reset flows when the link changes, and surface clearer hash-mismatch alerts to stop runs from starting on stale or mismatched streams.
@@ -177,7 +179,7 @@ All notable changes to this project will be documented in this file.
 - **Embedded extraction logs:** Extraction logs stay visible after successful embedded runs for easier troubleshooting, while auto-sub hash/cache badges keep cache-block flags without noisy warnings.
 - **RTL + flags:** Arabic UI now flips to RTL with isolated LTR tokens for mixed Arabic/English lines, and UI language flags map to real locales (Arabic -> Saudi Arabia, pt-br -> Brazil, en -> US).
 - **Hash/status UX:** Embedded toolbox now shows a linked stream card plus hash status badge, and translation cards lock with overlays until extraction finishes and a track is selected, keeping mismatch messaging clear.
-- **Auto-sub flow locks:** Auto-subtitles flow adds a Continue step that unlocks translation/run cards, disables Start until a target is set, and relocks when the stream is edited so runs can’t start on placeholder links or missing targets.
+- **Auto-sub flow locks:** Auto-subtitles flow adds a Continue step that unlocks translation/run cards, disables Start until a target is set, and relocks when the stream is edited so runs can t start on placeholder links or missing targets.
 - **Metadata fetch guards:** Cinemeta lookups skip invalid IMDb IDs, normalize them to lowercase, and fall back to TMDB IDs when available to avoid noisy 404s while still filling stream titles.
 - **Accessibility/i18n polish:** UI language dock/help buttons now carry translated aria-labels and Step 1 labels get explicit colons/shortened copy for clearer screen-reader prompts.
 
@@ -195,7 +197,7 @@ All notable changes to this project will be documented in this file.
 ## SubMaker v1.4.11
 
 **New Features:**
-- **Shared translation cache reinstated:** Shared “Make (Language)” translations are re-enabled with a new namespaced storage prefix, automatic legacy purge, and hard bypass of reads/writes when a config hash is missing/invalid.
+- **Shared translation cache reinstated:** Shared  Make (Language)  translations are re-enabled with a new namespaced storage prefix, automatic legacy purge, and hard bypass of reads/writes when a config hash is missing/invalid.
 - **Floating subtitle menu:** Extended Stream Subtitles widget to sync and file-upload pages with grouped source/translation/target lists, quick refresh/prefetch, and live stream updates from QuickNav.
 - **Localization groundwork:** Added shared i18n helper with locale bootstrap and UI-language plumbing through config/session so pages and subtitle messages can render per-user language for future addon translations.
 
@@ -211,11 +213,13 @@ All notable changes to this project will be documented in this file.
 
 **Bug Fixes:**
 
+- **Config reset scope fix:** Fixed config reset throwing ReferenceError by keeping the fresh token in scope for the reload step.
+- **Locale key flash fix:** Prevented raw i18n keys from appearing briefly before localized text loads on config pages.
 - **Stremio install popup formatting:** Fixed manifest description strings that were double-escaped, so `\n` now render as actual line breaks in the install dialog.
 - **Batch context in single-batch splits:** When single-batch translations exceed token limits and auto-split, surrounding/previous-entry context is now passed through so coherence is preserved in this edge mode.
-- **Embedded studio UX gaps:** Instructions modal now respects the “don’t show again” preference, extraction no longer hangs if the xSync extension goes silent (60s watchdog with reset/re-ping), the extension badge reflects active extraction vs ready state, and single-track extractions auto-select to unlock Step 2 immediately.
+- **Embedded studio UX gaps:** Instructions modal now respects the  don t show again  preference, extraction no longer hangs if the xSync extension goes silent (60s watchdog with reset/re-ping), the extension badge reflects active extraction vs ready state, and single-track extractions auto-select to unlock Step 2 immediately.
 - **Mobile quick-nav toggle:** Restored the hamburger bars on tool pages for screens under 1100px width.
-- **Resilient language maps:** Subtitle menu now guards language-map bootstrapping and drops stale backups so missing/invalid maps can’t crash subtitle rendering.
+- **Resilient language maps:** Subtitle menu now guards language-map bootstrapping and drops stale backups so missing/invalid maps can t crash subtitle rendering.
 - **3-click cache reset:** Triple-click cache reset no longer consumes rate limits or leave partial purges when users retry quickly.
 - **Many other major and minor bug fixes.**
 
@@ -249,6 +253,8 @@ All notable changes to this project will be documented in this file.
 
 **Bug Fixes:**
 
+- **Config reset scope fix:** Fixed config reset throwing ReferenceError by keeping the fresh token in scope for the reload step.
+- **Locale key flash fix:** Prevented raw i18n keys from appearing briefly before localized text loads on config pages.
 - **Redis SCAN:** Fixed a critical bug where `list()` returned zero keys due to missing key prefix in SCAN patterns, causing silent session data loss.
 - **Session Persistence:** Fixed `createSession` and `updateSession` to properly handle Redis failures and prevent "ghost" sessions or silent data loss.
 - **Cross-Instance Invalidation:** Fixed Pub/Sub invalidation for multi-pod deployments by using consistent connection options and retry logic.
@@ -279,7 +285,7 @@ All notable changes to this project will be documented in this file.
 - Partials loader prioritizes the main partial before overlays/footers and exposes `mainPartialReady` for scripts that need core content ready (e.g., instructions peek gate); config loader now waits on that signal.
 - Combobox dropdown panels now portal to the document body so they no longer get clipped or stuck behind neighboring cards/sections.
 - File-upload translation options allow overflow again, so "Timestamps Strategy" and similar selects render fully instead of being truncated inside the accordion.
-- File-translation reset modal now just clears page selections/preferences and reloads the page—no cache wipes or token regeneration.
+- File-translation reset modal now just clears page selections/preferences and reloads the page no cache wipes or token regeneration.
 - Session manager now backfills missing token metadata, upgrades legacy unencrypted payloads in place, and keeps sessions for retry on decrypt errors instead of deleting them.
 
 ## SubMaker v1.4.7-beta
@@ -373,6 +379,9 @@ This release implements comprehensive automatic recovery for corrupted, missing,
 - Session logging now redacts tokens across cache operations and pub/sub invalidations
 
 **Bug Fixes:**
+
+- **Config reset scope fix:** Fixed config reset throwing ReferenceError by keeping the fresh token in scope for the reload step.
+- **Locale key flash fix:** Prevented raw i18n keys from appearing briefly before localized text loads on config pages.
 - Translation engine now falls back to safe token estimates when providers don't expose token counters
 - Base64 decode failures are prevented via normalization and stricter client/server token validation; manifest/model validation no longer blocks optional-key providers
 - Parallel translation chunks now carry the detected source language and cache lookups fall back to legacy keys so chunked jobs and upgrades reuse cached work instead of re-translating
@@ -438,10 +447,13 @@ This release implements comprehensive automatic recovery for corrupted, missing,
 - Enhanced OpenSubtitles Auth rate limit detection (429) with implementation-specific guidance
 - Differentiated error messages: Auth with credentials ("rate limiting your account"), Auth without credentials ("basic rate limit, add username/password or switch to V3"), V3 (standard rate limit subtitle)
 - Rate limit errors (429) no longer misclassified as authentication failures
-- User-facing error subtitles (0→4h) explain quota and suggest remediation
+- User-facing error subtitles (0?4h) explain quota and suggest remediation
 - Logs which subtitle (fileId, language) triggered the rate limit for easier debugging
 
 **Bug Fixes:**
+
+- **Config reset scope fix:** Fixed config reset throwing ReferenceError by keeping the fresh token in scope for the reload step.
+- **Locale key flash fix:** Prevented raw i18n keys from appearing briefly before localized text loads on config pages.
 - Fixed VTT content not being convertible for translation
 - Fixed provider override not applying to embedded subtitle workflows
 - Fixed cache key collisions between different subtitle types
@@ -519,6 +531,8 @@ This release implements comprehensive automatic recovery for corrupted, missing,
 
 **Bug Fixes:**
 
+- **Config reset scope fix:** Fixed config reset throwing ReferenceError by keeping the fresh token in scope for the reload step.
+- **Locale key flash fix:** Prevented raw i18n keys from appearing briefly before localized text loads on config pages.
 - Min-size guard now allows internal informational subtitles to surface instead of being replaced by generic corruption errors: hidden informational notes are emitted (as >4h cues) to keep addon-generated subtitles above Stremio's minimum-size heuristics while keeping the note off-screen.
 - Provider downloads that return 404 or corrupted ZIPs now surface as user-facing subtitles (SubDL, SubSource, OpenSubtitles, OpenSubtitles V3).
 - Added 25 MB ZIP size caps for SubSource, SubDL, OpenSubtitles, and OpenSubtitles V3; oversized packs return a user-facing subtitle instead of being parsed.
@@ -556,7 +570,7 @@ This release implements comprehensive automatic recovery for corrupted, missing,
 **New Environment Variables:**
 
 - `SINGLE_BATCH_LOG_ENTRY_INTERVAL` - Debug log checkpoint interval for single-batch streaming
-- `SINGLE_BATCH_SRT_REBUILD_STEP_SMALL` - Partial SRT rebuild step when entries ≤ threshold
+- `SINGLE_BATCH_SRT_REBUILD_STEP_SMALL` - Partial SRT rebuild step when entries = threshold
 - `SINGLE_BATCH_SRT_REBUILD_STEP_LARGE` - Partial SRT rebuild step when entries > threshold
 - `SINGLE_BATCH_SRT_REBUILD_LARGE_THRESHOLD` - Entry threshold to switch rebuild step sizes
 
@@ -591,10 +605,12 @@ This release implements comprehensive automatic recovery for corrupted, missing,
 - Just Fetch mode: Added a configurable cap on fetched languages (default 9) via `MAX_NO_TRANSLATION_LANGUAGES`, with UI enforcement and backend validation.
 - Config/UI: Updated Gemini model options to use `gemini-flash-latest` and `gemini-flash-lite-latest` for the Flash defaults.
 - Translation engine: Each batch prompt now carries an explicit `BATCH X/Y` header so the model knows which chunk it is translating.
-- Advanced settings: New “Send timestamps to AI” toggle sends timecodes to Gemini and trusts the model to return corrected timestamps per batch using the default translation prompt.
+- Advanced settings: New  Send timestamps to AI  toggle sends timecodes to Gemini and trusts the model to return corrected timestamps per batch using the default translation prompt.
 
 **Bug Fixes:**
 
+- **Config reset scope fix:** Fixed config reset throwing ReferenceError by keeping the fresh token in scope for the reload step.
+- **Locale key flash fix:** Prevented raw i18n keys from appearing briefly before localized text loads on config pages.
 - SRT Translation UI: Fixed authentication failure in file upload translation page using session tokens configs
 - File Translation API: Added support for advanced settings override, allowing UI customizations to be properly applied during translation
 
@@ -616,8 +632,10 @@ This release implements comprehensive automatic recovery for corrupted, missing,
 - Security: Improved .dockerignore to prevent encryption keys from being copied into Docker images
 - Documentation: Complete rewrite of Docker deployment guide with Docker Hub examples and multiple deployment options
 
-**Bug fixes:**
+**Bug Fixes:**
 
+- **Config reset scope fix:** Fixed config reset throwing ReferenceError by keeping the fresh token in scope for the reload step.
+- **Locale key flash fix:** Prevented raw i18n keys from appearing briefly before localized text loads on config pages.
 - Multiple minor bug fixes
 
 ## SubMaker v1.3.3
@@ -631,7 +649,7 @@ This release implements comprehensive automatic recovery for corrupted, missing,
 
 - Downloads: CDN-first with endpoint fallback. When available, we now fetch the provider's direct download link first (4s timeout) and fall back to the authenticated `/subtitles/{id}/download` endpoint with retries, then details>CDN as a final fallback. This significantly reduces user-facing timeouts on slow endpoints while preserving existing ZIP/VTT/SRT handling.
 - Latency tuning: Reduced primary `/subtitles/{id}/download` retry budget to ~7s and, on the first retryable failure, launch a parallel details>CDN fetch and return the first success. This caps worst-case latency and improves reliability on slow or flaky endpoints.
-- MovieId lookup resilience: If `/movies/search` returns empty or times out, derive `movieId` via imdb-based endpoints (`/subtitles?imdb=…` then `/search?imdb=…`) as a fallback, reducing transient lookup failures and improving overall subtitle search reliability.
+- MovieId lookup resilience: If `/movies/search` returns empty or times out, derive `movieId` via imdb-based endpoints (`/subtitles?imdb= ` then `/search?imdb= `) as a fallback, reducing transient lookup failures and improving overall subtitle search reliability.
 - Download timeouts: Added a user-facing subtitle (0>4h) when the SubSource API times out during download, informing the user and suggesting a retry or choosing a different subtitle (similar to existing PROHIBITED_CONTENT/429/503 messages).
 - Timeout detection: Broadened SubSource timeout detection so axios-style rewrites still return the timeout subtitle instead of bubbling an unhandled error.
 
@@ -639,7 +657,7 @@ This release implements comprehensive automatic recovery for corrupted, missing,
 
 - Detect season packs during search and extract the requested episode from season-pack ZIPs on download (parity with SubDL/SubSource).
 - Add client-side episode filtering to reduce wrong-episode results when API returns broader matches.
-- 429 handling: Rate limit responses are no longer misclassified as authentication failures; we now show a clear “rate limit (429)” subtitle and avoid caching invalid-credential blocks for retryable errors.
+- 429 handling: Rate limit responses are no longer misclassified as authentication failures; we now show a clear  rate limit (429)  subtitle and avoid caching invalid-credential blocks for retryable errors.
 - Download auth handling: 401/invalid OpenSubtitles login errors now return the auth error subtitle instead of bubbling an unhandled download failure.
 - Login: Improved error classification to bubble up 429/503 so callers can present user-friendly wait-and-retry guidance instead of generic auth errors.
 - Guardrails: Block saving Auth without username/password and auto-fall back to V3 if Auth is selected without credentials to avoid runtime login errors.
@@ -674,6 +692,8 @@ This release implements comprehensive automatic recovery for corrupted, missing,
 
 **Bug Fixes:**
 
+- **Config reset scope fix:** Fixed config reset throwing ReferenceError by keeping the fresh token in scope for the reload step.
+- **Locale key flash fix:** Prevented raw i18n keys from appearing briefly before localized text loads on config pages.
 - Fixed SubSource API key validation timing out: endpoint now reuses `SubSourceService` client (proper headers, pooled agents, DNS cache) and performs a single lightweight validation request with clearer error messages
 
 ## SubMaker v1.3.1
@@ -717,7 +737,7 @@ This release implements comprehensive automatic recovery for corrupted, missing,
 - Session creation rate limiting: Added per-IP rate limiting (10 sessions/hour) to prevent session flooding attacks and monopolization of the global session pool
 - Storage session limits: Implemented hard cap of 60,000 sessions in persistent storage (Redis/filesystem) with automatic purge of oldest-accessed sessions to prevent unbounded growth
 - Memory session cap reduction: Reduced in-memory session limit from 50,000 to 30,000 for better memory management while maintaining production scale
-- Session monitoring & alerting: Added comprehensive monitoring with alerts for storage utilization (warning at >80%, critical at ≥90%), abnormal session growth (>20%/hour), and eviction spikes (>3x average)
+- Session monitoring & alerting: Added comprehensive monitoring with alerts for storage utilization (warning at >80%, critical at =90%), abnormal session growth (>20%/hour), and eviction spikes (>3x average)
 - Automatic storage cleanup: Hourly cleanup process that purges 100 oldest-accessed sessions when storage utilization reaches 90%
 
 **Environment Variables:**
@@ -728,6 +748,8 @@ This release implements comprehensive automatic recovery for corrupted, missing,
 
 **Bug Fixes:**
 
+- **Config reset scope fix:** Fixed config reset throwing ReferenceError by keeping the fresh token in scope for the reload step.
+- **Locale key flash fix:** Prevented raw i18n keys from appearing briefly before localized text loads on config pages.
 - Fixed .ass to .vtt conversion producing empty files (~23 bytes): Now validates converted VTT contains timing cues and falls back to manual ASS parser if library conversion produces invalid output
 - Updated subsrt-ts from 2.0.1 to 2.1.2 for improved conversion reliability
 - Removed unused advanced configs from install page
@@ -735,12 +757,18 @@ This release implements comprehensive automatic recovery for corrupted, missing,
 ## SubMaker v1.2.6
 
 **Bug Fixes:**
+
+- **Config reset scope fix:** Fixed config reset throwing ReferenceError by keeping the fresh token in scope for the reload step.
+- **Locale key flash fix:** Prevented raw i18n keys from appearing briefly before localized text loads on config pages.
 - Translation flow now validates source subtitle size before returning loading message to prevent users from waiting indefinitely for corrupted files
 - Fixed purge trigger failing to detect cached translations in bypass cache mode: `hasCachedTranslation` now correctly calls `readFromBypassStorage` instead of non-existent `readFromBypassCache`
 
 ## SubMaker v1.2.5
 
 **Bug Fixes:**
+
+- **Config reset scope fix:** Fixed config reset throwing ReferenceError by keeping the fresh token in scope for the reload step.
+- **Locale key flash fix:** Prevented raw i18n keys from appearing briefly before localized text loads on config pages.
 - Fixed Spanish (Latin America) language code collision: Changed 'spn' mapping from 'sx' to 'ea' to resolve conflict with Santali language and ensure proper display in Stremio language lists
 - Fixed "just fetch subtitles (no translation)" mode returning zero results: Subtitle handler now properly uses `noTranslationLanguages` from config instead of empty `sourceLanguages`/`targetLanguages` arrays
 
@@ -760,6 +788,9 @@ This release implements comprehensive automatic recovery for corrupted, missing,
 - Parallelized provider searches with deduplication and safer backoff/retry in SubSource for more resilient fetching
 
 **Bug Fixes:**
+
+- **Config reset scope fix:** Fixed config reset throwing ReferenceError by keeping the fresh token in scope for the reload step.
+- **Locale key flash fix:** Prevented raw i18n keys from appearing briefly before localized text loads on config pages.
 - Fixed SafetyBlock error: `inFlightTranslations` now properly exported and imported for 3-click cache reset safety checks
 - Subtitle services now gracefully skip search when IMDB ID unavailable (prevents errors with unmapped anime content)
 - Fixed anime episode subtitle search: All providers (SubDL, SubSource, OpenSubtitles, OpenSubtitles V3) now default to season 1 for anime episodes without explicit season numbers
@@ -795,6 +826,9 @@ This release implements comprehensive automatic recovery for corrupted, missing,
 - OpenSubtitles language support: Added mappings for Asturian, Manipuri, Syriac, Tetum, Santali, Extremaduran, Toki Pona, and common regional variants (pt-PT, Spanish Latin America)
 
 **Bug Fixes:**
+
+- **Config reset scope fix:** Fixed config reset throwing ReferenceError by keeping the fresh token in scope for the reload step.
+- **Locale key flash fix:** Prevented raw i18n keys from appearing briefly before localized text loads on config pages.
 - Fixed sutitle sources from returning subtitles from all episodes in a season instead of only the requested episode
 - Fixed session lookup after server restart: `getSession()` and `updateSession()` now automatically fall back to Redis/storage when sessions are not in memory cache
 - Fixed Redis pub/sub self-invalidation: instances now ignore their own invalidation events to prevent sessions from expiring immediately after updates
@@ -814,6 +848,9 @@ This release implements comprehensive automatic recovery for corrupted, missing,
 - Consecutive save failure tracking: Critical alerts after 5 consecutive failures
 
 **Bug Fixes:**
+
+- **Config reset scope fix:** Fixed config reset throwing ReferenceError by keeping the fresh token in scope for the reload step.
+- **Locale key flash fix:** Prevented raw i18n keys from appearing briefly before localized text loads on config pages.
 - Fixed Redis session double-prefixing causing migrated sessions to be invisible
 - Fixed server accepting requests before sessions loaded (race condition during startup)
 - Fixed multi-instance race where single sessions blob could overwrite other instances' sessions
@@ -836,6 +873,9 @@ This release implements comprehensive automatic recovery for corrupted, missing,
 - Refined error messages: Improved user-facing error descriptions for safety filter blocks, rate limits, authentication failures, and source file issues
 
 **Bug Fixes:**
+
+- **Config reset scope fix:** Fixed config reset throwing ReferenceError by keeping the fresh token in scope for the reload step.
+- **Locale key flash fix:** Prevented raw i18n keys from appearing briefly before localized text loads on config pages.
 - Expanded error type mapping: Enhanced error handler to classify all error types (403, 429, 503, MAX_TOKENS, PROHIBITED_CONTENT, RECITATION, SAFETY, INVALID_SOURCE)
 - Fixed 3-click cache reset safety: Now prevents cache deletion when user is at the concurrent translation limit, avoiding abuse and data loss
 
@@ -850,6 +890,9 @@ This release implements comprehensive automatic recovery for corrupted, missing,
 ## SubMaker v1.1.5
 
 **Bug Fixes:**
+
+- **Config reset scope fix:** Fixed config reset throwing ReferenceError by keeping the fresh token in scope for the reload step.
+- **Locale key flash fix:** Prevented raw i18n keys from appearing briefly before localized text loads on config pages.
 - Fixed PROHIBITED_CONTENT error detection: Now properly identifies all safety filter errors (PROHIBITED_CONTENT, RECITATION, SAFETY) and displays appropriate user message instead of generic "please retry" text
 - Improved HTTP error detection: Added direct HTTP status code checking (403, 503, 429) for better error classification and messaging
 - Enhanced error messages: Users now see specific error descriptions for 503 (service overloaded), 429 (rate limit), and 403 (authentication) errors instead of generic fallbacks
@@ -860,6 +903,9 @@ This release implements comprehensive automatic recovery for corrupted, missing,
 ## SubMaker v1.1.4
 
 **Bug Fixes:**
+
+- **Config reset scope fix:** Fixed config reset throwing ReferenceError by keeping the fresh token in scope for the reload step.
+- **Locale key flash fix:** Prevented raw i18n keys from appearing briefly before localized text loads on config pages.
 - Fixed Gemini API key validation: Removed duplicate model fetching messages that appeared after clicking "Test" button
 - Fixed Gemini API key input: Green border now only appears when API key is successfully validated by backend, not just when field is not empty
 - Moved model fetching status messages to Advanced Settings section only (no longer shows in main config area)
@@ -872,6 +918,9 @@ This release implements comprehensive automatic recovery for corrupted, missing,
 - **Dark Mode**: All addon pages now support automatic dark/light themes based on system preference with manual toggle buttons
 
 **Bug Fixes:**
+
+- **Config reset scope fix:** Fixed config reset throwing ReferenceError by keeping the fresh token in scope for the reload step.
+- **Locale key flash fix:** Prevented raw i18n keys from appearing briefly before localized text loads on config pages.
 - Fixed config page: Gemini API key validation now properly displays notification alerts when field is empty
 - Fixed config page: "Just-fetch subtitles" mode now clears validation errors for translation-only fields (Gemini API key, source/target languages)
 - Fixed config page: Switching between translation and no-translation modes now clears language selections from the previous mode to prevent unwanted languages from being saved
@@ -883,7 +932,7 @@ This release implements comprehensive automatic recovery for corrupted, missing,
 - **Intelligent Subtitle Ranking**: Advanced filename matching algorithm prioritizes exact release group matches (RARBG, YTS, etc.) and rip type compatibility (WEB-DL, BluRay) for optimal sync probability
   - Matches resolution, codec, audio, HDR, streaming platform (Netflix, Amazon), and edition markers (Extended, Director's Cut) to find best-synced subtitles
 - Added Advanced Settings (EXPERIMENTAL) section to configuration page for fine-tuning AI behavior
-- Secret unlock: Click the heart (❤️) in the footer to reveal Advanced Settings
+- Secret unlock: Click the heart (??) in the footer to reveal Advanced Settings
 
 **Performance Improvements:**
 - Automatic cache purging when user changes configuration (different config hash = different cache key)
@@ -895,6 +944,9 @@ This release implements comprehensive automatic recovery for corrupted, missing,
 - **File Translation Advanced Settings**: Added experimental advanced settings section to file translation page for temporary per-translation overrides of model, prompt, and AI parameters (thinking budget, temperature, top-P, top-K, max tokens, timeout, retries)
 
 **Bug Fixes:**
+
+- **Config reset scope fix:** Fixed config reset throwing ReferenceError by keeping the fresh token in scope for the reload step.
+- **Locale key flash fix:** Prevented raw i18n keys from appearing briefly before localized text loads on config pages.
 - **User-Isolated Subtitle Search Cache**: Fixed a problem of cache sharing between users with different configurations (API keys, providers, languages)
 - **RTL Translations**: Added RTL embedding markers for translated subtitles so punctuation renders correctly for Hebrew/Arabic outputs
 - Various major and minor bug fixes.
@@ -902,6 +954,9 @@ This release implements comprehensive automatic recovery for corrupted, missing,
 ## SubMaker v1.1.1
 
 **Bug Fixes:**
+
+- **Config reset scope fix:** Fixed config reset throwing ReferenceError by keeping the fresh token in scope for the reload step.
+- **Locale key flash fix:** Prevented raw i18n keys from appearing briefly before localized text loads on config pages.
 - Fixed Gemini model defaults: Old session tokens with deprecated models (gemini-flash-latest, gemini-2.0-flash-exp) now automatically use current stable model
 - Fixed compression middleware crashes on some environments
 - Fixed encryption key regeneration on server restart (was causing session loss)
@@ -935,13 +990,16 @@ This release implements comprehensive automatic recovery for corrupted, missing,
 - Parallel translation chunk processing: Process multiple Gemini chunks simultaneously (EXPERIMENTAL - DISABLED BY DEFAULT)
 - Redis Sentinel support (OPTIONAL - disabled by default)
 - High-performance logging overhaul: Lazy evaluation with callbacks for all 520+ log statements eliminates 40-70% CPU overhead from string interpolation on filtered logs
-- Increased entry cache: 10,000 → 100,000 entries (5x capacity, improves cache hit rate from ~60% to ~75-85%)
-- Optimized partial cache flushing: Flush interval increased from 15s → 30s (50% less I/O overhead)
-- Enhanced response compression: Maximum compression (level 9) for SRT files: 10-15x bandwidth reduction (500KB → 35KB typical)
+- Increased entry cache: 10,000 ? 100,000 entries (5x capacity, improves cache hit rate from ~60% to ~75-85%)
+- Optimized partial cache flushing: Flush interval increased from 15s ? 30s (50% less I/O overhead)
+- Enhanced response compression: Maximum compression (level 9) for SRT files: 10-15x bandwidth reduction (500KB ? 35KB typical)
 - Async file logging with buffering replaces synchronous writes, eliminating event loop blocking (1-5ms per log) that caused 100-300ms p99 latency spikes under load
 - Log sampling support for extreme load scenarios (LOG_SAMPLE_RATE, LOG_SAMPLE_DEBUG_ONLY) allows reducing log volume while preserving critical errors
 
 **Bug Fixes:**
+
+- **Config reset scope fix:** Fixed config reset throwing ReferenceError by keeping the fresh token in scope for the reload step.
+- **Locale key flash fix:** Prevented raw i18n keys from appearing briefly before localized text loads on config pages.
 - Fixed bypass cache user isolation: Each user now gets their own user-scoped bypass cache entries (identified by config hash), preventing users from accessing each other's cached translations when using "Bypass Database Cache" mode
 - Fixed 3-click cache reset to properly handle bypass vs permanent cache
 - Config hash generation now handles edge cases gracefully with identifiable fallback values instead of silent failures
@@ -954,7 +1012,7 @@ This release implements comprehensive automatic recovery for corrupted, missing,
 **Code Refactoring:**
 - Renamed bypass cache directory from `translations_temp` to `translations_bypass` for clarity
 - Renamed `tempCache` configuration object to `bypassCacheConfig` (backward compatible with old `tempCache` name)
-- Updated all cache-related function names: `readFromTemp` → `readFromBypassCache`, `saveToTemp` → `saveToBypassCache`, `verifyTempCacheIntegrity` → `verifyBypassCacheIntegrity`
+- Updated all cache-related function names: `readFromTemp` ? `readFromBypassCache`, `saveToTemp` ? `saveToBypassCache`, `verifyTempCacheIntegrity` ? `verifyBypassCacheIntegrity`
 
 **UI & Configuration:**
 - Added password visibility toggle (eye icon) to OpenSubtitles password field
@@ -966,6 +1024,9 @@ This release implements comprehensive automatic recovery for corrupted, missing,
 - Subtitle now applies rate limiting per-language after ranking all sources: fetches from all 3 subtitle sources, ranks by quality/filename match, then limits to 12 subtitles per language (ensures best matches appear first)
 
 **Bug Fixes:**
+
+- **Config reset scope fix:** Fixed config reset throwing ReferenceError by keeping the fresh token in scope for the reload step.
+- **Locale key flash fix:** Prevented raw i18n keys from appearing briefly before localized text loads on config pages.
 - Fixed validation error notifications: errors now display when saving without required fields (Gemini API key, enabled subtitle sources missing API keys)
 - Fixed "Cannot GET /addon/..." error when clicking the config/settings button in Stremio after addon installation
 - Configuration page code cleanup: removed unused files and duplicate code, simplified cache/bypass toggle logic
@@ -976,7 +1037,7 @@ This release implements comprehensive automatic recovery for corrupted, missing,
 **UI & Configuration:**
 - Quick Start guide now appears only on first run, hidden after setup
 - API keys section defaults unchecked (enable only what you need)
-- Loading message updated to show 0→4h range explaining progressive subtitle loading during translation
+- Loading message updated to show 0?4h range explaining progressive subtitle loading during translation
 - Gemini prompts now use human-readable regional language names instead of codes (e.g., "English")
 - Auto-creates `data/` directory on startup (no manual setup needed)
 - Fixed language mappings for OpenSubtitles API: Brazilian Portuguese (pt-br), Simplified Chinese (zh-cn), Traditional Chinese (zh-tw), Montenegrin, and Chinese bilingual support
@@ -1002,5 +1063,11 @@ This release implements comprehensive automatic recovery for corrupted, missing,
 - `/api/session-stats` endpoint now includes version info
 
 **Bug Fixes:**
+
+- **Config reset scope fix:** Fixed config reset throwing ReferenceError by keeping the fresh token in scope for the reload step.
+- **Locale key flash fix:** Prevented raw i18n keys from appearing briefly before localized text loads on config pages.
 - Fixed SRT integrity during partial loading: entries reindexed and tail message positioned after last translated timestamp
 - Fixed addon URL generation for private networks (192.168.x.x, 10.x.x.x, 172.16-31.x.x ranges now recognized as local, preventing forced HTTPS)
+
+
+

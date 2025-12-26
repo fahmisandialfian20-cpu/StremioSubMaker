@@ -1567,6 +1567,12 @@ app.disable('x-powered-by'); // Hide framework fingerprint in responses
 // ETags can cause proxies/CDNs to serve stale user-specific content
 app.set('etag', false);
 
+// Security: Enable CORS for all routes (required for Stremio Web/Desktop)
+// app.use(cors());
+
+// Performance: Enable GZIP compression
+// app.use(compression());
+
 // Helper: compute a short hash for a config string (used to scope bypass cache per user/config)
 function computeConfigHash(configStr) {
     try {
