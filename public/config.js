@@ -3463,7 +3463,7 @@ Translate to {target_language}.`;
     }
 
     // Maximum number of Gemini API keys allowed (fetched from server via /api/session-stats)
-    let MAX_GEMINI_API_KEYS = 5; // default matches backend, can be updated from server
+    let MAX_GEMINI_API_KEYS = 20; // default matches backend, can be updated from server
 
     /**
      * Toggle the Gemini API key rotation UI visibility
